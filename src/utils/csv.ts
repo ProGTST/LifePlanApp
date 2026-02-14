@@ -1,5 +1,6 @@
 /**
- * 1行のCSVをパース（ダブルクォート・カンマ対応）
+ * 1行（論理行・改行含む）のCSVをパースする。
+ * ダブルクォート・カンマ・RFC 4180 の "" エスケープに対応。
  */
 export function parseCsvLine(line: string): string[] {
   const result: string[] = [];
@@ -8,7 +9,12 @@ export function parseCsvLine(line: string): string[] {
   for (let i = 0; i < line.length; i++) {
     const c = line[i];
     if (c === '"') {
-      inQuotes = !inQuotes;
+      if (inQuotes && line[i + 1] === '"') {
+        current += '"';
+        i += 1;
+      } else {
+        inQuotes = !inQuotes;
+      }
     } else if (inQuotes) {
       current += c;
     } else if (c === ",") {
@@ -23,6 +29,32 @@ export function parseCsvLine(line: string): string[] {
 }
 
 /**
+ * CSV本文を論理行に分割する。ダブルクォートで囲まれた中の改行は行区切りとみなさない。
+ */
+function splitCsvLogicalRows(text: string): string[] {
+  const trimmed = text.trim();
+  if (!trimmed) return [];
+  const rows: string[] = [];
+  let current = "";
+  let inQuotes = false;
+  for (let i = 0; i < trimmed.length; i++) {
+    const c = trimmed[i];
+    if (c === '"') {
+      inQuotes = !inQuotes;
+      current += c;
+    } else if (!inQuotes && (c === "\n" || c === "\r")) {
+      rows.push(current);
+      current = "";
+      if (c === "\r" && trimmed[i + 1] === "\n") i += 1;
+    } else {
+      current += c;
+    }
+  }
+  if (current.length > 0) rows.push(current);
+  return rows;
+}
+
+/**
  * CSVファイルを取得し、ヘッダーと行の配列に分解する。
  * init を渡すと fetch の第二引数に渡す（例: { cache: 'reload' } でキャッシュを無効化）。
  */
@@ -33,12 +65,12 @@ export async function fetchCsv(
   const res = await fetch(path, init);
   if (!res.ok) return { header: [], rows: [] };
   const text = await res.text();
-  const lines = text.trim().split(/\r?\n/);
-  if (lines.length < 1) return { header: [], rows: [] };
-  const header = parseCsvLine(lines[0]);
+  const logicalRows = splitCsvLogicalRows(text);
+  if (logicalRows.length < 1) return { header: [], rows: [] };
+  const header = parseCsvLine(logicalRows[0]);
   const rows: string[][] = [];
-  for (let i = 1; i < lines.length; i++) {
-    rows.push(parseCsvLine(lines[i]));
+  for (let i = 1; i < logicalRows.length; i++) {
+    rows.push(parseCsvLine(logicalRows[i]));
   }
   return { header, rows };
 }

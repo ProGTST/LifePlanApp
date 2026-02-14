@@ -71,6 +71,8 @@ export function showMainView(viewId: string): void {
   const headerDefaultBtn = document.getElementById("header-default-btn");
   if (headerDefaultBtn) headerDefaultBtn.classList.toggle("is-visible", viewId === "design");
 
+  const headerResetConditionsBtn = document.getElementById("transaction-history-reset-conditions-btn");
+  if (headerResetConditionsBtn) headerResetConditionsBtn.classList.toggle("is-visible", viewId === "transaction-history");
   const headerRefreshBtn = document.getElementById("transaction-history-refresh-btn");
   if (headerRefreshBtn) headerRefreshBtn.classList.toggle("is-visible", viewId === "transaction-history");
 

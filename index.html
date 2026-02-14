@@ -35,6 +35,7 @@
               <button type="button" class="btn-secondary btn-header-delete" id="header-delete-btn">削除モード</button>
               <button type="button" class="btn-primary btn-header-save" id="header-save-btn">保存</button>
               <button type="button" class="btn-secondary btn-header-default" id="header-default-btn">デフォルトに戻す</button>
+              <button type="button" class="btn-secondary btn-header-refresh" id="transaction-history-reset-conditions-btn" aria-label="条件初期化">条件初期化</button>
               <button type="button" class="btn-secondary btn-header-refresh" id="transaction-history-refresh-btn" aria-label="データ最新化">データ最新化</button>
             </div>
           </header>
@@ -131,7 +132,7 @@
             <div id="view-transaction-history" class="main-view main-view--hidden" data-view="transaction-history">
               <div class="view-body">
                 <section class="transaction-history-search" aria-label="検索条件">
-                  <details class="transaction-history-search-accordion" open>
+                  <details class="transaction-history-search-accordion">
                     <summary class="transaction-history-search-summary">検索条件</summary>
                     <div class="transaction-history-search-body">
                       <div class="transaction-history-search-row-group">
@@ -198,10 +199,12 @@
                         <button type="button" class="transaction-history-tab" role="tab" aria-selected="false" data-tab="calendar" id="transaction-history-tab-calendar">カレンダー</button>
                       </div>
                     </div>
-                    <div class="transaction-history-calendar-header" aria-label="年月切替">
-                      <button type="button" class="btn-secondary transaction-history-calendar-prev" id="transaction-history-calendar-prev" aria-label="前月">‹</button>
-                      <input type="month" id="transaction-history-calendar-ym" class="transaction-history-calendar-ym" aria-label="年月を選択" />
-                      <button type="button" class="btn-secondary transaction-history-calendar-next" id="transaction-history-calendar-next" aria-label="次月">›</button>
+                    <div class="transaction-history-tabs-row-center" aria-hidden="true">
+                      <div class="transaction-history-calendar-header" aria-label="年月切替">
+                        <button type="button" class="btn-secondary transaction-history-calendar-prev" id="transaction-history-calendar-prev" aria-label="前月">◀</button>
+                        <input type="month" id="transaction-history-calendar-ym" class="transaction-history-calendar-ym" aria-label="年月を選択" title="年月ピッカー" />
+                        <button type="button" class="btn-secondary transaction-history-calendar-next" id="transaction-history-calendar-next" aria-label="次月">▶</button>
+                      </div>
                     </div>
                     <div class="transaction-history-tabs-row-right" aria-hidden="true"></div>
                   </div>
@@ -211,6 +214,7 @@
                         <tr>
                           <th>日付</th>
                           <th class="data-table-icon-col" aria-label="カテゴリー">カテゴリー</th>
+                          <th class="data-table-icon-col" aria-label="計画"></th>
                           <th>金額</th>
                           <th>項目名</th>
                           <th>タグ</th>
