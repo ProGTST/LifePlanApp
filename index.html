@@ -35,7 +35,7 @@
               <button type="button" class="btn-secondary btn-header-delete" id="header-delete-btn">削除モード</button>
               <button type="button" class="btn-primary btn-header-save" id="header-save-btn">保存</button>
               <button type="button" class="btn-secondary btn-header-default" id="header-default-btn">デフォルトに戻す</button>
-              <button type="button" class="btn-secondary btn-header-refresh" id="transaction-history-refresh-btn" aria-label="最新化">最新化</button>
+              <button type="button" class="btn-secondary btn-header-refresh" id="transaction-history-refresh-btn" aria-label="データ最新化">データ最新化</button>
             </div>
           </header>
 
@@ -227,6 +227,67 @@
                     <div id="transaction-history-calendar-grid" class="transaction-history-calendar-grid" aria-label="カレンダー"></div>
                   </div>
                 </section>
+              </div>
+            </div>
+
+            <!-- ビュー: 収支記録 -->
+            <div id="view-transaction-entry" class="main-view main-view--hidden" data-view="transaction-entry">
+              <div class="view-body view-body--form">
+                <form id="transaction-entry-form" class="data-form">
+                  <div class="form-row">
+                    <label for="transaction-entry-type">収支種別</label>
+                    <select id="transaction-entry-type" required aria-label="収支種別">
+                      <option value="expense">支出</option>
+                      <option value="income">収入</option>
+                      <option value="transfer">振替</option>
+                    </select>
+                  </div>
+                  <div class="form-row">
+                    <label for="transaction-entry-status">計画／実績</label>
+                    <select id="transaction-entry-status" required aria-label="計画または実績">
+                      <option value="actual">実績</option>
+                      <option value="plan">予定</option>
+                    </select>
+                  </div>
+                  <div class="form-row">
+                    <label for="transaction-entry-category">カテゴリー</label>
+                    <select id="transaction-entry-category" required aria-label="カテゴリー">
+                      <option value="">選択してください</option>
+                    </select>
+                  </div>
+                  <div class="form-row">
+                    <label for="transaction-entry-name">項目名</label>
+                    <input id="transaction-entry-name" type="text" required maxlength="200" placeholder="項目名を入力" aria-label="項目名" />
+                  </div>
+                  <div class="form-row" id="transaction-entry-date-row">
+                    <label for="transaction-entry-date">日付</label>
+                    <input id="transaction-entry-date" type="date" required aria-label="日付" />
+                  </div>
+                  <div class="form-row">
+                    <label for="transaction-entry-amount">金額</label>
+                    <input id="transaction-entry-amount" type="number" required min="0" step="1" placeholder="0" aria-label="金額" />
+                  </div>
+                  <div class="form-row">
+                    <label for="transaction-entry-memo">メモ</label>
+                    <input id="transaction-entry-memo" type="text" maxlength="500" placeholder="メモ（任意）" aria-label="メモ" />
+                  </div>
+                  <div class="form-row transaction-entry-account-row" id="transaction-entry-account-out-row">
+                    <label for="transaction-entry-account-out">勘定（支出元・振替元）</label>
+                    <select id="transaction-entry-account-out" aria-label="勘定（支出元・振替元）">
+                      <option value="">選択してください</option>
+                    </select>
+                  </div>
+                  <div class="form-row transaction-entry-account-row" id="transaction-entry-account-in-row">
+                    <label for="transaction-entry-account-in">勘定（入金先・振替先）</label>
+                    <select id="transaction-entry-account-in" aria-label="勘定（入金先・振替先）">
+                      <option value="">選択してください</option>
+                    </select>
+                  </div>
+                  <div class="form-actions">
+                    <button type="submit" class="btn-primary" id="transaction-entry-submit">登録</button>
+                    <button type="button" class="btn-secondary" id="transaction-entry-reset">クリア</button>
+                  </div>
+                </form>
               </div>
             </div>
 

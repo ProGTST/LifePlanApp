@@ -84,6 +84,29 @@ export function accountPermissionListToCsv(rows: Record<string, string>[]): stri
   return toCsvString([...ACCOUNT_PERMISSION_HEADER], rows);
 }
 
+const TRANSACTION_HEADER = [
+  "ID",
+  "REGIST_DATETIME",
+  "REGIST_USER",
+  "UPDATE_DATETIME",
+  "UPDATE_USER",
+  "TYPE",
+  "STATUS",
+  "CATEGORY_ID",
+  "NAME",
+  "ACTUAL_DATE",
+  "PLAN_DATE_FROM",
+  "PLAN_DATE_TO",
+  "AMOUNT",
+  "MEMO",
+  "ACCOUNT_ID_IN",
+  "ACCOUNT_ID_OUT",
+] as const;
+
+export function transactionListToCsv(rows: Record<string, string>[]): string {
+  return toCsvString([...TRANSACTION_HEADER], rows);
+}
+
 const USER_HEADER = [
   "ID",
   "REGIST_DATETIME",

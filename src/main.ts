@@ -22,6 +22,7 @@ import { initTagView } from "./screens/tag-screen";
 import { initProfileView } from "./screens/profile-screen";
 import { initDesignView } from "./screens/design-screen";
 import { initTransactionHistoryView } from "./screens/transaction-history-screen";
+import { initTransactionEntryView } from "./screens/transaction-entry-screen";
 import { flushMasterToStorage } from "./utils/flushMasterStorage.ts";
 import { saveAccountCsvOnly, saveCategoryCsvOnly, saveTagCsvOnly } from "./utils/saveMasterCsv.ts";
 import { saveDirtyCsvsOnly } from "./utils/saveDirtyCsvs.ts";
@@ -36,6 +37,7 @@ function initAppScreen(): void {
   initProfileView();
   initDesignView();
   initTransactionHistoryView();
+  initTransactionEntryView();
 
   registerLeaveSaveHandler("account", saveAccountCsvOnly);
   registerLeaveSaveHandler("category", saveCategoryCsvOnly);

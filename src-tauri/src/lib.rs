@@ -193,6 +193,12 @@ fn save_tag_csv(app: tauri::AppHandle, tag: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn save_transaction_csv(app: tauri::AppHandle, transaction: String) -> Result<(), String> {
+    save_csv_to_public_if_has_data("TRANSACTION.csv", &transaction);
+    save_csv_to_app_data(&app, "TRANSACTION.csv", &transaction)
+}
+
+#[tauri::command]
 fn save_user_csv(app: tauri::AppHandle, user: String) -> Result<(), String> {
     save_csv_to_public_if_has_data("USER.csv", &user);
     save_csv_to_app_data(&app, "USER.csv", &user)
@@ -291,6 +297,7 @@ pub fn run() {
             save_account_csv,
             save_category_csv,
             save_tag_csv,
+            save_transaction_csv,
             save_user_csv,
             save_color_palette_csv,
             save_profile_icon,

@@ -1,5 +1,6 @@
 /** localStorage のキー（マスタデータ永続化） */
 const KEY_ACCOUNT = "lifeplan_account";
+const KEY_ACCOUNT_PERMISSION = "lifeplan_account_permission";
 const KEY_CATEGORY = "lifeplan_category";
 const KEY_TAG = "lifeplan_tag";
 const KEY_COLOR_PALETTE = "lifeplan_color_palette";
@@ -28,6 +29,14 @@ export function getAccountList(): unknown[] | null {
 
 export function setAccountList(list: unknown[]): void {
   set(KEY_ACCOUNT, list);
+}
+
+export function getAccountPermissionList(): unknown[] | null {
+  return get<unknown[]>(KEY_ACCOUNT_PERMISSION);
+}
+
+export function setAccountPermissionList(list: unknown[]): void {
+  set(KEY_ACCOUNT_PERMISSION, list);
 }
 
 export function getCategoryList(): unknown[] | null {
