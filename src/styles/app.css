@@ -1175,6 +1175,24 @@
   font-weight: 600;
 }
 
+.transaction-history-category-select-tabs-row {
+  margin-bottom: 0.75rem;
+}
+
+.transaction-history-category-select-tabs {
+  display: flex;
+  gap: 0;
+}
+
+.transaction-history-account-select-tabs-row {
+  margin-bottom: 0.75rem;
+}
+
+.transaction-history-account-select-tabs {
+  display: flex;
+  gap: 0;
+}
+
 .transaction-history-select-list {
   overflow-y: auto;
   max-height: 50vh;
@@ -1189,21 +1207,64 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.35rem 0;
-  cursor: pointer;
   font-size: 0.875rem;
-}
-
-.transaction-history-select-item input[type="checkbox"] {
-  flex-shrink: 0;
 }
 
 .transaction-history-select-item .category-icon-wrap {
   flex-shrink: 0;
 }
 
+.transaction-history-select-item-name {
+  flex: 1;
+  min-width: 0;
+  cursor: pointer;
+}
+
+/* 勘定項目のユーザー選択と同じチェックボタン */
+#app .transaction-history-select-modal .transaction-history-select-check-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: none;
+  background: var(--color-base-bg) !important;
+  color: var(--color-base-fg);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+  transition: box-shadow 0.15s;
+}
+
+#app .transaction-history-select-modal .transaction-history-select-check-btn .transaction-history-select-check-icon {
+  display: block;
+  width: 1.5rem;
+  height: 1.5rem;
+  flex-shrink: 0;
+  background-color: var(--color-base-fg) !important;
+  -webkit-mask-image: var(--icon-check);
+  mask-image: var(--icon-check);
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  transition: background-color 0.15s;
+}
+
+#app .transaction-history-select-modal .transaction-history-select-check-btn.is-selected .transaction-history-select-check-icon {
+  background-color: var(--color-accent-bg) !important;
+}
+
+#app .transaction-history-select-modal .transaction-history-select-check-btn:hover:not(:disabled) {
+  box-shadow: 0 0 0 1px var(--color-base-fg);
+}
+
 .transaction-history-select-actions {
   display: flex;
-  justify-content: flex-end;
+  justify-content: center;
   gap: 0.5rem;
   flex-shrink: 0;
 }
@@ -1933,7 +1994,9 @@
 .transaction-history-free-text-input {
   flex: 1;
   min-width: 27rem;
-  padding: 0.4rem 0.5rem;
+  height: 40px;
+  box-sizing: border-box;
+  padding: 0 0.5rem;
   font-size: 0.875rem;
   border: 1px solid var(--gray-500);
   border-radius: var(--radius-md);
@@ -1942,12 +2005,86 @@
 .transaction-history-chosen-display {
   flex: 1;
   min-width: 0;
-  padding: 0.4rem 0.5rem;
+  min-height: 40px;
+  height: auto;
+  box-sizing: border-box;
+  padding: 0.35rem 0.5rem;
   font-size: 0.875rem;
   color: var(--gray-700);
   border: 1px solid var(--gray-500);
   border-radius: var(--radius-md);
   background: var(--color-view-bg, #fff);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.transaction-history-chosen-label-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.1rem 0.25rem 0.1rem 0.35rem;
+  font-size: 0.75rem;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  flex-shrink: 0;
+  /* 背景・文字色は JS で項目の COLOR を指定（未設定時は #646cff / #ffffff） */
+}
+
+.transaction-history-chosen-label-wrap .transaction-history-chosen-label {
+  padding: 0;
+  background: none;
+  color: inherit;
+}
+
+/* ラベル背景色に合わせて削除アイコンを白表示 */
+.transaction-history-chosen-label-wrap .transaction-history-chosen-label-remove img {
+  filter: brightness(0) invert(1);
+}
+
+/* #app button の padding/margin を上書きしてバツ印を小さくする */
+#app .transaction-history-chosen-label-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 2px;
+  color: var(--gray-600);
+  flex-shrink: 0;
+  font-size: 0;
+}
+
+#app .transaction-history-chosen-label-remove:hover {
+  background: var(--gray-300);
+  color: var(--gray-800);
+}
+
+#app .transaction-history-chosen-label-remove img {
+  display: block;
+  width: 12px;
+  height: 12px;
+  pointer-events: none;
+}
+
+.transaction-history-chosen-label {
+  display: inline-block;
+  padding: 0.1rem 0.35rem;
+  font-size: 0.75rem;
+  color: var(--color-view-fg, #1a1a1a);
+  background: var(--gray-200);
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  max-width: 10em;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .transaction-history-tabs-row {
@@ -2110,7 +2247,7 @@
 /* 収支一覧テーブル：金額列の幅を小さく・表示は折り返す */
 #transaction-history-table th:nth-child(3),
 #transaction-history-table td:nth-child(3) {
-  width: 12rem;
+  width: 7rem;
   box-sizing: border-box;
 }
 #transaction-history-table td:nth-child(3) .transaction-history-data-cell {
@@ -2118,16 +2255,45 @@
   word-break: break-word;
 }
 
-/* 収支一覧テーブル：勘定項目列の幅を小さく */
+/* 収支一覧テーブル：タグ列 */
 #transaction-history-table th:nth-child(5),
 #transaction-history-table td:nth-child(5) {
+  width: 10rem;
+  box-sizing: border-box;
+}
+.transaction-history-tags-cell {
+  font-size: 0.8125rem;
+  color: var(--gray-700);
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+.transaction-history-tags-label-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.transaction-history-tags-cell .transaction-history-tag-label {
+  display: inline-block;
+  padding: 0.1rem 0.35rem;
+  font-size: 0.75rem;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  color: #ffffff;
+}
+
+/* 収支一覧テーブル：勘定項目列の幅を小さく */
+#transaction-history-table th:nth-child(6),
+#transaction-history-table td:nth-child(6) {
   width: 14rem;
   box-sizing: border-box;
 }
 
 /* 収支一覧テーブル：予定終了日列（日付列と同じ幅） */
-#transaction-history-table th:nth-child(6),
-#transaction-history-table td:nth-child(6) {
+#transaction-history-table th:nth-child(7),
+#transaction-history-table td:nth-child(7) {
   width: 6.3rem;
   box-sizing: border-box;
 }

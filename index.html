@@ -151,11 +151,16 @@
                         <div class="transaction-history-search-row">
                           <span class="transaction-history-search-label">収支種別</span>
                           <div class="transaction-history-search-buttons" role="group" aria-label="収支種別">
-                            <button type="button" class="btn-secondary transaction-history-filter-btn is-active" data-type="income" id="transaction-history-type-income">収入</button>
                             <button type="button" class="btn-secondary transaction-history-filter-btn is-active" data-type="expense" id="transaction-history-type-expense">支出</button>
+                            <button type="button" class="btn-secondary transaction-history-filter-btn is-active" data-type="income" id="transaction-history-type-income">収入</button>
                             <button type="button" class="btn-secondary transaction-history-filter-btn is-active" data-type="transfer" id="transaction-history-type-transfer">振替</button>
                           </div>
                         </div>
+                      </div>
+                      <div class="transaction-history-search-row">
+                        <span class="transaction-history-search-label">勘定項目</span>
+                        <span id="transaction-history-account-display" class="transaction-history-chosen-display" aria-live="polite"></span>
+                        <button type="button" class="btn-secondary" id="transaction-history-account-btn">選択</button>
                       </div>
                       <div class="transaction-history-search-row">
                         <span class="transaction-history-search-label">カテゴリー</span>
@@ -166,11 +171,6 @@
                         <span class="transaction-history-search-label">タグ</span>
                         <span id="transaction-history-tag-display" class="transaction-history-chosen-display" aria-live="polite"></span>
                         <button type="button" class="btn-secondary" id="transaction-history-tag-btn">選択</button>
-                      </div>
-                      <div class="transaction-history-search-row">
-                        <span class="transaction-history-search-label">勘定項目</span>
-                        <span id="transaction-history-account-display" class="transaction-history-chosen-display" aria-live="polite"></span>
-                        <button type="button" class="btn-secondary" id="transaction-history-account-btn">選択</button>
                       </div>
                       <div class="transaction-history-search-row-group">
                         <div class="transaction-history-search-row">
@@ -213,6 +213,7 @@
                           <th class="data-table-icon-col" aria-label="カテゴリー">カテゴリー</th>
                           <th>金額</th>
                           <th>項目名</th>
+                          <th>タグ</th>
                           <th class="data-table-icon-col" aria-label="勘定項目">勘定項目</th>
                           <th>予定終了日</th>
                         </tr>
@@ -400,7 +401,6 @@
               <div id="account-form-user-picker-list" class="account-form-user-picker-list"></div>
               <div class="form-actions">
                 <button type="button" class="btn-primary" id="account-form-user-picker-apply">設定</button>
-                <button type="button" class="btn-secondary" id="account-form-user-picker-close">閉じる</button>
               </div>
             </div>
           </div>
@@ -469,36 +469,50 @@
 
           <!-- 収支履歴検索：選択モーダル（カテゴリー / タグ / 勘定項目） -->
           <div id="transaction-history-category-select-overlay" class="modal-overlay" aria-hidden="true">
-            <div class="modal-content transaction-history-select-modal" role="dialog" aria-labelledby="transaction-history-category-select-title" aria-modal="true">
+            <div class="modal-content transaction-history-select-modal" role="dialog" aria-labelledby="transaction-history-category-select-title" aria-modal="true" style="--icon-check: url(/icon/circle-check-solid-full.svg);">
               <h2 id="transaction-history-category-select-title" class="transaction-history-select-title">カテゴリーを選択</h2>
+              <div class="transaction-history-category-select-tabs-row">
+                <div class="transaction-history-category-select-tabs" role="tablist" aria-label="収支種別">
+                  <button type="button" class="category-tab transaction-history-category-select-tab is-active" role="tab" aria-selected="true" data-type="expense">支出</button>
+                  <button type="button" class="category-tab transaction-history-category-select-tab" role="tab" aria-selected="false" data-type="income">収入</button>
+                  <button type="button" class="category-tab transaction-history-category-select-tab" role="tab" aria-selected="false" data-type="transfer">振替</button>
+                </div>
+              </div>
               <div id="transaction-history-category-select-list" class="transaction-history-select-list"></div>
               <div class="transaction-history-select-actions">
                 <button type="button" class="btn-secondary" id="transaction-history-category-select-clear">全解除</button>
-                <button type="button" class="btn-primary" id="transaction-history-category-select-apply">反映</button>
+                <button type="button" class="btn-primary" id="transaction-history-category-select-apply">設定</button>
               </div>
             </div>
           </div>
 
 
           <div id="transaction-history-tag-select-overlay" class="modal-overlay" aria-hidden="true">
-            <div class="modal-content transaction-history-select-modal" role="dialog" aria-labelledby="transaction-history-tag-select-title" aria-modal="true">
+            <div class="modal-content transaction-history-select-modal" role="dialog" aria-labelledby="transaction-history-tag-select-title" aria-modal="true" style="--icon-check: url(/icon/circle-check-solid-full.svg);">
               <h2 id="transaction-history-tag-select-title" class="transaction-history-select-title">タグを選択</h2>
               <div id="transaction-history-tag-select-list" class="transaction-history-select-list"></div>
               <div class="transaction-history-select-actions">
                 <button type="button" class="btn-secondary" id="transaction-history-tag-select-clear">全解除</button>
-                <button type="button" class="btn-primary" id="transaction-history-tag-select-apply">反映</button>
+                <button type="button" class="btn-primary" id="transaction-history-tag-select-apply">設定</button>
               </div>
             </div>
           </div>
 
 
           <div id="transaction-history-account-select-overlay" class="modal-overlay" aria-hidden="true">
-            <div class="modal-content transaction-history-select-modal" role="dialog" aria-labelledby="transaction-history-account-select-title" aria-modal="true">
+            <div class="modal-content transaction-history-select-modal" role="dialog" aria-labelledby="transaction-history-account-select-title" aria-modal="true" style="--icon-check: url(/icon/circle-check-solid-full.svg);">
               <h2 id="transaction-history-account-select-title" class="transaction-history-select-title">勘定項目を選択</h2>
+              <div class="transaction-history-account-select-tabs-row">
+                <div class="transaction-history-account-select-tabs" role="tablist" aria-label="勘定種別">
+                  <button type="button" class="category-tab transaction-history-account-select-tab is-active" role="tab" aria-selected="true" data-tab="own">個人</button>
+                  <button type="button" class="category-tab transaction-history-account-select-tab" role="tab" aria-selected="false" data-tab="shared">共有</button>
+                </div>
+              </div>
               <div id="transaction-history-account-select-list" class="transaction-history-select-list"></div>
               <div class="transaction-history-select-actions">
+                <button type="button" class="btn-secondary" id="transaction-history-account-select-own-only">個人のみ</button>
                 <button type="button" class="btn-secondary" id="transaction-history-account-select-clear">全解除</button>
-                <button type="button" class="btn-primary" id="transaction-history-account-select-apply">反映</button>
+                <button type="button" class="btn-primary" id="transaction-history-account-select-apply">設定</button>
               </div>
             </div>
           </div>

@@ -748,7 +748,6 @@ export function initAccountView(): void {
   document.getElementById("account-form-cancel")?.addEventListener("click", closeAccountModal);
   document.getElementById("account-form-permission-add")?.addEventListener("click", () => openAccountFormUserPicker());
   document.getElementById("account-form-user-picker-apply")?.addEventListener("click", applyAccountFormUserPicker);
-  document.getElementById("account-form-user-picker-close")?.addEventListener("click", closeAccountFormUserPicker);
   document.getElementById("account-form-user-picker-overlay")?.addEventListener("click", (e) => {
     if (e.target instanceof HTMLElement && e.target.id === "account-form-user-picker-overlay") closeAccountFormUserPicker();
   });

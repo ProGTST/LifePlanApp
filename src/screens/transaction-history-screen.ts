@@ -146,6 +146,16 @@ function getAccountById(id: string): AccountRow | undefined {
   return accountRows.find((a) => a.ID === id);
 }
 
+/** 取引に紐づくタグの一覧（TAG_MANAGEMENT と TAG から取得） */
+function getTagsForTransaction(transactionId: string): TagRow[] {
+  const tagIds = tagManagementList
+    .filter((t) => t.TRANSACTION_ID === transactionId)
+    .map((t) => t.TAG_ID);
+  return tagIds
+    .map((id) => tagRows.find((r) => r.ID === id))
+    .filter((r): r is TagRow => !!r);
+}
+
 // ---------------------------------------------------------------------------
 // DOM ヘルパー・フィルタ・一覧描画
 // ---------------------------------------------------------------------------
@@ -323,6 +333,25 @@ function renderList(): void {
     nameText.textContent = row.NAME || "—";
     nameWrap.appendChild(nameText);
     tdName.appendChild(nameWrap);
+    const tdTags = document.createElement("td");
+    tdTags.className = "transaction-history-tags-cell";
+    const tags = getTagsForTransaction(row.ID);
+    if (tags.length > 0) {
+      const tagLabelWrap = document.createElement("span");
+      tagLabelWrap.className = "transaction-history-tags-label-wrap";
+      for (const tag of tags) {
+        const wrap = document.createElement("span");
+        wrap.className = "transaction-history-tag-label";
+        const bg = (tag.COLOR || "").trim() || CHOSEN_LABEL_DEFAULT_BG;
+        wrap.style.backgroundColor = bg;
+        wrap.style.color = CHOSEN_LABEL_DEFAULT_FG;
+        wrap.textContent = tag.TAG_NAME?.trim() || "—";
+        tagLabelWrap.appendChild(wrap);
+      }
+      tdTags.appendChild(tagLabelWrap);
+    } else {
+      tdTags.textContent = "—";
+    }
     const tdAccount = document.createElement("td");
     tdAccount.className = "transaction-history-account-cell";
     const type = row.TYPE as "income" | "expense" | "transfer";
@@ -352,6 +381,7 @@ function renderList(): void {
     tr.appendChild(tdCat);
     tr.appendChild(tdData);
     tr.appendChild(tdName);
+    tr.appendChild(tdTags);
     tr.appendChild(tdAccount);
     tr.appendChild(tdPlanDateTo);
     tbody.appendChild(tr);
@@ -384,14 +414,92 @@ function syncFilterButtons(): void {
   });
 }
 
-/** カテゴリー・タグ・勘定項目の選択表示欄を更新する（未選択時は「未選択」） */
+const CHOSEN_REMOVE_ICON = "/icon/circle-xmark-solid-full.svg";
+const CHOSEN_LABEL_DEFAULT_BG = "#646cff";
+const CHOSEN_LABEL_DEFAULT_FG = "#ffffff";
+
+/** 選択表示欄にラベル要素を並べて表示する。onRemove を渡すと各ラベル横に削除アイコンを表示。getColor で項目の背景色を指定（未設定時はデフォルト色） */
+function setChosenDisplayLabels(
+  container: HTMLElement | null,
+  ids: string[],
+  getName: (id: string) => string | undefined,
+  onRemove?: (id: string) => void,
+  getColor?: (id: string) => string | undefined
+): void {
+  if (!container) return;
+  container.textContent = "";
+  if (ids.length === 0) {
+    container.textContent = "未選択";
+    return;
+  }
+  for (const id of ids) {
+    const name = getName(id)?.trim() || "—";
+    const wrap = document.createElement("span");
+    wrap.className = "transaction-history-chosen-label-wrap";
+    const bg = (getColor?.(id) ?? "").trim() || CHOSEN_LABEL_DEFAULT_BG;
+    wrap.style.backgroundColor = bg;
+    wrap.style.color = CHOSEN_LABEL_DEFAULT_FG;
+    const label = document.createElement("span");
+    label.className = "transaction-history-chosen-label";
+    label.textContent = name;
+    wrap.appendChild(label);
+    if (onRemove) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "transaction-history-chosen-label-remove";
+      btn.setAttribute("aria-label", "選択から削除");
+      const img = document.createElement("img");
+      img.src = CHOSEN_REMOVE_ICON;
+      img.alt = "";
+      btn.appendChild(img);
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        onRemove(id);
+      });
+      wrap.appendChild(btn);
+    }
+    container.appendChild(wrap);
+  }
+}
+
+/** カテゴリー・タグ・勘定項目の選択表示欄を更新する（選択された項目名をラベルで表示、項目の COLOR を背景色に、削除アイコン付き） */
 function updateChosenDisplays(): void {
   const categoryEl = document.getElementById("transaction-history-category-display");
   const tagEl = document.getElementById("transaction-history-tag-display");
   const accountEl = document.getElementById("transaction-history-account-display");
-  if (categoryEl) categoryEl.textContent = filterCategoryIds.length === 0 ? "未選択" : `${filterCategoryIds.length}件選択`;
-  if (tagEl) tagEl.textContent = filterTagIds.length === 0 ? "未選択" : `${filterTagIds.length}件選択`;
-  if (accountEl) accountEl.textContent = filterAccountIds.length === 0 ? "未選択" : `${filterAccountIds.length}件選択`;
+  setChosenDisplayLabels(
+    categoryEl,
+    filterCategoryIds,
+    (id) => getCategoryById(id)?.CATEGORY_NAME,
+    (id) => {
+      filterCategoryIds = filterCategoryIds.filter((x) => x !== id);
+      updateChosenDisplays();
+      renderList();
+    },
+    (id) => getCategoryById(id)?.COLOR
+  );
+  setChosenDisplayLabels(
+    tagEl,
+    filterTagIds,
+    (id) => tagRows.find((r) => r.ID === id)?.TAG_NAME,
+    (id) => {
+      filterTagIds = filterTagIds.filter((x) => x !== id);
+      updateChosenDisplays();
+      renderList();
+    },
+    (id) => tagRows.find((r) => r.ID === id)?.COLOR
+  );
+  setChosenDisplayLabels(
+    accountEl,
+    filterAccountIds,
+    (id) => getAccountById(id)?.ACCOUNT_NAME,
+    (id) => {
+      filterAccountIds = filterAccountIds.filter((x) => x !== id);
+      updateChosenDisplays();
+      renderList();
+    },
+    (id) => getAccountById(id)?.COLOR
+  );
 }
 
 function closeSelectModal(overlayId: string): void {
@@ -405,32 +513,103 @@ function closeSelectModal(overlayId: string): void {
 function getSelectedIdsFromList(listContainerId: string): string[] {
   const container = document.getElementById(listContainerId);
   if (!container) return [];
-  const checked = container.querySelectorAll<HTMLInputElement>('input[type="checkbox"]:checked');
-  return Array.from(checked)
-    .map((el) => el.dataset.id)
+  const selected = container.querySelectorAll<HTMLElement>(".transaction-history-select-item .transaction-history-select-check-btn.is-selected");
+  return Array.from(selected)
+    .map((btn) => btn.closest(".transaction-history-select-item")?.getAttribute("data-id"))
     .filter((id): id is string => id != null);
 }
 
-function openCategorySelectModal(): void {
+function createSelectItemRow(
+  id: string,
+  name: string,
+  color: string,
+  iconPath: string,
+  isSelected: boolean,
+  onToggle?: (id: string, selected: boolean) => void
+): HTMLElement {
+  const row = document.createElement("div");
+  row.className = "transaction-history-select-item";
+  row.dataset.id = id;
+  const checkBtn = document.createElement("button");
+  checkBtn.type = "button";
+  checkBtn.className = "transaction-history-select-check-btn";
+  checkBtn.setAttribute("aria-label", "選択");
+  checkBtn.setAttribute("aria-pressed", isSelected ? "true" : "false");
+  if (isSelected) checkBtn.classList.add("is-selected");
+  const checkIcon = document.createElement("span");
+  checkIcon.className = "transaction-history-select-check-icon";
+  checkIcon.setAttribute("aria-hidden", "true");
+  checkBtn.appendChild(checkIcon);
+  const handleToggle = (): void => {
+    const pressed = checkBtn.getAttribute("aria-pressed") === "true";
+    const next = !pressed;
+    checkBtn.setAttribute("aria-pressed", String(next));
+    checkBtn.classList.toggle("is-selected", next);
+    onToggle?.(id, next);
+  };
+  checkBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    handleToggle();
+  });
+  const iconWrap = renderIconWrap(color, iconPath, "category-icon-wrap");
+  const nameSpan = document.createElement("span");
+  nameSpan.className = "transaction-history-select-item-name";
+  nameSpan.textContent = name;
+  nameSpan.addEventListener("click", () => handleToggle());
+  row.appendChild(checkBtn);
+  row.appendChild(iconWrap);
+  row.appendChild(nameSpan);
+  return row;
+}
+
+/** カテゴリー選択モーダルで選択中の収支種別 */
+let categorySelectModalType: "income" | "expense" | "transfer" = "expense";
+
+/** カテゴリー選択モーダル内の選択ID（タブ切替でも保持） */
+let categorySelectModalSelectedIds = new Set<string>();
+
+/** 収支種別に応じてカテゴリーを絞り込む */
+function filterCategoriesByType(type: "income" | "expense" | "transfer"): CategoryRow[] {
+  if (type === "income") return categoryRows.filter((c) => (c.TYPE || "").toLowerCase() === "income");
+  if (type === "expense") return categoryRows.filter((c) => (c.TYPE || "").toLowerCase() === "expense");
+  if (type === "transfer") return categoryRows.filter((c) => ["income", "expense"].includes((c.TYPE || "").toLowerCase()));
+  return categoryRows;
+}
+
+/** カテゴリー選択モーダルの一覧を指定種別で描画する */
+function renderCategorySelectList(type: "income" | "expense" | "transfer"): void {
   const listEl = document.getElementById("transaction-history-category-select-list");
   if (!listEl) return;
   listEl.innerHTML = "";
-  const sorted = categoryRows.slice().sort((a, b) => (a.SORT_ORDER || "").localeCompare(b.SORT_ORDER || ""));
+  const filtered = filterCategoriesByType(type);
+  const sorted = filtered.slice().sort((a, b) => (a.SORT_ORDER || "").localeCompare(b.SORT_ORDER || ""));
   for (const row of sorted) {
-    const label = document.createElement("label");
-    label.className = "transaction-history-select-item";
-    const cb = document.createElement("input");
-    cb.type = "checkbox";
-    cb.dataset.id = row.ID;
-    cb.checked = filterCategoryIds.includes(row.ID);
-    label.appendChild(cb);
-    const iconWrap = renderIconWrap(row.COLOR || ICON_DEFAULT_COLOR, row.ICON_PATH, "category-icon-wrap");
-    label.appendChild(iconWrap);
-    const nameSpan = document.createElement("span");
-    nameSpan.textContent = row.CATEGORY_NAME || "—";
-    label.appendChild(nameSpan);
-    listEl.appendChild(label);
+    const item = createSelectItemRow(
+      row.ID,
+      row.CATEGORY_NAME || "—",
+      row.COLOR || ICON_DEFAULT_COLOR,
+      row.ICON_PATH || "",
+      categorySelectModalSelectedIds.has(row.ID),
+      (id, selected) => {
+        if (selected) categorySelectModalSelectedIds.add(id);
+        else categorySelectModalSelectedIds.delete(id);
+      }
+    );
+    listEl.appendChild(item);
   }
+}
+
+function openCategorySelectModal(): void {
+  categorySelectModalType = "expense";
+  categorySelectModalSelectedIds = new Set(filterCategoryIds);
+  const tabs = document.querySelectorAll(".transaction-history-category-select-tab");
+  tabs.forEach((tab) => {
+    const t = tab as HTMLElement;
+    const isActive = (t.dataset.type ?? "expense") === categorySelectModalType;
+    t.classList.toggle("is-active", isActive);
+    t.setAttribute("aria-selected", String(isActive));
+  });
+  renderCategorySelectList(categorySelectModalType);
   const overlay = document.getElementById("transaction-history-category-select-overlay");
   if (overlay) {
     overlay.classList.add("is-visible");
@@ -444,19 +623,14 @@ function openTagSelectModal(): void {
   listEl.innerHTML = "";
   const sorted = tagRows.slice().sort((a, b) => (a.SORT_ORDER || "").localeCompare(b.SORT_ORDER || ""));
   for (const row of sorted) {
-    const label = document.createElement("label");
-    label.className = "transaction-history-select-item";
-    const cb = document.createElement("input");
-    cb.type = "checkbox";
-    cb.dataset.id = row.ID;
-    cb.checked = filterTagIds.includes(row.ID);
-    label.appendChild(cb);
-    const iconWrap = renderIconWrap(row.COLOR || ICON_DEFAULT_COLOR, row.ICON_PATH, "category-icon-wrap");
-    label.appendChild(iconWrap);
-    const nameSpan = document.createElement("span");
-    nameSpan.textContent = row.TAG_NAME || "—";
-    label.appendChild(nameSpan);
-    listEl.appendChild(label);
+    const item = createSelectItemRow(
+      row.ID,
+      row.TAG_NAME || "—",
+      row.COLOR || ICON_DEFAULT_COLOR,
+      row.ICON_PATH || "",
+      filterTagIds.includes(row.ID)
+    );
+    listEl.appendChild(item);
   }
   const overlay = document.getElementById("transaction-history-tag-select-overlay");
   if (overlay) {
@@ -465,26 +639,64 @@ function openTagSelectModal(): void {
   }
 }
 
-function openAccountSelectModal(): void {
+/** 勘定項目選択モーダルで表示中のタブ（個人 or 共有） */
+let accountSelectModalTab: "own" | "shared" = "own";
+
+/** 勘定項目選択モーダル内の選択ID（タブ切替でも保持） */
+let accountSelectModalSelectedIds = new Set<string>();
+
+/** 自分の勘定一覧（USER_ID がログインユーザーと一致） */
+function getOwnAccountRows(): AccountRow[] {
+  const me = currentUserId;
+  if (!me) return [];
+  return accountRows
+    .filter((a) => a.USER_ID === me)
+    .sort((a, b) => (a.SORT_ORDER || "").localeCompare(b.SORT_ORDER || ""));
+}
+
+/** 参照可能な共有勘定一覧（他ユーザー所有で権限付与されているもの） */
+function getSharedAccountRows(): AccountRow[] {
+  const me = currentUserId;
+  if (!me) return [];
+  const sharedIds = new Set(permissionRows.filter((p) => p.USER_ID === me).map((p) => p.ACCOUNT_ID));
+  return accountRows
+    .filter((a) => a.USER_ID !== me && sharedIds.has(a.ID))
+    .sort((a, b) => (a.SORT_ORDER || "").localeCompare(b.SORT_ORDER || ""));
+}
+
+/** 勘定項目選択モーダルの一覧を指定タブで描画する */
+function renderAccountSelectList(tab: "own" | "shared"): void {
   const listEl = document.getElementById("transaction-history-account-select-list");
   if (!listEl) return;
   listEl.innerHTML = "";
-  const sorted = accountRows.slice().sort((a, b) => (a.SORT_ORDER || "").localeCompare(b.SORT_ORDER || ""));
-  for (const row of sorted) {
-    const label = document.createElement("label");
-    label.className = "transaction-history-select-item";
-    const cb = document.createElement("input");
-    cb.type = "checkbox";
-    cb.dataset.id = row.ID;
-    cb.checked = filterAccountIds.includes(row.ID);
-    label.appendChild(cb);
-    const iconWrap = renderIconWrap(row.COLOR || ICON_DEFAULT_COLOR, row.ICON_PATH, "category-icon-wrap");
-    label.appendChild(iconWrap);
-    const nameSpan = document.createElement("span");
-    nameSpan.textContent = row.ACCOUNT_NAME || "—";
-    label.appendChild(nameSpan);
-    listEl.appendChild(label);
+  const rows = tab === "own" ? getOwnAccountRows() : getSharedAccountRows();
+  for (const row of rows) {
+    const item = createSelectItemRow(
+      row.ID,
+      row.ACCOUNT_NAME || "—",
+      row.COLOR || ICON_DEFAULT_COLOR,
+      row.ICON_PATH || "",
+      accountSelectModalSelectedIds.has(row.ID),
+      (id, selected) => {
+        if (selected) accountSelectModalSelectedIds.add(id);
+        else accountSelectModalSelectedIds.delete(id);
+      }
+    );
+    listEl.appendChild(item);
   }
+}
+
+function openAccountSelectModal(): void {
+  accountSelectModalTab = "own";
+  accountSelectModalSelectedIds = new Set(filterAccountIds);
+  const tabs = document.querySelectorAll(".transaction-history-account-select-tab");
+  tabs.forEach((t) => {
+    const el = t as HTMLElement;
+    const isActive = (el.dataset.tab ?? "own") === accountSelectModalTab;
+    el.classList.toggle("is-active", isActive);
+    el.setAttribute("aria-selected", String(isActive));
+  });
+  renderAccountSelectList(accountSelectModalTab);
   const overlay = document.getElementById("transaction-history-account-select-overlay");
   if (overlay) {
     overlay.classList.add("is-visible");
@@ -626,13 +838,27 @@ export function initTransactionHistoryView(): void {
   document.getElementById("transaction-history-tag-btn")?.addEventListener("click", openTagSelectModal);
   document.getElementById("transaction-history-account-btn")?.addEventListener("click", openAccountSelectModal);
 
-  document.getElementById("transaction-history-category-select-clear")?.addEventListener("click", () => {
-    document.querySelectorAll("#transaction-history-category-select-list input[type='checkbox']").forEach((el) => {
-      (el as HTMLInputElement).checked = false;
+  document.querySelectorAll(".transaction-history-category-select-tab").forEach((tabEl) => {
+    tabEl.addEventListener("click", () => {
+      const type = (tabEl as HTMLElement).dataset.type as "income" | "expense" | "transfer" | undefined;
+      if (!type) return;
+      categorySelectModalType = type;
+      document.querySelectorAll(".transaction-history-category-select-tab").forEach((t) => {
+        const el = t as HTMLElement;
+        const isActive = (el.dataset.type ?? "expense") === categorySelectModalType;
+        el.classList.toggle("is-active", isActive);
+        el.setAttribute("aria-selected", String(isActive));
+      });
+      renderCategorySelectList(categorySelectModalType);
     });
   });
+
+  document.getElementById("transaction-history-category-select-clear")?.addEventListener("click", () => {
+    categorySelectModalSelectedIds.clear();
+    renderCategorySelectList(categorySelectModalType);
+  });
   document.getElementById("transaction-history-category-select-apply")?.addEventListener("click", () => {
-    filterCategoryIds = getSelectedIdsFromList("transaction-history-category-select-list");
+    filterCategoryIds = Array.from(categorySelectModalSelectedIds);
     updateChosenDisplays();
     renderList();
     closeSelectModal("transaction-history-category-select-overlay");
@@ -644,8 +870,9 @@ export function initTransactionHistoryView(): void {
   });
 
   document.getElementById("transaction-history-tag-select-clear")?.addEventListener("click", () => {
-    document.querySelectorAll("#transaction-history-tag-select-list input[type='checkbox']").forEach((el) => {
-      (el as HTMLInputElement).checked = false;
+    document.querySelectorAll("#transaction-history-tag-select-list .transaction-history-select-check-btn").forEach((el) => {
+      el.classList.remove("is-selected");
+      el.setAttribute("aria-pressed", "false");
     });
   });
   document.getElementById("transaction-history-tag-select-apply")?.addEventListener("click", () => {
@@ -660,13 +887,32 @@ export function initTransactionHistoryView(): void {
     }
   });
 
-  document.getElementById("transaction-history-account-select-clear")?.addEventListener("click", () => {
-    document.querySelectorAll("#transaction-history-account-select-list input[type='checkbox']").forEach((el) => {
-      (el as HTMLInputElement).checked = false;
+  document.querySelectorAll(".transaction-history-account-select-tab").forEach((tabEl) => {
+    tabEl.addEventListener("click", () => {
+      const tab = (tabEl as HTMLElement).dataset.tab as "own" | "shared" | undefined;
+      if (!tab) return;
+      accountSelectModalTab = tab;
+      document.querySelectorAll(".transaction-history-account-select-tab").forEach((t) => {
+        const el = t as HTMLElement;
+        const isActive = (el.dataset.tab ?? "own") === accountSelectModalTab;
+        el.classList.toggle("is-active", isActive);
+        el.setAttribute("aria-selected", String(isActive));
+      });
+      renderAccountSelectList(accountSelectModalTab);
     });
   });
+
+  document.getElementById("transaction-history-account-select-own-only")?.addEventListener("click", () => {
+    const ownRows = getOwnAccountRows();
+    accountSelectModalSelectedIds = new Set(ownRows.map((r) => r.ID));
+    renderAccountSelectList(accountSelectModalTab);
+  });
+  document.getElementById("transaction-history-account-select-clear")?.addEventListener("click", () => {
+    accountSelectModalSelectedIds.clear();
+    renderAccountSelectList(accountSelectModalTab);
+  });
   document.getElementById("transaction-history-account-select-apply")?.addEventListener("click", () => {
-    filterAccountIds = getSelectedIdsFromList("transaction-history-account-select-list");
+    filterAccountIds = Array.from(accountSelectModalSelectedIds);
     updateChosenDisplays();
     renderList();
     closeSelectModal("transaction-history-account-select-overlay");
