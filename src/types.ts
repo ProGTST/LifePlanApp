@@ -1,0 +1,91 @@
+/** ユーザー（USER）の1行 */
+export interface UserRow {
+  ID: string;
+  REGIST_DATETIME: string;
+  REGIST_USER: string;
+  UPDATE_DATETIME: string;
+  UPDATE_USER: string;
+  NAME: string;
+  /** プロフィールアイコン背景色（デフォルト表示時）。例: #646cff */
+  COLOR?: string;
+  ICON_PATH?: string;
+}
+
+/** 勘定項目（ACCOUNT）の1行 */
+export interface AccountRow {
+  ID: string;
+  REGIST_DATETIME: string;
+  REGIST_USER: string;
+  UPDATE_DATETIME: string;
+  UPDATE_USER: string;
+  USER_ID: string;
+  ACCOUNT_NAME: string;
+  /** 色（例: #ff0000） */
+  COLOR?: string;
+  /** アイコンパス（例: /icon/xxx.svg） */
+  ICON_PATH?: string;
+  SORT_ORDER?: string;
+}
+
+/** カテゴリー（CATEGORY）の1行 */
+export interface CategoryRow {
+  ID: string;
+  REGIST_DATETIME: string;
+  REGIST_USER: string;
+  UPDATE_DATETIME: string;
+  UPDATE_USER: string;
+  PARENT_ID: string;
+  TYPE: string;
+  CATEGORY_NAME: string;
+  /** 色（例: #ff0000 やカラー名） */
+  COLOR?: string;
+  /** アイコンパス（例: /icon/xxx.svg） */
+  ICON_PATH?: string;
+  SORT_ORDER?: string;
+}
+
+/** タグ（TAG）の1行 */
+export interface TagRow {
+  ID: string;
+  REGIST_DATETIME: string;
+  REGIST_USER: string;
+  UPDATE_DATETIME: string;
+  UPDATE_USER: string;
+  TAG_NAME: string;
+  /** 色（例: #ff0000） */
+  COLOR?: string;
+  /** アイコンパス（例: /icon/xxx.svg） */
+  ICON_PATH?: string;
+  SORT_ORDER?: string;
+}
+
+/** 収支（TRANSACTION）の1行 */
+export interface TransactionRow {
+  ID: string;
+  REGIST_DATETIME: string;
+  REGIST_USER: string;
+  UPDATE_DATETIME: string;
+  UPDATE_USER: string;
+  TYPE: string;
+  STATUS: string;
+  CATEGORY_ID: string;
+  NAME: string;
+  ACTUAL_DATE: string;
+  PLAN_DATE_FROM: string;
+  PLAN_DATE_TO: string;
+  AMOUNT: string;
+  MEMO: string;
+  ACCOUNT_ID_IN: string;
+  ACCOUNT_ID_OUT: string;
+}
+
+/** タグ管理（TAG_MANAGEMENT）の1行 */
+export interface TagManagementRow {
+  ID: string;
+  REGIST_DATETIME: string;
+  REGIST_USER: string;
+  UPDATE_DATETIME: string;
+  UPDATE_USER: string;
+  TRANSACTION_ID: string;
+  TAG_ID: string;
+}

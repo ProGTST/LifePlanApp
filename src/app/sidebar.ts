@@ -1,0 +1,131 @@
+import {
+  LOGIN_PAGE_PATH,
+  USER_ID_STORAGE_KEY,
+  SIDEBAR_PANEL_MENU,
+  SIDEBAR_PANEL_SETTINGS,
+} from "../constants/index";
+import {
+  currentView,
+  pushNavigation,
+  setSidebarOpenPanel,
+  sidebarOpenPanel,
+} from "../state";
+import { showMainView } from "./screen";
+import { saveDirtyCsvsOnly } from "../utils/saveDirtyCsvs.ts";
+
+export function closeSidebar(): void {
+  const sidebar = document.getElementById("app-sidebar");
+  if (sidebar) {
+    sidebar.classList.remove("is-visible");
+    sidebar.setAttribute("aria-hidden", "true");
+  }
+  setSidebarOpenPanel(null);
+}
+
+/** フッター等からサイドバーを指定パネルで開く（メニュー or 設定） */
+export function openSidebarPanel(panel: string): void {
+  const sidebar = document.getElementById("app-sidebar");
+  const panelMenu = document.getElementById("sidebar-panel-menu");
+  const panelSettings = document.getElementById("sidebar-panel-settings");
+  if (!sidebar || !panelMenu || !panelSettings) return;
+  const alreadyOpen = sidebar.classList.contains("is-visible");
+  if (alreadyOpen && sidebarOpenPanel === panel) {
+    sidebar.classList.remove("is-visible");
+    sidebar.setAttribute("aria-hidden", "true");
+    setSidebarOpenPanel(null);
+  } else {
+    panelMenu.classList.toggle("is-active", panel === SIDEBAR_PANEL_MENU);
+    panelSettings.classList.toggle("is-active", panel === SIDEBAR_PANEL_SETTINGS);
+    setSidebarOpenPanel(panel);
+    sidebar.classList.add("is-visible");
+    sidebar.setAttribute("aria-hidden", "false");
+  }
+}
+
+const MENU_CURRENT_CLASS = "sidebar-menu-item--current";
+const SETTINGS_CURRENT_CLASS = "sidebar-settings-item--current";
+
+export function updateCurrentMenuItem(): void {
+  const items = document.querySelectorAll<HTMLButtonElement>(".sidebar-menu-item");
+  items.forEach((btn) => {
+    const isCurrent = btn.dataset.view === currentView;
+    btn.classList.remove(MENU_CURRENT_CLASS);
+    if (isCurrent) btn.classList.add(MENU_CURRENT_CLASS);
+    btn.disabled = isCurrent;
+  });
+  const settingsItems = document.querySelectorAll<HTMLButtonElement>(".sidebar-settings-item");
+  settingsItems.forEach((btn) => {
+    const isCurrent = btn.dataset.view === currentView;
+    btn.classList.remove(SETTINGS_CURRENT_CLASS);
+    if (isCurrent) btn.classList.add(SETTINGS_CURRENT_CLASS);
+    btn.disabled = isCurrent;
+  });
+}
+
+export function initSidebarToggle(): void {
+  const sidebar = document.getElementById("app-sidebar");
+  const panelMenu = document.getElementById("sidebar-panel-menu");
+  const panelSettings = document.getElementById("sidebar-panel-settings");
+  const menuBtn = document.getElementById("menubar-toggle-menu");
+  if (!sidebar || !panelMenu || !panelSettings || !menuBtn) return;
+
+  function showPanel(panel: string): void {
+    panelMenu?.classList.toggle("is-active", panel === SIDEBAR_PANEL_MENU);
+    panelSettings?.classList.toggle("is-active", panel === SIDEBAR_PANEL_SETTINGS);
+    setSidebarOpenPanel(panel);
+  }
+
+  function openSidebar(panel: string): void {
+    const alreadyOpen = sidebar?.classList.contains("is-visible");
+    if (alreadyOpen && sidebarOpenPanel === panel) {
+      sidebar?.classList.remove("is-visible");
+      sidebar?.setAttribute("aria-hidden", "true");
+      setSidebarOpenPanel(null);
+    } else {
+      showPanel(panel);
+      sidebar?.classList.add("is-visible");
+      sidebar?.setAttribute("aria-hidden", "false");
+    }
+  }
+
+  menuBtn.addEventListener("click", () => openSidebar(SIDEBAR_PANEL_MENU));
+
+  const menuToSettingsBtn = document.getElementById("sidebar-menu-to-settings");
+  menuToSettingsBtn?.addEventListener("click", () => {
+    showPanel(SIDEBAR_PANEL_SETTINGS);
+  });
+
+  const logoutBtn = document.getElementById("menubar-logout");
+  logoutBtn?.addEventListener("click", async () => {
+    sidebar?.classList.remove("is-visible");
+    sidebar?.setAttribute("aria-hidden", "true");
+    setSidebarOpenPanel(null);
+    await saveDirtyCsvsOnly();
+    sessionStorage.removeItem(USER_ID_STORAGE_KEY);
+    window.location.href = LOGIN_PAGE_PATH;
+  });
+}
+
+export function initSidebarMenu(): void {
+  updateCurrentMenuItem();
+  document.querySelectorAll(".sidebar-menu-item").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const view = (btn as HTMLButtonElement).dataset.view;
+      if (!view || view === currentView) return;
+      pushNavigation(view);
+      updateCurrentMenuItem();
+      closeSidebar();
+      showMainView(view);
+    });
+  });
+  document.querySelectorAll(".sidebar-settings-item").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const view = (btn as HTMLButtonElement).dataset.view;
+      if (!view || view === currentView) return;
+      pushNavigation(view);
+      updateCurrentMenuItem();
+      closeSidebar();
+      showMainView(view);
+    });
+  });
+}

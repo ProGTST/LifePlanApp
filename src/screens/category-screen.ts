@@ -1,0 +1,523 @@
+import type { CategoryRow } from "../types.ts";
+import {
+  currentUserId,
+  currentView,
+  categoryListFull,
+  categoryList,
+  categoryListLoaded,
+  categoryDeleteMode,
+  setCategoryListFull,
+  setCategoryList,
+  setCategoryListLoaded,
+  toggleCategoryDeleteMode,
+} from "../state";
+import { fetchCsv, rowToObject } from "../utils/csv";
+import {
+  sortOrderNum,
+  slotToInsertAt,
+  getSlotFromRects,
+  createDropIndicatorRow,
+} from "../utils/dragSort.ts";
+import {
+  createDeleteButtonCell,
+  createDragHandleCell,
+  attachNameCellBehavior,
+} from "../utils/tableCells.ts";
+import { getCategoryList, setCategoryList as persistCategoryList } from "../utils/storage.ts";
+import { setCategoryDirty } from "../utils/csvDirty.ts";
+import { registerViewHandler } from "../app/screen";
+import { openColorIconPicker } from "../utils/colorIconPicker.ts";
+import { ICON_DEFAULT_COLOR } from "../constants/colorPresets.ts";
+
+/** カテゴリー種別 */
+export type CategoryType = "income" | "expense" | "transfer";
+
+const CATEGORY_TYPE_ORDER: CategoryType[] = ["expense", "income", "transfer"];
+
+/** タブで選択中の種別（表示フィルタ） */
+let selectedCategoryType: CategoryType = "expense";
+
+/** ツリービュー表示フラグ（初期は ON） */
+let categoryTreeViewMode = true;
+
+/** 同じ種別の行だけに絞った配列。表示順は categoryListFull の配列順（同種別の並び）で決める */
+function getSameTypeFiltered(): CategoryRow[] {
+  return categoryListFull.filter((r) => r.TYPE === selectedCategoryType);
+}
+
+/** 指定カテゴリーの子・孫・曾孫…のIDをすべて返す（循環防止用） */
+function getDescendantIds(categoryId: string, rows: CategoryRow[]): Set<string> {
+  const descendants = new Set<string>();
+  let currentLevel: string[] = [categoryId];
+  while (currentLevel.length > 0) {
+    const nextLevel: string[] = [];
+    for (const id of currentLevel) {
+      for (const row of rows) {
+        if (row.PARENT_ID === id) {
+          descendants.add(row.ID);
+          nextLevel.push(row.ID);
+        }
+      }
+    }
+    currentLevel = nextLevel;
+  }
+  return descendants;
+}
+
+/** 親プルダウン用：同じ種別のうち、自カテゴリーとその子孫を除いた一覧 */
+function getSameTypeCategoriesForParentSelect(currentCategoryId: string): CategoryRow[] {
+  const rows = getSameTypeFiltered();
+  const excludeIds = getDescendantIds(currentCategoryId, rows);
+  excludeIds.add(currentCategoryId);
+  return rows.filter((r) => !excludeIds.has(r.ID));
+}
+
+/** 指定種別のカテゴリー一覧（モーダル用） */
+function getCategoriesByType(type: CategoryType): CategoryRow[] {
+  return categoryList.filter((r) => r.TYPE === type);
+}
+
+/** ツリーベースの表示順（ルート→子の階層）。同階層の並びは引数 rows の配列順に従う */
+function getCategoryRowsInTreeOrder(rows: CategoryRow[]): { row: CategoryRow; depth: number }[] {
+  const idSet = new Set(rows.map((r) => r.ID));
+  const roots = rows.filter((r) => !r.PARENT_ID || !idSet.has(r.PARENT_ID));
+  const result: { row: CategoryRow; depth: number }[] = [];
+  function visit(list: CategoryRow[], depth: number): void {
+    for (const row of list) {
+      result.push({ row, depth });
+      const children = rows.filter((r) => r.PARENT_ID === row.ID);
+      visit(children, depth + 1);
+    }
+  }
+  visit(roots, 0);
+  return result;
+}
+
+/** 種別ごとに SORT_ORDER 順に並べる（表示順＝配列順のため初回ロード時に使用）。種別順は 支出→収入→振替 */
+function sortCategoryListByTypeAndOrder(list: CategoryRow[]): void {
+  list.sort((a, b) => {
+    if (a.TYPE !== b.TYPE) {
+      const ia = CATEGORY_TYPE_ORDER.indexOf(a.TYPE as CategoryType);
+      const ib = CATEGORY_TYPE_ORDER.indexOf(b.TYPE as CategoryType);
+      return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+    }
+    return sortOrderNum(a.SORT_ORDER, b.SORT_ORDER);
+  });
+}
+
+async function fetchCategoryList(): Promise<CategoryRow[]> {
+  const stored = getCategoryList();
+  if (stored != null && Array.isArray(stored) && stored.length > 0) {
+    const list = stored as CategoryRow[];
+    list.forEach((r, i) => {
+      if (r.SORT_ORDER === undefined || r.SORT_ORDER === "") r.SORT_ORDER = String(i);
+      if (r.COLOR === undefined) r.COLOR = "";
+      if (r.ICON_PATH === undefined) r.ICON_PATH = "";
+    });
+    sortCategoryListByTypeAndOrder(list);
+    return list;
+  }
+  const { header, rows } = await fetchCsv("/data/CATEGORY.csv");
+  if (header.length === 0) return [];
+  const list: CategoryRow[] = [];
+  for (const cells of rows) {
+    const row = rowToObject(header, cells) as unknown as CategoryRow;
+    if (row.SORT_ORDER === undefined || row.SORT_ORDER === "") row.SORT_ORDER = String(list.length);
+    if (row.COLOR === undefined) row.COLOR = "";
+    if (row.ICON_PATH === undefined) row.ICON_PATH = "";
+    list.push(row);
+  }
+  sortCategoryListByTypeAndOrder(list);
+  return list;
+}
+
+function persistCategory(): void {
+  persistCategoryList(categoryListFull);
+  setCategoryDirty();
+}
+
+function saveCategoryNameFromCell(categoryId: string, newName: string): void {
+  const trimmed = newName.trim();
+  if (!trimmed) {
+    deleteCategoryRow(categoryId);
+    return;
+  }
+  const row = categoryListFull.find((r) => r.ID === categoryId);
+  if (row) {
+    row.CATEGORY_NAME = trimmed;
+    row.UPDATE_DATETIME = new Date().toISOString().slice(0, 19).replace("T", " ");
+    row.UPDATE_USER = currentUserId;
+    persistCategory();
+  }
+}
+
+function saveParentFromSelect(categoryId: string, parentId: string): void {
+  const row = categoryListFull.find((r) => r.ID === categoryId);
+  if (!row) return;
+  row.PARENT_ID = parentId;
+  row.UPDATE_DATETIME = new Date().toISOString().slice(0, 19).replace("T", " ");
+  row.UPDATE_USER = currentUserId;
+  persistCategory();
+  setCategoryList([...categoryListFull]);
+  renderCategoryTable();
+}
+
+/** toSlot: 0=先頭の前, 1=1行目と2行目の間, ..., n=末尾の後 */
+/** 表示順を splice で並び替え。同種別の位置を sorted の並びで差し替え（表示順＝配列順） */
+function moveCategoryOrder(fromIndex: number, toSlot: number): void {
+  const orderedRows = getSameTypeFiltered();
+  const sorted = orderedRows.slice();
+  const originalLength = sorted.length;
+  if (fromIndex < 0 || toSlot < 0 || fromIndex >= originalLength || toSlot > originalLength) return;
+  const [removed] = sorted.splice(fromIndex, 1);
+  const insertAt = slotToInsertAt(toSlot, fromIndex, originalLength);
+  sorted.splice(insertAt, 0, removed);
+  sorted.forEach((r, i) => {
+    r.SORT_ORDER = String(i);
+  });
+  const type = sorted[0].TYPE;
+  // 表示順は配列順で決めるため、同種別を sorted の並びで差し替える
+  let sameTypeIdx = 0;
+  const newFull = categoryListFull.map((r) => {
+    if (r.TYPE !== type) return r;
+    return sorted[sameTypeIdx++];
+  });
+  setCategoryListFull(newFull);
+  setCategoryList([...newFull]);
+  persistCategory();
+  renderCategoryTable();
+}
+
+const CATEGORY_TABLE_COL_COUNT = 5;
+const CATEGORY_ICON_DEFAULT_COLOR = "#646cff";
+
+function renderCategoryTable(): void {
+  const tbody = document.getElementById("category-tbody");
+  const table = document.getElementById("category-table");
+  if (!tbody) return;
+  const isTreeView = categoryTreeViewMode;
+  const sameTypeRows = getSameTypeFiltered();
+  const rowsToRender = isTreeView
+    ? getCategoryRowsInTreeOrder(sameTypeRows)
+    : sameTypeRows.map((row) => ({ row, depth: 0 }));
+  if (table) table.classList.toggle("category-table--tree", isTreeView);
+  tbody.innerHTML = "";
+  const parentOptions = (currentId: string) => getSameTypeCategoriesForParentSelect(currentId);
+  rowsToRender.forEach(({ row, depth }, index) => {
+    const tr = document.createElement("tr");
+    tr.setAttribute("data-category-id", row.ID);
+    if (depth > 0) tr.setAttribute("data-tree-depth", String(depth));
+    tr.setAttribute("aria-label", isTreeView ? `行 ${index + 1}` : `行 ${index + 1} ドラッグで並び替え`);
+    const iconColor = (row.COLOR?.trim() || CATEGORY_ICON_DEFAULT_COLOR) as string;
+    const tdIcon = document.createElement("td");
+    tdIcon.className = "data-table-icon-col";
+    const iconWrap = document.createElement("div");
+    iconWrap.className = "category-icon-wrap";
+    iconWrap.style.backgroundColor = iconColor;
+    if (row.ICON_PATH?.trim()) {
+      iconWrap.classList.add("category-icon-wrap--img");
+      iconWrap.style.webkitMaskImage = `url(${row.ICON_PATH.trim()})`;
+      iconWrap.style.maskImage = `url(${row.ICON_PATH.trim()})`;
+      iconWrap.setAttribute("aria-hidden", "true");
+    }
+    iconWrap.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      openColorIconPicker(row.COLOR ?? "", row.ICON_PATH ?? "", (color, iconPath) => {
+        row.COLOR = color;
+        row.ICON_PATH = iconPath;
+        persistCategory();
+        renderCategoryTable();
+      });
+    });
+    tdIcon.appendChild(iconWrap);
+    const tdName = document.createElement("td");
+    if (depth > 0) tdName.classList.add("category-tree-cell");
+    tdName.contentEditable = "true";
+    tdName.textContent = row.CATEGORY_NAME;
+    tdName.style.paddingLeft = depth > 0 ? `${0.75 + depth * 1.5}rem` : "";
+    attachNameCellBehavior(tdName, () => saveCategoryNameFromCell(row.ID, tdName.textContent ?? ""));
+    const tdParent = document.createElement("td");
+    const select = document.createElement("select");
+    select.className = "category-parent-select";
+    select.setAttribute("aria-label", "親カテゴリー");
+    const optEmpty = document.createElement("option");
+    optEmpty.value = "";
+    optEmpty.textContent = "未設定";
+    select.appendChild(optEmpty);
+    const parentCandidates = parentOptions(row.ID);
+    parentCandidates.forEach((p) => {
+      const opt = document.createElement("option");
+      opt.value = p.ID;
+      opt.textContent = p.CATEGORY_NAME;
+      select.appendChild(opt);
+    });
+    const hasParentOption = row.PARENT_ID && parentCandidates.some((p) => p.ID === row.PARENT_ID);
+    select.value = hasParentOption ? row.PARENT_ID : "";
+    select.addEventListener("change", () => {
+      saveParentFromSelect(row.ID, select.value);
+    });
+    tdParent.classList.add("category-parent-col");
+    tdParent.appendChild(select);
+    const tdDel = createDeleteButtonCell({
+      visible: categoryDeleteMode,
+      onDelete: () => deleteCategoryRow(row.ID),
+    });
+    if (!isTreeView) {
+      const tdDrag = createDragHandleCell();
+      tdDrag.addEventListener("mousedown", (e) => {
+        e.preventDefault();
+        const fromIndex = index;
+        const dataRows = tbody.querySelectorAll<HTMLTableRowElement>("tr[data-category-id]");
+        const rects = Array.from(dataRows).map((row) => {
+          const r = row.getBoundingClientRect();
+          return { top: r.top, bottom: r.bottom };
+        });
+        tr.classList.add("drag-source");
+        const indicator = createDropIndicatorRow(CATEGORY_TABLE_COL_COUNT);
+        let currentSlot = fromIndex;
+        tbody.insertBefore(indicator, dataRows[currentSlot] ?? null);
+        const onMouseMove = (e: MouseEvent): void => {
+          const slot = getSlotFromRects(e.clientY, rects);
+          if (slot === currentSlot) return;
+          currentSlot = slot;
+          const rows = tbody.querySelectorAll<HTMLTableRowElement>("tr[data-category-id]");
+          tbody.insertBefore(indicator, rows[currentSlot] ?? null);
+        };
+        const onMouseUp = (): void => {
+          document.removeEventListener("mousemove", onMouseMove);
+          document.removeEventListener("mouseup", onMouseUp);
+          tr.classList.remove("drag-source");
+          indicator.remove();
+          const insertAt = slotToInsertAt(currentSlot, fromIndex, rects.length);
+          const noMove = insertAt === fromIndex;
+          if (!noMove) moveCategoryOrder(fromIndex, currentSlot);
+        };
+        document.addEventListener("mousemove", onMouseMove);
+        document.addEventListener("mouseup", onMouseUp);
+      });
+      tr.appendChild(tdDrag);
+    }
+    tr.appendChild(tdIcon);
+    tr.appendChild(tdName);
+    tr.appendChild(tdParent);
+    tr.appendChild(tdDel);
+    tbody.appendChild(tr);
+  });
+}
+
+function deleteCategoryRow(categoryId: string): void {
+  const idx = categoryListFull.findIndex((r) => r.ID === categoryId);
+  if (idx !== -1) categoryListFull.splice(idx, 1);
+  setCategoryList([...categoryListFull]);
+  persistCategory();
+  renderCategoryTable();
+}
+
+export async function loadAndRenderCategoryList(): Promise<void> {
+  if (!categoryListLoaded) {
+    const list = await fetchCategoryList();
+    setCategoryListFull(list);
+    setCategoryListLoaded(true);
+    persistCategoryList(list);
+  }
+  setCategoryList([...categoryListFull]);
+  updateCategoryTabsActive();
+  updateCategoryViewButton();
+  document.getElementById("header-delete-btn")?.classList.toggle("is-active", categoryDeleteMode);
+  renderCategoryTable();
+}
+
+/** 追加モーダル内の親カテゴリープルダウンを指定種別で再描画 */
+function fillCategoryFormParentSelect(type: CategoryType): void {
+  const formParent = document.getElementById("category-form-parent") as HTMLSelectElement | null;
+  if (!formParent) return;
+  formParent.innerHTML = "";
+  const optEmpty = document.createElement("option");
+  optEmpty.value = "";
+  optEmpty.textContent = "未選択";
+  formParent.appendChild(optEmpty);
+  const rows = getCategoriesByType(type);
+  rows.forEach((row) => {
+    const opt = document.createElement("option");
+    opt.value = row.ID;
+    opt.textContent = row.CATEGORY_NAME;
+    formParent.appendChild(opt);
+  });
+}
+
+function openCategoryModal(): void {
+  const formName = document.getElementById("category-form-name") as HTMLInputElement;
+  const formType = document.getElementById("category-form-type") as HTMLSelectElement;
+  const formParent = document.getElementById("category-form-parent") as HTMLSelectElement;
+  const formColor = document.getElementById("category-form-color") as HTMLInputElement;
+  const formIconPath = document.getElementById("category-form-icon-path") as HTMLInputElement;
+  const overlay = document.getElementById("category-modal-overlay");
+  if (formName) formName.value = "";
+  if (formType) formType.value = selectedCategoryType;
+  fillCategoryFormParentSelect(selectedCategoryType);
+  if (formParent) formParent.value = "";
+  if (formColor) formColor.value = ICON_DEFAULT_COLOR;
+  if (formIconPath) formIconPath.value = "";
+  updateCategoryFormColorIconPreview();
+  if (overlay) {
+    overlay.classList.add("is-visible");
+    overlay.setAttribute("aria-hidden", "false");
+  }
+}
+
+function closeCategoryModal(): void {
+  const overlay = document.getElementById("category-modal-overlay");
+  if (overlay) {
+    overlay.classList.remove("is-visible");
+    overlay.setAttribute("aria-hidden", "true");
+  }
+}
+
+function updateCategoryFormColorIconPreview(): void {
+  const color = (document.getElementById("category-form-color") as HTMLInputElement)?.value || ICON_DEFAULT_COLOR;
+  const path = (document.getElementById("category-form-icon-path") as HTMLInputElement)?.value || "";
+  const wrap = document.getElementById("category-form-color-icon-preview");
+  if (!wrap) return;
+  wrap.style.backgroundColor = color;
+  wrap.classList.toggle("category-icon-wrap--img", !!path);
+  wrap.style.webkitMaskImage = path ? `url(${path})` : "";
+  wrap.style.maskImage = path ? `url(${path})` : "";
+}
+
+function saveCategoryFormFromModal(): void {
+  const formName = document.getElementById("category-form-name") as HTMLInputElement;
+  const formType = document.getElementById("category-form-type") as HTMLSelectElement;
+  const formParent = document.getElementById("category-form-parent") as HTMLSelectElement;
+  if (!formName) return;
+  const name = formName.value.trim();
+  if (!name) {
+    formName.focus();
+    return;
+  }
+  const now = new Date().toISOString().slice(0, 19).replace("T", " ");
+  const userId = currentUserId || "1";
+  const typeRaw = formType?.value;
+  const type: CategoryType =
+    typeRaw === "income" ? "income" : typeRaw === "transfer" ? "transfer" : "expense";
+  const parentId = formParent?.value ?? "";
+  const maxId = categoryListFull.reduce(
+    (m, r) => Math.max(m, parseInt(r.ID, 10) || 0),
+    0
+  );
+  const sameType = categoryListFull.filter((r) => r.TYPE === type);
+  const maxOrder = sameType.reduce(
+    (m, r) => Math.max(m, Number(r.SORT_ORDER ?? 0) || 0),
+    -1
+  );
+  const formColor = (document.getElementById("category-form-color") as HTMLInputElement)?.value?.trim() || "";
+  const formIconPath = (document.getElementById("category-form-icon-path") as HTMLInputElement)?.value?.trim() || "";
+  categoryListFull.push({
+    ID: String(maxId + 1),
+    REGIST_DATETIME: now,
+    REGIST_USER: userId,
+    UPDATE_DATETIME: now,
+    UPDATE_USER: userId,
+    PARENT_ID: parentId,
+    TYPE: type,
+    CATEGORY_NAME: name,
+    COLOR: formColor || "",
+    ICON_PATH: formIconPath || "",
+    SORT_ORDER: String(maxOrder + 1),
+  });
+  setCategoryList([...categoryListFull]);
+  persistCategory();
+  closeCategoryModal();
+  renderCategoryTable();
+}
+
+function handleToggleDeleteMode(): void {
+  toggleCategoryDeleteMode();
+  document.getElementById("header-delete-btn")?.classList.toggle("is-active", categoryDeleteMode);
+  renderCategoryTable();
+}
+
+function updateCategoryTabsActive(): void {
+  document.querySelectorAll(".category-tab").forEach((btn) => {
+    const type = (btn as HTMLButtonElement).dataset.type;
+    const isActive = type === selectedCategoryType;
+    btn.classList.toggle("is-active", isActive);
+    btn.setAttribute("aria-selected", String(isActive));
+  });
+}
+
+/** ツリービュー/フラットビューボタンのラベルと見た目を現在のモードに合わせて更新 */
+function updateCategoryViewButton(): void {
+  const btn = document.getElementById("category-tree-view-btn");
+  if (!btn) return;
+  if (categoryTreeViewMode) {
+    btn.textContent = "フラットビュー";
+    btn.classList.add("is-tree-mode");
+    btn.setAttribute("aria-pressed", "true");
+    btn.title = "一覧表示に切り替え";
+  } else {
+    btn.textContent = "ツリービュー";
+    btn.classList.remove("is-tree-mode");
+    btn.setAttribute("aria-pressed", "false");
+    btn.title = "ツリービュー";
+  }
+}
+
+export function initCategoryView(): void {
+  registerViewHandler("category", loadAndRenderCategoryList);
+
+  document.querySelectorAll(".category-tab").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const type = (btn as HTMLButtonElement).dataset.type as CategoryType | undefined;
+      if (type === "income" || type === "expense" || type === "transfer") {
+        selectedCategoryType = type;
+        updateCategoryTabsActive();
+        renderCategoryTable();
+      }
+    });
+  });
+
+  const treeViewBtn = document.getElementById("category-tree-view-btn");
+  treeViewBtn?.addEventListener("click", () => {
+    categoryTreeViewMode = !categoryTreeViewMode;
+    updateCategoryViewButton();
+    renderCategoryTable();
+  });
+
+  document.getElementById("header-add-btn")?.addEventListener("click", () => {
+    if (currentView === "category") openCategoryModal();
+  });
+  document.getElementById("header-delete-btn")?.addEventListener("click", () => {
+    if (currentView === "category") handleToggleDeleteMode();
+  });
+  document.getElementById("category-form-cancel")?.addEventListener("click", closeCategoryModal);
+  document.getElementById("category-form-color-icon-btn")?.addEventListener("click", () => {
+    const formColor = (document.getElementById("category-form-color") as HTMLInputElement)?.value ?? ICON_DEFAULT_COLOR;
+    const formIconPath = (document.getElementById("category-form-icon-path") as HTMLInputElement)?.value ?? "";
+    openColorIconPicker(formColor, formIconPath, (color, iconPath) => {
+      const colorEl = document.getElementById("category-form-color") as HTMLInputElement;
+      const pathEl = document.getElementById("category-form-icon-path") as HTMLInputElement;
+      if (colorEl) colorEl.value = color;
+      if (pathEl) pathEl.value = iconPath;
+      updateCategoryFormColorIconPreview();
+    });
+  });
+  document.getElementById("category-form-type")?.addEventListener("change", () => {
+    const formType = document.getElementById("category-form-type") as HTMLSelectElement;
+    const formParent = document.getElementById("category-form-parent") as HTMLSelectElement;
+    if (formType && formParent) {
+      const type: CategoryType =
+        formType.value === "income" ? "income" : formType.value === "transfer" ? "transfer" : "expense";
+      fillCategoryFormParentSelect(type);
+      formParent.value = "";
+    }
+  });
+  document.getElementById("category-form")?.addEventListener("submit", (e) => {
+    e.preventDefault();
+    saveCategoryFormFromModal();
+  });
+  document.getElementById("category-modal-overlay")?.addEventListener("click", (e) => {
+    if (e.target instanceof HTMLElement && e.target.id === "category-modal-overlay")
+      closeCategoryModal();
+  });
+}

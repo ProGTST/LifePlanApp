@@ -1,0 +1,106 @@
+@import "./tokens.css";
+
+/* ========== Login 画面 (login.html) ========== */
+
+.screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  box-sizing: border-box;
+}
+
+#login-screen {
+  height: 100vh;
+  min-height: 0;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.screen--hidden {
+  display: none !important;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 360px;
+  background: #ffffff;
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-md);
+  padding: 1.5rem;
+  flex-shrink: 0;
+}
+
+.login-title {
+  margin: 0 0 1rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1a1a1a;
+  text-align: center;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.login-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.login-field label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--gray-800);
+}
+
+.login-field input {
+  padding: 0.65rem 0.85rem;
+  font-size: 1rem;
+  border: 1px solid var(--gray-500);
+  border-radius: var(--radius-lg);
+  background: #ffffff;
+  transition: border-color 0.2s;
+}
+
+.login-field input:focus {
+  outline: none;
+  border-color: var(--brand);
+  box-shadow: var(--focus-ring);
+}
+
+.login-field input::placeholder {
+  color: var(--gray-600);
+}
+
+.login-error {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #cc0000;
+  min-height: 1em;
+}
+
+.login-button {
+  margin-top: 0;
+  padding: 0.6rem 1.25rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #ffffff;
+  background: var(--brand);
+  border: none;
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.login-button:hover {
+  background: var(--brand-hover);
+}
+
+.login-button:active {
+  transform: scale(0.98);
+}

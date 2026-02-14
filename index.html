@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/icon/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ライフプランAPP</title>
+  </head>
+  <body>
+    <!-- ========== アプリ画面（ログイン後は login.html から遷移） ========== -->
+    <div id="app" class="screen app-layout" data-screen="app">
+
+      <!-- ----- メニューバー ----- -->
+      <nav class="app-menubar" aria-label="メインメニュー">
+        <span id="menubar-title" class="app-menubar-title">ホーム</span>
+        <div class="app-menubar-actions">
+          <button type="button" class="app-menubar-icon" id="menubar-toggle-menu" aria-label="メニュー" title="メニュー">
+            <span class="app-menubar-icon-inner" style="--icon: url(/icon/bars-solid-full.svg);" aria-hidden="true"></span>
+          </button>
+        </div>
+      </nav>
+
+      <div class="app-body-with-sidebar">
+        <div class="app-body">
+
+          <!-- ----- ヘッダー ----- -->
+          <header class="app-header">
+            <div id="menubar-profile-area" class="app-header-left is-visible" aria-hidden="false">
+              <div id="header-profile-icon" class="app-header-profile-icon" aria-hidden="true"></div>
+              <span id="header-profile-name" class="app-header-profile-name">ユーザー</span>
+            </div>
+            <span class="app-header-spacer"></span>
+            <div class="app-header-actions">
+              <button type="button" class="btn-primary btn-header-add" id="header-add-btn">追加</button>
+              <button type="button" class="btn-secondary btn-header-delete" id="header-delete-btn">削除モード</button>
+              <button type="button" class="btn-primary btn-header-save" id="header-save-btn">保存</button>
+              <button type="button" class="btn-secondary btn-header-default" id="header-default-btn">デフォルトに戻す</button>
+            </div>
+          </header>
+
+          <!-- ----- メインコンテンツ（ビュー切替） ----- -->
+          <main class="app-main">
+            <!-- ホーム -->
+            <div id="view-home" class="main-view" data-view="home">
+              <h1>Welcome to Tauri</h1>
+              <p>Click on the Tauri logo to learn more about the framework.</p>
+              <form id="greet-form">
+                <input id="greet-input" type="text" placeholder="Enter a name..." />
+                <button type="submit">Greet</button>
+              </form>
+              <p id="greet-msg"></p>
+            </div>
+
+            <!-- 勘定項目一覧 -->
+            <div id="view-account-list" class="main-view main-view--hidden main-view--list" data-view="account">
+              <div class="view-body">
+                <table class="data-table data-table--editable" id="account-table" data-list="account">
+                  <thead>
+                    <tr>
+                      <th class="data-table-drag-col" aria-label="並び替え"></th>
+                      <th class="data-table-icon-col" aria-label="アイコン"></th>
+                      <th>勘定項目名</th>
+                      <th class="account-table-delete-col"></th>
+                    </tr>
+                  </thead>
+                  <tbody id="account-tbody"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- カテゴリー一覧 -->
+            <div id="view-category-list" class="main-view main-view--hidden main-view--list" data-view="category">
+              <div class="view-body">
+                <div class="category-tabs-row">
+                  <div class="category-tabs" role="tablist" aria-label="種別">
+                    <button type="button" class="category-tab is-active" role="tab" aria-selected="true" data-type="expense">支出</button>
+                    <button type="button" class="category-tab" role="tab" aria-selected="false" data-type="income">収入</button>
+                    <button type="button" class="category-tab" role="tab" aria-selected="false" data-type="transfer">振替</button>
+                  </div>
+                  <button type="button" class="btn-category-tree-view" id="category-tree-view-btn" aria-pressed="true" title="一覧表示に切り替え">フラットビュー</button>
+                </div>
+                <table class="data-table data-table--editable" id="category-table" data-list="category">
+                  <thead>
+                    <tr>
+                      <th class="data-table-drag-col" aria-label="並び替え"></th>
+                      <th class="data-table-icon-col" aria-label="アイコン"></th>
+                      <th>カテゴリー名</th>
+                      <th>親カテゴリー</th>
+                      <th class="account-table-delete-col"></th>
+                    </tr>
+                  </thead>
+                  <tbody id="category-tbody"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- タグ一覧 -->
+            <div id="view-tag-list" class="main-view main-view--hidden main-view--list" data-view="tag">
+              <div class="view-body">
+                <table class="data-table data-table--editable" id="tag-table" data-list="tag">
+                  <thead>
+                    <tr>
+                      <th class="data-table-drag-col" aria-label="並び替え"></th>
+                      <th class="data-table-icon-col" aria-label="アイコン"></th>
+                      <th>タグ名</th>
+                      <th class="account-table-delete-col"></th>
+                    </tr>
+                  </thead>
+                  <tbody id="tag-tbody"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- 収支履歴 -->
+            <div id="view-transaction-history" class="main-view main-view--hidden" data-view="transaction-history">
+              <div class="view-body">
+                <section class="transaction-history-search" aria-label="検索条件">
+                  <details class="transaction-history-search-accordion" open>
+                    <summary class="transaction-history-search-summary">検索条件</summary>
+                    <div class="transaction-history-search-body">
+                  <div class="transaction-history-search-row-group">
+                    <div class="transaction-history-search-row">
+                      <span class="transaction-history-search-label">日付</span>
+                      <input type="date" id="transaction-history-date-from" class="transaction-history-date-input" aria-label="日付FROM" />
+                      <span class="transaction-history-search-sep">～</span>
+                      <input type="date" id="transaction-history-date-to" class="transaction-history-date-input" aria-label="日付TO" />
+                    </div>
+                    <div class="transaction-history-search-row">
+                      <span class="transaction-history-search-label">計画</span>
+                      <div class="transaction-history-search-buttons" role="group" aria-label="計画">
+                        <button type="button" class="btn-secondary transaction-history-filter-btn is-active" data-status="plan" id="transaction-history-status-plan">予定</button>
+                        <button type="button" class="btn-secondary transaction-history-filter-btn is-active" data-status="actual" id="transaction-history-status-actual">実績</button>
+                      </div>
+                    </div>
+                    <div class="transaction-history-search-row">
+                      <span class="transaction-history-search-label">収支種別</span>
+                      <div class="transaction-history-search-buttons" role="group" aria-label="収支種別">
+                        <button type="button" class="btn-secondary transaction-history-filter-btn is-active" data-type="income" id="transaction-history-type-income">収入</button>
+                        <button type="button" class="btn-secondary transaction-history-filter-btn is-active" data-type="expense" id="transaction-history-type-expense">支出</button>
+                        <button type="button" class="btn-secondary transaction-history-filter-btn is-active" data-type="transfer" id="transaction-history-type-transfer">振替</button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="transaction-history-search-row">
+                    <span class="transaction-history-search-label">カテゴリー</span>
+                    <span id="transaction-history-category-display" class="transaction-history-chosen-display" aria-live="polite"></span>
+                    <button type="button" class="btn-secondary" id="transaction-history-category-btn">選択</button>
+                  </div>
+                  <div class="transaction-history-search-row">
+                    <span class="transaction-history-search-label">タグ</span>
+                    <span id="transaction-history-tag-display" class="transaction-history-chosen-display" aria-live="polite"></span>
+                    <button type="button" class="btn-secondary" id="transaction-history-tag-btn">選択</button>
+                  </div>
+                  <div class="transaction-history-search-row">
+                    <span class="transaction-history-search-label">勘定項目</span>
+                    <span id="transaction-history-account-display" class="transaction-history-chosen-display" aria-live="polite"></span>
+                    <button type="button" class="btn-secondary" id="transaction-history-account-btn">選択</button>
+                  </div>
+                  <div class="transaction-history-search-row-group">
+                    <div class="transaction-history-search-row">
+                      <span class="transaction-history-search-label">金額</span>
+                      <input type="text" id="transaction-history-amount-min" class="transaction-history-amount-input" inputmode="numeric" placeholder="最小" aria-label="金額最小" />
+                      <span class="transaction-history-search-sep">～</span>
+                      <input type="text" id="transaction-history-amount-max" class="transaction-history-amount-input" inputmode="numeric" placeholder="最大" aria-label="金額最大" />
+                    </div>
+                    <div class="transaction-history-search-row">
+                      <span class="transaction-history-search-label">任意</span>
+                      <input type="text" id="transaction-history-free-text" class="transaction-history-free-text-input" placeholder="項目名・内容の部分一致" aria-label="任意検索" />
+                    </div>
+                  </div>
+                    </div>
+                  </details>
+                </section>
+              </div>
+              <div class="view-body">
+                <section class="transaction-history-data" aria-label="データ表示">
+                  <div class="transaction-history-tabs-row">
+                    <div class="transaction-history-tabs-row-left">
+                      <div class="transaction-history-tabs" role="tablist" aria-label="表示切替">
+                        <button type="button" class="transaction-history-tab is-active" role="tab" aria-selected="true" data-tab="list" id="transaction-history-tab-list">一覧</button>
+                        <button type="button" class="transaction-history-tab" role="tab" aria-selected="false" data-tab="weekly" id="transaction-history-tab-weekly">週単位</button>
+                        <button type="button" class="transaction-history-tab" role="tab" aria-selected="false" data-tab="calendar" id="transaction-history-tab-calendar">カレンダー</button>
+                      </div>
+                    </div>
+                    <div class="transaction-history-calendar-header" aria-label="年月切替">
+                      <button type="button" class="btn-secondary transaction-history-calendar-prev" id="transaction-history-calendar-prev" aria-label="前月">‹</button>
+                      <input type="month" id="transaction-history-calendar-ym" class="transaction-history-calendar-ym" aria-label="年月を選択" />
+                      <button type="button" class="btn-secondary transaction-history-calendar-next" id="transaction-history-calendar-next" aria-label="次月">›</button>
+                    </div>
+                    <div class="transaction-history-tabs-row-right" aria-hidden="true"></div>
+                  </div>
+                  <div id="transaction-history-list-panel" class="transaction-history-panel" role="tabpanel" aria-labelledby="transaction-history-tab-list">
+                    <table class="data-table" id="transaction-history-table" aria-label="収支一覧">
+                        <thead>
+                          <tr>
+                            <th>日付</th>
+                            <th class="data-table-icon-col" aria-label="カテゴリー">カテゴリー</th>
+                            <th>金額</th>
+                            <th>項目名</th>
+                            <th class="data-table-icon-col" aria-label="勘定項目">勘定項目</th>
+                            <th>予定終了日</th>
+                          </tr>
+                        </thead>
+                        <tbody id="transaction-history-tbody"></tbody>
+                    </table>
+                  </div>
+                  <div id="transaction-history-weekly-panel" class="transaction-history-panel transaction-history-panel--hidden" role="tabpanel" aria-labelledby="transaction-history-tab-weekly">
+                    <div id="transaction-history-weekly-blocks" class="transaction-history-weekly-blocks" aria-label="週ごと一覧"></div>
+                  </div>
+                  <div id="transaction-history-calendar-panel" class="transaction-history-panel transaction-history-panel--hidden" role="tabpanel" aria-labelledby="transaction-history-tab-calendar">
+                    <div id="transaction-history-calendar-grid" class="transaction-history-calendar-grid" aria-label="カレンダー"></div>
+                  </div>
+                </section>
+              </div>
+            </div>
+
+            <!-- プロフィール -->
+            <div id="view-profile" class="main-view main-view--hidden" data-view="profile">
+              <div class="view-body view-body--form">
+                <form id="profile-form" class="settings-form profile-form">
+                  <div class="profile-icon-row">
+                    <div id="profile-form-icon-display" class="profile-icon-display" aria-hidden="true"></div>
+                    <input type="hidden" id="profile-form-icon-path" value="" />
+                    <input type="color" id="profile-form-icon-bg-color" class="profile-icon-bg-color" value="#646cff" aria-hidden="true" style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0;" />
+                    <input type="text" id="profile-form-icon-bg-hex" class="profile-icon-bg-hex" value="#646cff" maxlength="7" aria-label="アイコン背景色（カラーコード）" style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0;" />
+                    <div class="profile-icon-actions">
+                      <button type="button" class="btn-secondary" id="profile-form-icon-bg-picker-btn">背景色を選択</button>
+                      <input type="file" id="profile-form-icon-file" accept="image/*" class="profile-icon-file-input" aria-label="画像を選択" />
+                      <button type="button" class="btn-secondary" id="profile-form-icon-upload-btn">画像を選択</button>
+                      <button type="button" class="btn-secondary" id="profile-form-icon-default-btn">デフォルトに戻す</button>
+                    </div>
+                  </div>
+                  <div class="form-row">
+                    <label for="profile-form-name">表示名</label>
+                    <input id="profile-form-name" type="text" required maxlength="100" placeholder="表示名を入力" />
+                  </div>
+                </form>
+              </div>
+            </div>
+
+            <!-- デザイン（カラーパレット） -->
+            <div id="view-design" class="main-view main-view--hidden" data-view="design">
+              <div class="design-view-layout">
+                <div class="view-body view-body--form">
+                  <form id="design-form" class="settings-form">
+                    <div id="design-form-fields" class="design-palette-fields"></div>
+                  </form>
+                </div>
+                <div id="design-preview-wrap" class="design-preview-wrap" aria-label="配色プレビュー">
+                  <div class="design-preview">
+                    <div class="design-preview__inner">
+                      <div class="design-preview__menubar">プレビュー</div>
+                      <div class="design-preview__body">
+                        <div class="design-preview__content">
+                          <div class="design-preview__header">ヘッダー</div>
+                          <div class="design-preview__main">
+                            <div class="design-preview__main-label">メイン</div>
+                            <div class="design-preview__view">ビュー</div>
+                          </div>
+                          <div class="design-preview__footer">
+                            <span class="design-preview__btn">ボタン</span>
+                          </div>
+                        </div>
+                        <div class="design-preview__sidebar">
+                          <div class="design-preview__menu-head">メニュー</div>
+                          <div class="design-preview__menu-item design-preview__menu-item--current">ホーム</div>
+                          <div class="design-preview__menu-item">一覧</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </main>
+
+          <!-- ----- マスタ追加モーダル ----- -->
+          <div id="account-modal-overlay" class="modal-overlay" aria-hidden="true" data-modal="account">
+            <div class="modal-content">
+              <form id="account-form" class="data-form" data-form="account">
+                <div class="form-row profile-icon-color-row">
+                  <label>アイコン</label>
+                  <div class="profile-icon-color-inputs">
+                    <input type="color" id="account-form-color" class="profile-icon-bg-color" value="#646cff" aria-hidden="true" style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0;" />
+                    <input type="hidden" id="account-form-icon-path" value="" />
+                    <div id="account-form-color-icon-preview" class="category-icon-wrap form-color-icon-preview" aria-hidden="true"></div>
+                    <button type="button" class="btn-secondary" id="account-form-color-icon-btn">選択</button>
+                  </div>
+                </div>
+                <div class="form-row">
+                  <label for="account-form-name">勘定項目名</label>
+                  <input id="account-form-name" type="text" required maxlength="100" placeholder="勘定項目名を入力" />
+                </div>
+                <div class="form-actions">
+                  <button type="submit" class="btn-primary">追加</button>
+                  <button type="button" class="btn-secondary" id="account-form-cancel">キャンセル</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <div id="category-modal-overlay" class="modal-overlay" aria-hidden="true" data-modal="category">
+            <div class="modal-content">
+              <form id="category-form" class="data-form" data-form="category">
+                <div class="form-row profile-icon-color-row">
+                  <label>アイコン</label>
+                  <div class="profile-icon-color-inputs">
+                    <input type="color" id="category-form-color" class="profile-icon-bg-color" value="#646cff" aria-hidden="true" style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0;" />
+                    <input type="hidden" id="category-form-icon-path" value="" />
+                    <div id="category-form-color-icon-preview" class="category-icon-wrap form-color-icon-preview" aria-hidden="true"></div>
+                    <button type="button" class="btn-secondary" id="category-form-color-icon-btn">選択</button>
+                  </div>
+                </div>
+                <div class="form-row">
+                  <label for="category-form-type">種別</label>
+                  <select id="category-form-type">
+                    <option value="expense">支出</option>
+                    <option value="income">収入</option>
+                    <option value="transfer">振替</option>
+                  </select>
+                </div>
+                <div class="form-row">
+                  <label for="category-form-name">カテゴリー名</label>
+                  <input id="category-form-name" type="text" required maxlength="100" placeholder="カテゴリー名を入力" />
+                </div>
+                <div class="form-row">
+                  <label for="category-form-parent">親カテゴリー</label>
+                  <select id="category-form-parent" class="category-parent-select" aria-label="親カテゴリー">
+                    <option value="">未選択</option>
+                  </select>
+                </div>
+                <div class="form-actions">
+                  <button type="submit" class="btn-primary">追加</button>
+                  <button type="button" class="btn-secondary" id="category-form-cancel">キャンセル</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <div id="tag-modal-overlay" class="modal-overlay" aria-hidden="true" data-modal="tag">
+            <div class="modal-content">
+              <form id="tag-form" class="data-form" data-form="tag">
+                <div class="form-row profile-icon-color-row">
+                  <label>アイコン</label>
+                  <div class="profile-icon-color-inputs">
+                    <input type="color" id="tag-form-color" class="profile-icon-bg-color" value="#646cff" aria-hidden="true" style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0;" />
+                    <input type="hidden" id="tag-form-icon-path" value="" />
+                    <div id="tag-form-color-icon-preview" class="category-icon-wrap form-color-icon-preview" aria-hidden="true"></div>
+                    <button type="button" class="btn-secondary" id="tag-form-color-icon-btn">選択</button>
+                  </div>
+                </div>
+                <div class="form-row">
+                  <label for="tag-form-name">タグ名</label>
+                  <input id="tag-form-name" type="text" required maxlength="100" placeholder="タグ名を入力" />
+                </div>
+                <div class="form-actions">
+                  <button type="submit" class="btn-primary">追加</button>
+                  <button type="button" class="btn-secondary" id="tag-form-cancel">キャンセル</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <!-- ----- フッター ----- -->
+          <footer class="app-footer">
+            <div class="app-footer-spacer"></div>
+            <button type="button" class="btn-footer-nav" id="footer-home-btn">ホーム</button>
+            <button type="button" class="btn-footer-nav" id="footer-schedule-btn">スケジュール</button>
+            <button type="button" class="btn-footer-nav" id="footer-history-btn">収支履歴</button>
+            <button type="button" class="btn-footer-nav" id="footer-entry-btn">収支記録</button>
+            <button type="button" class="btn-footer-nav" id="footer-analysis-btn">収支分析</button>
+            <button type="button" class="btn-footer-nav" id="footer-menu-btn">メニュー</button>
+            <button type="button" class="btn-footer-nav" id="footer-settings-btn">設定</button>
+            <button type="button" class="btn-footer-back" id="footer-back-btn">戻る</button>
+          </footer>
+        </div>
+
+        <!-- ----- サイドバー ----- -->
+        <aside class="app-sidebar" id="app-sidebar" aria-label="サイドバー" aria-hidden="true">
+          <div class="sidebar-panel sidebar-panel-menu" id="sidebar-panel-menu">
+            <div class="sidebar-accordion">
+              <details class="sidebar-accordion-item" open>
+                <summary class="sidebar-accordion-head">スケジュール</summary>
+                <ul class="sidebar-accordion-body">
+                  <li><button type="button" class="sidebar-menu-item" data-view="home">ホーム</button></li>
+                  <li><button type="button" class="sidebar-menu-item" data-view="schedule">スケジュール</button></li>
+                  <li><button type="button" class="sidebar-menu-item" data-view="calendar">カレンダー</button></li>
+                </ul>
+              </details>
+              <details class="sidebar-accordion-item" open>
+                <summary class="sidebar-accordion-head">収支管理</summary>
+                <ul class="sidebar-accordion-body">
+                  <li><button type="button" class="sidebar-menu-item" data-view="transaction-history">収支履歴</button></li>
+                  <li><button type="button" class="sidebar-menu-item" data-view="transaction-entry">収支記録</button></li>
+                  <li><button type="button" class="sidebar-menu-item" data-view="transaction-analysis">収支分析</button></li>
+                </ul>
+              </details>
+              <details class="sidebar-accordion-item" open>
+                <summary class="sidebar-accordion-head">マスタ設定</summary>
+                <ul class="sidebar-accordion-body">
+                  <li><button type="button" class="sidebar-menu-item" data-view="account">勘定項目</button></li>
+                  <li><button type="button" class="sidebar-menu-item" data-view="category">カテゴリー</button></li>
+                  <li><button type="button" class="sidebar-menu-item" data-view="tag">タグ</button></li>
+                </ul>
+              </details>
+            </div>
+            <div class="sidebar-menu-footer">
+              <button type="button" class="sidebar-settings-entry-btn app-menubar-icon" id="sidebar-menu-to-settings" aria-label="設定" title="設定">
+                <span class="app-menubar-icon-inner" style="--icon: url(/icon/gear-solid-full.svg);" aria-hidden="true"></span>
+              </button>
+              <button type="button" class="sidebar-settings-entry-btn app-menubar-icon" id="menubar-logout" aria-label="ログアウト" title="ログアウト">
+                <span class="app-menubar-icon-inner" style="--icon: url(/icon/right-from-bracket-solid-full.svg);" aria-hidden="true"></span>
+              </button>
+            </div>
+          </div>
+          <div class="sidebar-panel sidebar-panel-settings" id="sidebar-panel-settings">
+            <ul class="sidebar-settings-list">
+              <li><button type="button" class="sidebar-settings-item" data-view="profile">プロフィール</button></li>
+              <li><button type="button" class="sidebar-settings-item" data-view="design">デザイン</button></li>
+            </ul>
+          </div>
+        </aside>
+      </div>
+
+      <!-- ----- 色・アイコンピッカーモーダル ----- -->
+      <div id="color-icon-picker-overlay" class="modal-overlay" aria-hidden="true">
+        <div class="modal-content modal-content--picker" onclick="event.stopPropagation()">
+          <h2 class="picker-title">色・アイコンを選択</h2>
+          <div class="picker-section">
+            <span class="picker-label">色</span>
+            <div id="color-icon-picker-swatches" class="picker-swatches"></div>
+            <div class="picker-custom-color">
+              <input type="color" id="color-icon-picker-custom" class="picker-custom-color-input" value="#646cff" aria-hidden="true" />
+              <button type="button" class="picker-custom-btn" id="color-icon-picker-custom-btn">カスタム</button>
+            </div>
+          </div>
+          <div id="color-icon-picker-icon-section" class="picker-section">
+            <span class="picker-label">アイコン</span>
+            <div id="color-icon-picker-icons" class="picker-icon-grid"></div>
+          </div>
+          <div class="picker-actions">
+            <button type="button" class="btn-primary" id="color-icon-picker-apply">適用</button>
+            <button type="button" class="btn-secondary" id="color-icon-picker-default-btn">デフォルトに戻す</button>
+            <button type="button" class="btn-secondary" id="color-icon-picker-cancel">キャンセル</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

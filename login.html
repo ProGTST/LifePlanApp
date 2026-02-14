@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/icon/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ログイン - ライフプランAPP</title>
+  </head>
+  <body>
+    <div id="login-screen" class="screen" data-screen="login">
+      <div class="login-card">
+        <h1 class="login-title">ライフプランAPP</h1>
+        <form id="login-form" class="login-form">
+          <div class="login-field">
+            <label for="login-user">ユーザーID</label>
+            <input id="login-user" type="text" placeholder="ユーザーIDを入力" required autocomplete="username" />
+          </div>
+          <p id="login-error" class="login-error" aria-live="polite"></p>
+          <button type="submit" class="login-button">ログイン</button>
+        </form>
+      </div>
+    </div>
+    <script type="module" src="/src/login.ts"></script>
+  </body>
+</html>
