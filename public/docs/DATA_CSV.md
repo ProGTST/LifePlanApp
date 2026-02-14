@@ -139,6 +139,25 @@ LifePlanGant で扱う収支・タグ・勘定項目のデータは、`data/` �
 
 ---
 
+## 7. 勘定項目参照権限テーブル（ACCOUNT_PERMISSION）
+
+**ファイル**: `data/ACCOUNT_PERMISSION.csv`
+
+どのユーザーがどの勘定項目を参照・編集できるかを表すテーブルです。
+
+| 列名 | 説明 | 備考 |
+|------|------|------|
+| ID | 一意識別子 | 数値 |
+| REGIST_DATETIME | 登録日時 | 共通 |
+| REGIST_USER | 登録ユーザーID | USER.ID |
+| UPDATE_DATETIME | 更新日時 | 共通 |
+| UPDATE_USER | 更新ユーザーID | USER.ID |
+| ACCOUNT_ID | 勘定項目ID | ACCOUNT.ID |
+| USER_ID | 参照を許可するユーザーID | USER.ID |
+| PERMISSION_TYPE | 権限種別 | `view`（参照） / `edit`（編集） |
+
+---
+
 ## テーブル間の関係
 
 ```
@@ -171,6 +190,7 @@ TAG (1) ----< TAG_MANAGEMENT >---- (N) TRANSACTION
 | `data/CATEGORY.csv` | CATEGORY | カテゴリマスタ（収入・支出の分類） |
 | `data/TRANSACTION.csv` | TRANSACTION | 収支（計画・実績） |
 | `data/ACCOUNT.csv` | ACCOUNT | 勘定項目マスタ |
+| `data/ACCOUNT_PERMISSION.csv` | ACCOUNT_PERMISSION | 勘定項目参照権限 |
 | `data/COLOR_PALETTE.csv` | COLOR_PALETTE | カラーパレット（ユーザー別色設定） |
 
 ---

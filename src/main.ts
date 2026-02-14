@@ -43,9 +43,9 @@ function initAppScreen(): void {
 
   /* フッター・ホーム / スケジュール / 収支履歴: メニュー遷移として該当画面へ */
   function navigateTo(view: string): void {
+    showMainView(view);
     pushNavigation(view);
     updateCurrentMenuItem();
-    showMainView(view);
   }
 
   document.getElementById("footer-home-btn")?.addEventListener("click", () => navigateTo("home"));

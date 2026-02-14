@@ -40,9 +40,11 @@ let selectedCategoryType: CategoryType = "expense";
 /** ツリービュー表示フラグ（初期は ON） */
 let categoryTreeViewMode = true;
 
-/** 同じ種別の行だけに絞った配列。表示順は categoryListFull の配列順（同種別の並び）で決める */
+/** 同じ種別の行だけに絞り、SORT_ORDER 昇順で返す */
 function getSameTypeFiltered(): CategoryRow[] {
-  return categoryListFull.filter((r) => r.TYPE === selectedCategoryType);
+  return categoryListFull
+    .filter((r) => r.TYPE === selectedCategoryType)
+    .sort((a, b) => sortOrderNum(a.SORT_ORDER, b.SORT_ORDER));
 }
 
 /** 指定カテゴリーの子・孫・曾孫…のIDをすべて返す（循環防止用） */
@@ -309,7 +311,8 @@ function renderCategoryTable(): void {
 function deleteCategoryRow(categoryId: string): void {
   const idx = categoryListFull.findIndex((r) => r.ID === categoryId);
   if (idx !== -1) categoryListFull.splice(idx, 1);
-  setCategoryList([...categoryListFull]);
+  const sorted = categoryListFull.slice().sort((a, b) => sortOrderNum(a.SORT_ORDER, b.SORT_ORDER));
+  setCategoryList(sorted);
   persistCategory();
   renderCategoryTable();
 }
@@ -321,7 +324,8 @@ export async function loadAndRenderCategoryList(): Promise<void> {
     setCategoryListLoaded(true);
     persistCategoryList(list);
   }
-  setCategoryList([...categoryListFull]);
+  const sorted = categoryListFull.slice().sort((a, b) => sortOrderNum(a.SORT_ORDER, b.SORT_ORDER));
+  setCategoryList(sorted);
   updateCategoryTabsActive();
   updateCategoryViewButton();
   document.getElementById("header-delete-btn")?.classList.toggle("is-active", categoryDeleteMode);

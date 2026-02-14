@@ -32,12 +32,11 @@ export function pushNavigation(view: string): void {
   currentView = view;
 }
 
-/** 戻る押下時に呼ぶ。戻り先のビューを返す（戻れない場合は null）。スタックは pop 済み。 */
+/** 戻る押下時に呼ぶ。戻り先のビューを返す（戻れない場合は null）。スタックは pop 済み。currentView は showMainView 側で更新する。 */
 export function popNavigation(): string | null {
   if (viewStack.length <= 1) return null;
   const target = viewStack[viewStack.length - 2];
   viewStack = viewStack.slice(0, -1);
-  currentView = target;
   return target;
 }
 

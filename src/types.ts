@@ -27,6 +27,18 @@ export interface AccountRow {
   SORT_ORDER?: string;
 }
 
+/** 勘定項目参照権限（ACCOUNT_PERMISSION）の1行 */
+export interface AccountPermissionRow {
+  ID: string;
+  REGIST_DATETIME: string;
+  REGIST_USER: string;
+  UPDATE_DATETIME: string;
+  UPDATE_USER: string;
+  ACCOUNT_ID: string;
+  USER_ID: string;
+  PERMISSION_TYPE: string;
+}
+
 /** カテゴリー（CATEGORY）の1行 */
 export interface CategoryRow {
   ID: string;

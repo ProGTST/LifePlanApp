@@ -23,10 +23,14 @@ export function parseCsvLine(line: string): string[] {
 }
 
 /**
- * CSVファイルを取得し、ヘッダーと行の配列に分解する
+ * CSVファイルを取得し、ヘッダーと行の配列に分解する。
+ * init を渡すと fetch の第二引数に渡す（例: { cache: 'reload' } でキャッシュを無効化）。
  */
-export async function fetchCsv(path: string): Promise<{ header: string[]; rows: string[][] }> {
-  const res = await fetch(path);
+export async function fetchCsv(
+  path: string,
+  init?: RequestInit
+): Promise<{ header: string[]; rows: string[][] }> {
+  const res = await fetch(path, init);
   if (!res.ok) return { header: [], rows: [] };
   const text = await res.text();
   const lines = text.trim().split(/\r?\n/);

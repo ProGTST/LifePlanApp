@@ -57,6 +57,17 @@ const TAG_HEADER = [
   "SORT_ORDER",
 ] as const;
 
+const ACCOUNT_PERMISSION_HEADER = [
+  "ID",
+  "REGIST_DATETIME",
+  "REGIST_USER",
+  "UPDATE_DATETIME",
+  "UPDATE_USER",
+  "ACCOUNT_ID",
+  "USER_ID",
+  "PERMISSION_TYPE",
+] as const;
+
 export function accountListToCsv(rows: Record<string, string>[]): string {
   return toCsvString([...ACCOUNT_HEADER], rows);
 }
@@ -67,6 +78,10 @@ export function categoryListToCsv(rows: Record<string, string>[]): string {
 
 export function tagListToCsv(rows: Record<string, string>[]): string {
   return toCsvString([...TAG_HEADER], rows);
+}
+
+export function accountPermissionListToCsv(rows: Record<string, string>[]): string {
+  return toCsvString([...ACCOUNT_PERMISSION_HEADER], rows);
 }
 
 const USER_HEADER = [

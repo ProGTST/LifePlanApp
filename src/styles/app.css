@@ -73,7 +73,9 @@
   display: flex;
 }
 
-.app-menubar-profile-icon {
+/* メニューバー・ヘッダー共通：プロフィールアイコン */
+.app-menubar-profile-icon,
+.app-header-profile-icon {
   width: 2.25rem;
   height: 2.25rem;
   flex-shrink: 0;
@@ -87,7 +89,8 @@
   overflow: hidden;
 }
 
-.app-menubar-profile-icon[data-mode="default"] {
+.app-menubar-profile-icon[data-mode="default"],
+.app-header-profile-icon[data-mode="default"] {
   line-height: 1.2;
   text-align: center;
 }
@@ -282,7 +285,6 @@
   min-width: 0;
 }
 
-
 /* サイドバー項目（メニュー・設定で見た目を統一） */
 .sidebar-menu-item {
   display: block;
@@ -388,25 +390,6 @@
   display: flex;
 }
 
-.app-header-profile-icon {
-  width: 2.25rem;
-  height: 2.25rem;
-  flex-shrink: 0;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: #ffffff;
-  overflow: hidden;
-}
-
-.app-header-profile-icon[data-mode="default"] {
-  line-height: 1.2;
-  text-align: center;
-}
-
 .app-header-profile-name {
   font-size: 0.9375rem;
   font-weight: 500;
@@ -427,7 +410,8 @@
 #app .btn-header-add,
 #app .btn-header-delete,
 #app .btn-header-save,
-#app .btn-header-default {
+#app .btn-header-default,
+#app #transaction-history-refresh-btn {
   display: none;
   padding: 0 1rem;
   font-size: 0.875rem;
@@ -440,7 +424,8 @@
 #app .btn-header-add.is-visible,
 #app .btn-header-delete.is-visible,
 #app .btn-header-save.is-visible,
-#app .btn-header-default.is-visible {
+#app .btn-header-default.is-visible,
+#app #transaction-history-refresh-btn.is-visible {
   display: inline-flex;
 }
 
@@ -549,7 +534,10 @@
   justify-content: flex-start;
 }
 
-.profile-icon-file-input {
+/* 画面外に隠す入力（プロフィールアイコン・デザイン色・ピッカー色） */
+.profile-icon-file-input,
+.design-palette-input-hidden,
+.picker-custom-color-input {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -587,18 +575,6 @@
   border-radius: 4px;
 }
 
-/* デザイン画面：色選択はボタンのみ表示（プロフィールの背景色選択と同じ） */
-.design-palette-input-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  border: 0;
-}
-
 .design-palette-row {
   display: flex;
   align-items: center;
@@ -626,6 +602,7 @@
 .design-palette-swatch {
   cursor: pointer;
 }
+
 .design-palette-swatch:hover {
   filter: brightness(1.15);
 }
@@ -841,7 +818,8 @@
 
 /* カテゴリー親プルダウン */
 .category-parent-select {
-  min-width: 10rem;
+  width: 100%;
+  min-width: 0;
   height: 2rem;
   padding: 0 0.5rem;
   font-size: 0.875rem;
@@ -982,9 +960,9 @@
 }
 #category-table th.category-parent-col,
 #category-table td.category-parent-col {
-  width: 14rem;
-  min-width: 14rem;
-  max-width: 14rem;
+  width: 20rem;
+  min-width: 20rem;
+  max-width: 20rem;
   box-sizing: border-box;
 }
 
@@ -1025,6 +1003,82 @@
   height: 3px;
   background: var(--color-button-bg);
   margin: -1px 0;
+}
+
+.account-table-permission-col {
+  width: 20rem;
+  max-width: 20rem;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.account-table-permission-col .account-table-permission-count {
+  margin-right: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--color-main-fg);
+}
+#account-table .account-table-permission-add-btn {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.8125rem;
+  background: var(--color-button-bg);
+  color: var(--color-button-fg);
+  border: none;
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  cursor: pointer;
+}
+#account-table .account-table-permission-add-btn:hover {
+  filter: brightness(1.05);
+}
+
+/* 参照可能な勘定（他ユーザー共有） */
+.account-shared-view-body {
+  margin-top: 1.5rem;
+}
+.account-shared-title {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-main-fg);
+}
+#account-shared-table .data-table-icon-col {
+  width: 2.5rem;
+}
+#account-shared-tbody .account-shared-empty {
+  padding: 1rem;
+  text-align: center;
+  color: var(--gray-600);
+  font-size: 0.875rem;
+}
+.account-shared-user-col {
+  width: 17rem;
+  max-width: 17rem;
+  white-space: nowrap;
+}
+.account-shared-user-name {
+  color: var(--color-main-fg);
+  font-size: 0.875rem;
+}
+
+.account-shared-permission-col {
+  width: 5rem;
+  max-width: 5rem;
+  white-space: nowrap;
+}
+.account-shared-permission-badge {
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+}
+.account-shared-permission-badge--view {
+  background: var(--color-base-bg);
+  color: var(--color-base-fg);
+  border: 1px solid var(--color-base-fg);
+}
+.account-shared-permission-badge--edit {
+  background: var(--color-accent-bg);
+  color: var(--color-accent-fg);
 }
 
 .account-table-delete-col {
@@ -1103,6 +1157,52 @@
   min-width: 320px;
   max-width: 90vw;
   box-shadow: var(--shadow-lg);
+}
+
+/* 収支履歴検索：カテゴリー・タグ・勘定項目選択モーダル */
+.transaction-history-select-modal {
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.transaction-history-select-title {
+  margin: 0 0 1rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.transaction-history-select-list {
+  overflow-y: auto;
+  max-height: 50vh;
+  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.transaction-history-select-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0;
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+
+.transaction-history-select-item input[type="checkbox"] {
+  flex-shrink: 0;
+}
+
+.transaction-history-select-item .category-icon-wrap {
+  flex-shrink: 0;
+}
+
+.transaction-history-select-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  flex-shrink: 0;
 }
 
 /* ----- フッター（スペーサー先頭で右寄せ） ----- */
@@ -1206,6 +1306,216 @@
   margin-top: 1.25rem;
 }
 
+.account-form-permissions-row label {
+  display: block;
+  margin-bottom: 0.35rem;
+}
+
+.account-form-permission-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-top: 0.5rem;
+  max-height: 12rem;
+  overflow-y: auto;
+}
+
+.account-form-permission-empty {
+  font-size: 0.875rem;
+  color: var(--gray-600);
+}
+
+.account-form-permission-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.account-form-permission-user-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.875rem;
+}
+
+.account-form-permission-toggle {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.8125rem;
+  min-width: 4rem;
+  border: none;
+  border-radius: var(--radius-md);
+  font-weight: 500;
+}
+
+/* #app button より優先：参照は BASE_BG / BASE_FG、枠線あり */
+#account-form-permission-list .account-form-permission-toggle--view,
+#account-permission-users-list .account-permission-users-toggle--view {
+  background: var(--color-base-bg);
+  color: var(--color-base-fg);
+  border: 1px solid var(--color-base-fg);
+}
+
+/* #app button より優先：編集は ACCENT_BG / ACCENT_FG */
+#account-form-permission-list .account-form-permission-toggle--edit,
+#account-permission-users-list .account-permission-users-toggle--edit {
+  background: var(--color-accent-bg);
+  color: var(--color-accent-fg);
+}
+
+.account-form-permission-toggle:not(:disabled) {
+  cursor: pointer;
+}
+
+/* 権限リスト内の削除ボタン：詳細度を上げて権限ボタン高さに合わせる */
+#account-form-permission-list .account-row-delete-btn,
+#account-permission-users-list .account-row-delete-btn {
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0.35rem;
+  box-sizing: border-box;
+}
+
+#account-form-permission-list .account-row-delete-btn img,
+#account-permission-users-list .account-row-delete-btn img {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+/* 権限ユーザー管理モーダル */
+.account-permission-users-modal .account-permission-users-title {
+  margin: 0 0 0.75rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+.account-permission-users-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  max-height: 40vh;
+  overflow-y: auto;
+  margin-bottom: 1rem;
+}
+.account-permission-users-empty {
+  font-size: 0.875rem;
+  color: var(--gray-600);
+}
+.account-permission-users-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.account-permission-users-user-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.875rem;
+}
+.account-permission-users-toggle {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.8125rem;
+  min-width: 4rem;
+  border: none;
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  cursor: pointer;
+}
+.account-permission-users-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* 権限追加用ユーザー選択モーダル */
+.account-form-user-picker-modal .account-form-user-picker-title {
+  margin: 0 0 0.5rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.account-form-user-picker-modal .form-hint {
+  font-size: 0.8125rem;
+  color: var(--gray-600);
+  margin: 0 0 0.75rem;
+}
+
+.account-form-user-picker-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  max-height: 40vh;
+  overflow-y: auto;
+  margin-bottom: 1rem;
+}
+
+.account-form-user-picker-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+}
+
+.account-form-user-picker-item-name {
+  flex: 1;
+  cursor: pointer;
+}
+
+/* #app button より優先させるため ID 付きで指定 */
+#app .account-form-user-picker-modal .account-form-user-picker-check-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: none;
+  background: var(--color-base-bg) !important;
+  color: var(--color-base-fg);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+  transition: box-shadow 0.15s;
+}
+
+#app .account-form-user-picker-modal .account-form-user-picker-check-btn .account-form-user-picker-check-icon {
+  display: block;
+  width: 1.5rem;
+  height: 1.5rem;
+  flex-shrink: 0;
+  background-color: var(--color-base-fg) !important;
+  -webkit-mask-image: var(--icon-check);
+  mask-image: var(--icon-check);
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  transition: background-color 0.15s;
+}
+
+#app .account-form-user-picker-modal .account-form-user-picker-check-btn.is-selected .account-form-user-picker-check-icon {
+  background-color: var(--color-accent-bg) !important;
+}
+
+#app .account-form-user-picker-modal .account-form-user-picker-check-btn:hover:not(:disabled) {
+  box-shadow: 0 0 0 1px var(--color-base-fg);
+}
+
+.account-form-user-picker-item.is-disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+#app .account-form-user-picker-modal .account-form-user-picker-item.is-disabled .account-form-user-picker-check-btn {
+  cursor: not-allowed;
+}
+
+.account-form-user-picker-item.is-disabled .account-form-user-picker-item-name {
+  cursor: not-allowed;
+}
+
 .btn-primary {
   background: var(--color-button-bg);
   color: var(--color-button-fg);
@@ -1238,26 +1548,31 @@
 .modal-content--picker {
   max-width: 420px;
 }
+
 .picker-title {
   margin: 0 0 1rem;
   font-size: 1.125rem;
   font-weight: 600;
 }
+
 .picker-section {
   margin-bottom: 1.25rem;
 }
+
 .picker-label {
   display: block;
   font-weight: 500;
   font-size: 0.875rem;
   margin-bottom: 0.5rem;
 }
+
 .picker-swatches {
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
   margin-bottom: 0.75rem;
 }
+
 .picker-swatch {
   width: 1.75rem;
   height: 1.75rem;
@@ -1267,30 +1582,24 @@
   padding: 0;
   flex-shrink: 0;
 }
+
 .picker-swatch:hover {
   filter: brightness(1.1);
 }
+
 .picker-swatch.is-selected {
   border-width: 3px;
   border-color: #1a1a1a;
   box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px #1a1a1a;
   transform: scale(1.08);
 }
+
 .picker-custom-color {
   display: flex;
   align-items: center;
   gap: 0.5rem;
 }
-.picker-custom-color-input {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  border: 0;
-}
+
 .picker-custom-btn {
   /* なし・適用ボタンと同じ高さ */
   display: inline-flex;
@@ -1307,18 +1616,22 @@
   color: #ffffff;
   cursor: pointer;
 }
+
 .picker-custom-btn:hover {
   background: var(--gray-600);
 }
+
 .picker-custom-btn-icon {
   display: block;
   width: 1.125rem;
   height: 1.125rem;
   filter: brightness(0) invert(1);
 }
+
 .picker-custom-btn-text {
   color: #ffffff;
 }
+
 .picker-icon-grid {
   display: flex;
   flex-wrap: wrap;
@@ -1329,6 +1642,7 @@
   max-height: 275px;
   overflow-y: auto;
 }
+
 /* ピッカー内ボタン・アイコンは #app button より優先して白背景・選択色アイコンにする */
 #color-icon-picker-overlay .picker-icon-btn {
   width: 2.5rem;
@@ -1542,6 +1856,23 @@
   border-color: var(--color-button-bg);
 }
 
+/* 収支種別ボタンは一覧の収/支/振アイコンと同じ色で強調 */
+#app .transaction-history-filter-btn[data-type="income"].is-active {
+  background: #2e7d32;
+  color: #ffffff;
+  border-color: #2e7d32;
+}
+#app .transaction-history-filter-btn[data-type="expense"].is-active {
+  background: #c62828;
+  color: #ffffff;
+  border-color: #c62828;
+}
+#app .transaction-history-filter-btn[data-type="transfer"].is-active {
+  background: #455a64;
+  color: #ffffff;
+  border-color: #455a64;
+}
+
 .transaction-history-search-sep {
   color: var(--gray-600);
   font-size: 0.875rem;
@@ -1556,7 +1887,10 @@
   border-radius: var(--radius-md);
 }
 
-/* 日付入力が空のときの「yyyy/mm/dd」「年/月/日」を非表示（JSで .is-empty を付与） */
+/* 日付入力が空のときは何も表示しない（初期表示・未入力時。JSで .is-empty を付与） */
+.transaction-history-date-input.is-empty::-webkit-datetime-edit {
+  opacity: 0;
+}
 .transaction-history-date-input.is-empty::-webkit-datetime-edit-year-field,
 .transaction-history-date-input.is-empty::-webkit-datetime-edit-month-field,
 .transaction-history-date-input.is-empty::-webkit-datetime-edit-day-field,
@@ -1741,14 +2075,25 @@
   box-sizing: border-box;
 }
 
-/* 収支一覧テーブル：金額列の幅を小さく */
+/* 収支一覧テーブル：金額列の幅を小さく・表示は折り返す */
 #transaction-history-table th:nth-child(3),
 #transaction-history-table td:nth-child(3) {
   width: 12rem;
   box-sizing: border-box;
 }
+#transaction-history-table td:nth-child(3) .transaction-history-data-cell {
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
 
-/* 収支一覧テーブル：予定終了日列 */
+/* 収支一覧テーブル：勘定項目列の幅を小さく */
+#transaction-history-table th:nth-child(5),
+#transaction-history-table td:nth-child(5) {
+  width: 14rem;
+  box-sizing: border-box;
+}
+
+/* 収支一覧テーブル：予定終了日列（日付列と同じ幅） */
 #transaction-history-table th:nth-child(6),
 #transaction-history-table td:nth-child(6) {
   width: 6.3rem;
@@ -1758,6 +2103,14 @@
 /* 予定終了日が過去の予定行は背景をグレーに */
 #transaction-history-table tr.transaction-history-row--past-plan {
   background: var(--gray-200);
+}
+
+/* 権限付与勘定に紐づく取引：参照権限は薄黄、編集権限は薄緑 */
+#transaction-history-table tr.transaction-history-row--permission-view {
+  background: #fffde7;
+}
+#transaction-history-table tr.transaction-history-row--permission-edit {
+  background: #e8f5e9;
 }
 
 .transaction-history-category-cell {
@@ -1787,6 +2140,7 @@
 .transaction-history-amount-row {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 0.35rem;
   min-width: 0;
 }
@@ -1810,19 +2164,67 @@
 .transaction-history-amount {
   font-weight: 500;
   font-size: 0.9375rem;
+  min-width: 0;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  white-space: normal;
 }
 
 .transaction-history-name-cell {
   font-size: 0.8125rem;
   color: var(--gray-700);
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  white-space: normal;
+}
+
+.transaction-history-name-cell-inner {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.transaction-history-type-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: #ffffff;
+  border-radius: 2px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.transaction-history-type-icon--income {
+  background: #2e7d32;
+  border: 1px solid #2e7d32;
+}
+
+.transaction-history-type-icon--expense {
+  background: #c62828;
+  border: 1px solid #c62828;
+}
+
+.transaction-history-type-icon--transfer {
+  background: #455a64;
+  border: 1px solid #455a64;
+}
+
+.transaction-history-name-text {
+  min-width: 0;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .transaction-history-account-cell {
   min-width: 0;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .transaction-history-account-wrap {
@@ -1830,6 +2232,7 @@
   align-items: center;
   gap: 0.5rem;
   min-width: 0;
+  flex-wrap: wrap;
 }
 
 .transaction-history-account-wrap .category-icon-wrap {
@@ -1839,16 +2242,17 @@
 .transaction-history-account-name {
   font-size: 0.875rem;
   color: var(--color-view-fg, #1a1a1a);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  min-width: 0;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  white-space: normal;
 }
 
 .transaction-history-transfer-icons {
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   min-width: 0;
 }
 

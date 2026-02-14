@@ -43,16 +43,20 @@ fn csv_has_data_lines(csv: &str) -> bool {
 // パス解決（開発時: public、本番: app_data_dir）
 // ---------------------------------------------------------------------------
 
-/// 開発時: exe の位置からプロジェクトルートの public/data/ を返す。
+/// 開発時: プロジェクトルートの public/data/ を返す。exe から4階層上（target/debug → target → src-tauri → ルート）、失敗時は current_dir を使用。
 fn project_public_data_dir() -> Option<PathBuf> {
-    std::env::current_exe()
+    let from_exe = std::env::current_exe()
         .ok()
         .and_then(|p| p.canonicalize().ok())
         .and_then(|p| p.parent().map(Path::to_path_buf))
         .and_then(|p| p.parent().map(Path::to_path_buf))
         .and_then(|p| p.parent().map(Path::to_path_buf))
         .and_then(|p| p.parent().map(Path::to_path_buf))
-        .map(|p| p.join("public").join("data"))
+        .map(|p| p.join("public").join("data"));
+    if from_exe.is_some() {
+        return from_exe;
+    }
+    std::env::current_dir().ok().map(|cwd| cwd.join("public").join("data"))
 }
 
 /// 開発時: プロジェクトルートの public/icon/profile/ を返す。失敗時は current_dir を利用。
@@ -162,9 +166,18 @@ fn save_master_csv(
 }
 
 #[tauri::command]
-fn save_account_csv(app: tauri::AppHandle, account: String) -> Result<(), String> {
+fn save_account_csv(app: tauri::AppHandle, account: String, account_permission: String) -> Result<(), String> {
     save_csv_to_public_if_has_data("ACCOUNT.csv", &account);
-    save_csv_to_app_data(&app, "ACCOUNT.csv", &account)
+    save_csv_to_app_data(&app, "ACCOUNT.csv", &account)?;
+    // 権限は0件でもヘッダーだけ書いて上書きし、削除した勘定に紐づく古い行を残さない
+    if cfg!(debug_assertions) {
+        if let Some(ref dir) = project_public_data_dir() {
+            let _ = fs::create_dir_all(dir);
+            let _ = write_csv(&dir.join("ACCOUNT_PERMISSION.csv"), &account_permission);
+        }
+    }
+    save_csv_to_app_data(&app, "ACCOUNT_PERMISSION.csv", &account_permission)?;
+    Ok(())
 }
 
 #[tauri::command]

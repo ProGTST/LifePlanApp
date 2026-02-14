@@ -112,20 +112,20 @@ export function initSidebarMenu(): void {
     btn.addEventListener("click", () => {
       const view = (btn as HTMLButtonElement).dataset.view;
       if (!view || view === currentView) return;
-      pushNavigation(view);
-      updateCurrentMenuItem();
       closeSidebar();
       showMainView(view);
+      pushNavigation(view);
+      updateCurrentMenuItem();
     });
   });
   document.querySelectorAll(".sidebar-settings-item").forEach((btn) => {
     btn.addEventListener("click", () => {
       const view = (btn as HTMLButtonElement).dataset.view;
       if (!view || view === currentView) return;
-      pushNavigation(view);
-      updateCurrentMenuItem();
       closeSidebar();
       showMainView(view);
+      pushNavigation(view);
+      updateCurrentMenuItem();
     });
   });
 }

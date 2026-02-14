@@ -1,6 +1,7 @@
-import { getAccountList, getCategoryList, getTagList } from "./storage.ts";
+import { getAccountList, getAccountPermissionList, getCategoryList, getTagList } from "./storage.ts";
 import {
   accountListToCsv,
+  accountPermissionListToCsv,
   categoryListToCsv,
   tagListToCsv,
 } from "./csvExport.ts";
@@ -51,7 +52,7 @@ export async function saveMasterToCsv(): Promise<void> {
   await invoke("save_master_csv", { account, category, tag });
 }
 
-/** 勘定のみ ACCOUNT.csv に保存する（画面遷移時用）。保存完了後に clearAccountDirty。 */
+/** 勘定と勘定参照権限を ACCOUNT.csv / ACCOUNT_PERMISSION.csv に保存する（画面遷移時用）。保存完了後に clearAccountDirty。 */
 export function saveAccountCsvOnly(): Promise<void> {
   if (!isTauri()) return Promise.resolve();
   flushMasterToStorage();
@@ -60,8 +61,15 @@ export function saveAccountCsvOnly(): Promise<void> {
     accountList != null && Array.isArray(accountList)
       ? accountListToCsv(sortRowsById(accountList as Record<string, string>[]))
       : "";
+  const permissionList = getAccountPermissionList();
+  const account_permission =
+    permissionList != null && Array.isArray(permissionList) && permissionList.length > 0
+      ? accountPermissionListToCsv(sortRowsById(permissionList as Record<string, string>[]))
+      : accountPermissionListToCsv([]);
   return import("@tauri-apps/api/core").then(({ invoke }) =>
-    invoke("save_account_csv", { account }).then(() => clearAccountDirty())
+    invoke("save_account_csv", { account, accountPermission: account_permission }).then(() => {
+      clearAccountDirty();
+    })
   );
 }
 

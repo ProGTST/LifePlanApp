@@ -10,7 +10,7 @@
     <!-- ========== アプリ画面（ログイン後は login.html から遷移） ========== -->
     <div id="app" class="screen app-layout" data-screen="app">
 
-      <!-- ----- メニューバー ----- -->
+      <!-- メニューバー -->
       <nav class="app-menubar" aria-label="メインメニュー">
         <span id="menubar-title" class="app-menubar-title">ホーム</span>
         <div class="app-menubar-actions">
@@ -23,7 +23,7 @@
       <div class="app-body-with-sidebar">
         <div class="app-body">
 
-          <!-- ----- ヘッダー ----- -->
+          <!-- ヘッダー -->
           <header class="app-header">
             <div id="menubar-profile-area" class="app-header-left is-visible" aria-hidden="false">
               <div id="header-profile-icon" class="app-header-profile-icon" aria-hidden="true"></div>
@@ -35,12 +35,13 @@
               <button type="button" class="btn-secondary btn-header-delete" id="header-delete-btn">削除モード</button>
               <button type="button" class="btn-primary btn-header-save" id="header-save-btn">保存</button>
               <button type="button" class="btn-secondary btn-header-default" id="header-default-btn">デフォルトに戻す</button>
+              <button type="button" class="btn-secondary btn-header-refresh" id="transaction-history-refresh-btn" aria-label="最新化">最新化</button>
             </div>
           </header>
 
-          <!-- ----- メインコンテンツ（ビュー切替） ----- -->
+          <!-- メインコンテンツ（ビュー切替） -->
           <main class="app-main">
-            <!-- ホーム -->
+            <!-- ビュー: ホーム -->
             <div id="view-home" class="main-view" data-view="home">
               <h1>Welcome to Tauri</h1>
               <p>Click on the Tauri logo to learn more about the framework.</p>
@@ -51,7 +52,7 @@
               <p id="greet-msg"></p>
             </div>
 
-            <!-- 勘定項目一覧 -->
+            <!-- ビュー: 勘定項目 -->
             <div id="view-account-list" class="main-view main-view--hidden main-view--list" data-view="account">
               <div class="view-body">
                 <table class="data-table data-table--editable" id="account-table" data-list="account">
@@ -60,15 +61,30 @@
                       <th class="data-table-drag-col" aria-label="並び替え"></th>
                       <th class="data-table-icon-col" aria-label="アイコン"></th>
                       <th>勘定項目名</th>
+                      <th class="account-table-permission-col">権限</th>
                       <th class="account-table-delete-col"></th>
                     </tr>
                   </thead>
                   <tbody id="account-tbody"></tbody>
                 </table>
               </div>
+              <div class="view-body account-shared-view-body">
+                <h2 class="account-shared-title">参照可能な勘定</h2>
+                <table class="data-table" id="account-shared-table" aria-label="参照可能な他ユーザーの勘定項目">
+                  <thead>
+                    <tr>
+                      <th class="data-table-icon-col" aria-label="アイコン"></th>
+                      <th>勘定項目名</th>
+                      <th class="account-shared-user-col">ユーザー</th>
+                      <th class="account-shared-permission-col">権限</th>
+                    </tr>
+                  </thead>
+                  <tbody id="account-shared-tbody"></tbody>
+                </table>
+              </div>
             </div>
 
-            <!-- カテゴリー一覧 -->
+            <!-- ビュー: カテゴリー -->
             <div id="view-category-list" class="main-view main-view--hidden main-view--list" data-view="category">
               <div class="view-body">
                 <div class="category-tabs-row">
@@ -85,7 +101,7 @@
                       <th class="data-table-drag-col" aria-label="並び替え"></th>
                       <th class="data-table-icon-col" aria-label="アイコン"></th>
                       <th>カテゴリー名</th>
-                      <th>親カテゴリー</th>
+                      <th class="category-parent-col">親カテゴリー</th>
                       <th class="account-table-delete-col"></th>
                     </tr>
                   </thead>
@@ -94,7 +110,7 @@
               </div>
             </div>
 
-            <!-- タグ一覧 -->
+            <!-- ビュー: タグ -->
             <div id="view-tag-list" class="main-view main-view--hidden main-view--list" data-view="tag">
               <div class="view-body">
                 <table class="data-table data-table--editable" id="tag-table" data-list="tag">
@@ -111,63 +127,63 @@
               </div>
             </div>
 
-            <!-- 収支履歴 -->
+            <!-- ビュー: 収支履歴 -->
             <div id="view-transaction-history" class="main-view main-view--hidden" data-view="transaction-history">
               <div class="view-body">
                 <section class="transaction-history-search" aria-label="検索条件">
                   <details class="transaction-history-search-accordion" open>
                     <summary class="transaction-history-search-summary">検索条件</summary>
                     <div class="transaction-history-search-body">
-                  <div class="transaction-history-search-row-group">
-                    <div class="transaction-history-search-row">
-                      <span class="transaction-history-search-label">日付</span>
-                      <input type="date" id="transaction-history-date-from" class="transaction-history-date-input" aria-label="日付FROM" />
-                      <span class="transaction-history-search-sep">～</span>
-                      <input type="date" id="transaction-history-date-to" class="transaction-history-date-input" aria-label="日付TO" />
-                    </div>
-                    <div class="transaction-history-search-row">
-                      <span class="transaction-history-search-label">計画</span>
-                      <div class="transaction-history-search-buttons" role="group" aria-label="計画">
-                        <button type="button" class="btn-secondary transaction-history-filter-btn is-active" data-status="plan" id="transaction-history-status-plan">予定</button>
-                        <button type="button" class="btn-secondary transaction-history-filter-btn is-active" data-status="actual" id="transaction-history-status-actual">実績</button>
+                      <div class="transaction-history-search-row-group">
+                        <div class="transaction-history-search-row">
+                          <span class="transaction-history-search-label">日付</span>
+                          <input type="date" id="transaction-history-date-from" class="transaction-history-date-input" aria-label="日付FROM" />
+                          <span class="transaction-history-search-sep">～</span>
+                          <input type="date" id="transaction-history-date-to" class="transaction-history-date-input" aria-label="日付TO" />
+                        </div>
+                        <div class="transaction-history-search-row">
+                          <span class="transaction-history-search-label">計画</span>
+                          <div class="transaction-history-search-buttons" role="group" aria-label="計画">
+                            <button type="button" class="btn-secondary transaction-history-filter-btn is-active" data-status="plan" id="transaction-history-status-plan">予定</button>
+                            <button type="button" class="btn-secondary transaction-history-filter-btn is-active" data-status="actual" id="transaction-history-status-actual">実績</button>
+                          </div>
+                        </div>
+                        <div class="transaction-history-search-row">
+                          <span class="transaction-history-search-label">収支種別</span>
+                          <div class="transaction-history-search-buttons" role="group" aria-label="収支種別">
+                            <button type="button" class="btn-secondary transaction-history-filter-btn is-active" data-type="income" id="transaction-history-type-income">収入</button>
+                            <button type="button" class="btn-secondary transaction-history-filter-btn is-active" data-type="expense" id="transaction-history-type-expense">支出</button>
+                            <button type="button" class="btn-secondary transaction-history-filter-btn is-active" data-type="transfer" id="transaction-history-type-transfer">振替</button>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                    <div class="transaction-history-search-row">
-                      <span class="transaction-history-search-label">収支種別</span>
-                      <div class="transaction-history-search-buttons" role="group" aria-label="収支種別">
-                        <button type="button" class="btn-secondary transaction-history-filter-btn is-active" data-type="income" id="transaction-history-type-income">収入</button>
-                        <button type="button" class="btn-secondary transaction-history-filter-btn is-active" data-type="expense" id="transaction-history-type-expense">支出</button>
-                        <button type="button" class="btn-secondary transaction-history-filter-btn is-active" data-type="transfer" id="transaction-history-type-transfer">振替</button>
+                      <div class="transaction-history-search-row">
+                        <span class="transaction-history-search-label">カテゴリー</span>
+                        <span id="transaction-history-category-display" class="transaction-history-chosen-display" aria-live="polite"></span>
+                        <button type="button" class="btn-secondary" id="transaction-history-category-btn">選択</button>
                       </div>
-                    </div>
-                  </div>
-                  <div class="transaction-history-search-row">
-                    <span class="transaction-history-search-label">カテゴリー</span>
-                    <span id="transaction-history-category-display" class="transaction-history-chosen-display" aria-live="polite"></span>
-                    <button type="button" class="btn-secondary" id="transaction-history-category-btn">選択</button>
-                  </div>
-                  <div class="transaction-history-search-row">
-                    <span class="transaction-history-search-label">タグ</span>
-                    <span id="transaction-history-tag-display" class="transaction-history-chosen-display" aria-live="polite"></span>
-                    <button type="button" class="btn-secondary" id="transaction-history-tag-btn">選択</button>
-                  </div>
-                  <div class="transaction-history-search-row">
-                    <span class="transaction-history-search-label">勘定項目</span>
-                    <span id="transaction-history-account-display" class="transaction-history-chosen-display" aria-live="polite"></span>
-                    <button type="button" class="btn-secondary" id="transaction-history-account-btn">選択</button>
-                  </div>
-                  <div class="transaction-history-search-row-group">
-                    <div class="transaction-history-search-row">
-                      <span class="transaction-history-search-label">金額</span>
-                      <input type="text" id="transaction-history-amount-min" class="transaction-history-amount-input" inputmode="numeric" placeholder="最小" aria-label="金額最小" />
-                      <span class="transaction-history-search-sep">～</span>
-                      <input type="text" id="transaction-history-amount-max" class="transaction-history-amount-input" inputmode="numeric" placeholder="最大" aria-label="金額最大" />
-                    </div>
-                    <div class="transaction-history-search-row">
-                      <span class="transaction-history-search-label">任意</span>
-                      <input type="text" id="transaction-history-free-text" class="transaction-history-free-text-input" placeholder="項目名・内容の部分一致" aria-label="任意検索" />
-                    </div>
-                  </div>
+                      <div class="transaction-history-search-row">
+                        <span class="transaction-history-search-label">タグ</span>
+                        <span id="transaction-history-tag-display" class="transaction-history-chosen-display" aria-live="polite"></span>
+                        <button type="button" class="btn-secondary" id="transaction-history-tag-btn">選択</button>
+                      </div>
+                      <div class="transaction-history-search-row">
+                        <span class="transaction-history-search-label">勘定項目</span>
+                        <span id="transaction-history-account-display" class="transaction-history-chosen-display" aria-live="polite"></span>
+                        <button type="button" class="btn-secondary" id="transaction-history-account-btn">選択</button>
+                      </div>
+                      <div class="transaction-history-search-row-group">
+                        <div class="transaction-history-search-row">
+                          <span class="transaction-history-search-label">金額</span>
+                          <input type="text" id="transaction-history-amount-min" class="transaction-history-amount-input" inputmode="numeric" placeholder="最小" aria-label="金額最小" />
+                          <span class="transaction-history-search-sep">～</span>
+                          <input type="text" id="transaction-history-amount-max" class="transaction-history-amount-input" inputmode="numeric" placeholder="最大" aria-label="金額最大" />
+                        </div>
+                        <div class="transaction-history-search-row">
+                          <span class="transaction-history-search-label">任意</span>
+                          <input type="text" id="transaction-history-free-text" class="transaction-history-free-text-input" placeholder="項目名・内容の部分一致" aria-label="任意検索" />
+                        </div>
+                      </div>
                     </div>
                   </details>
                 </section>
@@ -191,17 +207,17 @@
                   </div>
                   <div id="transaction-history-list-panel" class="transaction-history-panel" role="tabpanel" aria-labelledby="transaction-history-tab-list">
                     <table class="data-table" id="transaction-history-table" aria-label="収支一覧">
-                        <thead>
-                          <tr>
-                            <th>日付</th>
-                            <th class="data-table-icon-col" aria-label="カテゴリー">カテゴリー</th>
-                            <th>金額</th>
-                            <th>項目名</th>
-                            <th class="data-table-icon-col" aria-label="勘定項目">勘定項目</th>
-                            <th>予定終了日</th>
-                          </tr>
-                        </thead>
-                        <tbody id="transaction-history-tbody"></tbody>
+                      <thead>
+                        <tr>
+                          <th>日付</th>
+                          <th class="data-table-icon-col" aria-label="カテゴリー">カテゴリー</th>
+                          <th>金額</th>
+                          <th>項目名</th>
+                          <th class="data-table-icon-col" aria-label="勘定項目">勘定項目</th>
+                          <th>予定終了日</th>
+                        </tr>
+                      </thead>
+                      <tbody id="transaction-history-tbody"></tbody>
                     </table>
                   </div>
                   <div id="transaction-history-weekly-panel" class="transaction-history-panel transaction-history-panel--hidden" role="tabpanel" aria-labelledby="transaction-history-tab-weekly">
@@ -214,7 +230,7 @@
               </div>
             </div>
 
-            <!-- プロフィール -->
+            <!-- ビュー: プロフィール -->
             <div id="view-profile" class="main-view main-view--hidden" data-view="profile">
               <div class="view-body view-body--form">
                 <form id="profile-form" class="settings-form profile-form">
@@ -238,7 +254,7 @@
               </div>
             </div>
 
-            <!-- デザイン（カラーパレット） -->
+            <!-- ビュー: デザイン（カラーパレット） -->
             <div id="view-design" class="main-view main-view--hidden" data-view="design">
               <div class="design-view-layout">
                 <div class="view-body view-body--form">
@@ -274,7 +290,7 @@
             </div>
           </main>
 
-          <!-- ----- マスタ追加モーダル ----- -->
+          <!-- マスタ追加・編集モーダル（勘定 / カテゴリー / タグ） -->
           <div id="account-modal-overlay" class="modal-overlay" aria-hidden="true" data-modal="account">
             <div class="modal-content">
               <form id="account-form" class="data-form" data-form="account">
@@ -291,11 +307,40 @@
                   <label for="account-form-name">勘定項目名</label>
                   <input id="account-form-name" type="text" required maxlength="100" placeholder="勘定項目名を入力" />
                 </div>
+                <div class="form-row account-form-permissions-row">
+                  <label for="account-form-permission-list">権限ユーザー</label>
+                  <div id="account-form-permission-list" class="account-form-permission-list"></div>
+                </div>
                 <div class="form-actions">
                   <button type="submit" class="btn-primary">追加</button>
+                  <button type="button" class="btn-secondary" id="account-form-permission-add">権限追加</button>
                   <button type="button" class="btn-secondary" id="account-form-cancel">キャンセル</button>
                 </div>
               </form>
+            </div>
+          </div>
+
+          <!-- 勘定項目：権限ユーザー管理 -->
+          <div id="account-permission-users-overlay" class="modal-overlay" aria-hidden="true">
+            <div class="modal-content account-permission-users-modal" role="dialog" aria-labelledby="account-permission-users-title" aria-modal="true">
+              <h2 id="account-permission-users-title" class="account-permission-users-title">権限ユーザー</h2>
+              <div id="account-permission-users-list" class="account-permission-users-list"></div>
+              <div class="account-permission-users-actions">
+                <button type="button" class="btn-primary" id="account-permission-users-add">権限追加</button>
+                <button type="button" class="btn-secondary" id="account-permission-users-close">閉じる</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 勘定項目：ユーザー選択（権限追加時） -->
+          <div id="account-form-user-picker-overlay" class="modal-overlay" aria-hidden="true">
+            <div class="modal-content account-form-user-picker-modal" role="dialog" aria-labelledby="account-form-user-picker-title" aria-modal="true" style="--icon-check: url(/icon/circle-check-solid-full.svg);">
+              <h2 id="account-form-user-picker-title" class="account-form-user-picker-title">ユーザーを選択</h2>
+              <div id="account-form-user-picker-list" class="account-form-user-picker-list"></div>
+              <div class="form-actions">
+                <button type="button" class="btn-primary" id="account-form-user-picker-apply">設定</button>
+                <button type="button" class="btn-secondary" id="account-form-user-picker-close">閉じる</button>
+              </div>
             </div>
           </div>
 
@@ -361,7 +406,43 @@
             </div>
           </div>
 
-          <!-- ----- フッター ----- -->
+          <!-- 収支履歴検索：選択モーダル（カテゴリー / タグ / 勘定項目） -->
+          <div id="transaction-history-category-select-overlay" class="modal-overlay" aria-hidden="true">
+            <div class="modal-content transaction-history-select-modal" role="dialog" aria-labelledby="transaction-history-category-select-title" aria-modal="true">
+              <h2 id="transaction-history-category-select-title" class="transaction-history-select-title">カテゴリーを選択</h2>
+              <div id="transaction-history-category-select-list" class="transaction-history-select-list"></div>
+              <div class="transaction-history-select-actions">
+                <button type="button" class="btn-secondary" id="transaction-history-category-select-clear">全解除</button>
+                <button type="button" class="btn-primary" id="transaction-history-category-select-apply">反映</button>
+              </div>
+            </div>
+          </div>
+
+
+          <div id="transaction-history-tag-select-overlay" class="modal-overlay" aria-hidden="true">
+            <div class="modal-content transaction-history-select-modal" role="dialog" aria-labelledby="transaction-history-tag-select-title" aria-modal="true">
+              <h2 id="transaction-history-tag-select-title" class="transaction-history-select-title">タグを選択</h2>
+              <div id="transaction-history-tag-select-list" class="transaction-history-select-list"></div>
+              <div class="transaction-history-select-actions">
+                <button type="button" class="btn-secondary" id="transaction-history-tag-select-clear">全解除</button>
+                <button type="button" class="btn-primary" id="transaction-history-tag-select-apply">反映</button>
+              </div>
+            </div>
+          </div>
+
+
+          <div id="transaction-history-account-select-overlay" class="modal-overlay" aria-hidden="true">
+            <div class="modal-content transaction-history-select-modal" role="dialog" aria-labelledby="transaction-history-account-select-title" aria-modal="true">
+              <h2 id="transaction-history-account-select-title" class="transaction-history-select-title">勘定項目を選択</h2>
+              <div id="transaction-history-account-select-list" class="transaction-history-select-list"></div>
+              <div class="transaction-history-select-actions">
+                <button type="button" class="btn-secondary" id="transaction-history-account-select-clear">全解除</button>
+                <button type="button" class="btn-primary" id="transaction-history-account-select-apply">反映</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- フッターナビ -->
           <footer class="app-footer">
             <div class="app-footer-spacer"></div>
             <button type="button" class="btn-footer-nav" id="footer-home-btn">ホーム</button>
@@ -375,7 +456,7 @@
           </footer>
         </div>
 
-        <!-- ----- サイドバー ----- -->
+        <!-- サイドバー -->
         <aside class="app-sidebar" id="app-sidebar" aria-label="サイドバー" aria-hidden="true">
           <div class="sidebar-panel sidebar-panel-menu" id="sidebar-panel-menu">
             <div class="sidebar-accordion">
@@ -422,7 +503,7 @@
         </aside>
       </div>
 
-      <!-- ----- 色・アイコンピッカーモーダル ----- -->
+      <!-- 色・アイコンピッカー（共通モーダル） -->
       <div id="color-icon-picker-overlay" class="modal-overlay" aria-hidden="true">
         <div class="modal-content modal-content--picker" onclick="event.stopPropagation()">
           <h2 class="picker-title">色・アイコンを選択</h2>

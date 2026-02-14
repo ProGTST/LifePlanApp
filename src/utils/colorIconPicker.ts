@@ -130,6 +130,7 @@ export function openColorIconPicker(
   });
 
   function close() {
+    if (overlay?.contains(document.activeElement)) (document.activeElement as HTMLElement)?.blur();
     overlay?.classList.remove("is-visible");
     overlay?.setAttribute("aria-hidden", "true");
     resolveApply = null;

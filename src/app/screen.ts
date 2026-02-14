@@ -38,6 +38,11 @@ export function showMainView(viewId: string): void {
   if (!container) return;
 
   const previousView = currentView;
+  // 編集中のセル（contenteditable 等）の blur を発生させ、変更を state に反映してから保存する
+  const active = document.activeElement as HTMLElement | null;
+  if (active?.isContentEditable || active?.tagName === "INPUT" || active?.tagName === "SELECT" || active?.tagName === "TEXTAREA") {
+    active.blur();
+  }
   leaveSaveHandlers[previousView]?.();
 
   setCurrentView(viewId);
@@ -78,6 +83,8 @@ export function showMainView(viewId: string): void {
 
   const isProfileOrDesign = viewId === "profile" || viewId === "design";
   const isMasterListOnly = showFooterNav && !isProfileOrDesign;
+  const isTransactionView =
+    viewId === "transaction-history" || viewId === "transaction-entry" || viewId === "transaction-analysis";
   const footerHomeBtn = document.getElementById("footer-home-btn");
   const footerScheduleBtn = document.getElementById("footer-schedule-btn");
   const footerHistoryBtn = document.getElementById("footer-history-btn");
@@ -86,7 +93,7 @@ export function showMainView(viewId: string): void {
   const footerMenuBtn = document.getElementById("footer-menu-btn");
   const footerSettingsBtn = document.getElementById("footer-settings-btn");
   const footerBackBtn = document.getElementById("footer-back-btn");
-  if (footerHomeBtn) footerHomeBtn.classList.toggle("is-visible", showFooterNav);
+  if (footerHomeBtn) footerHomeBtn.classList.toggle("is-visible", showFooterNav || isTransactionView);
   if (footerScheduleBtn) footerScheduleBtn.classList.toggle("is-visible", isMasterListOnly);
   if (footerHistoryBtn)
     footerHistoryBtn.classList.toggle(
@@ -105,8 +112,6 @@ export function showMainView(viewId: string): void {
     );
   if (footerMenuBtn) footerMenuBtn.classList.toggle("is-visible", isProfileOrDesign);
   if (footerSettingsBtn) footerSettingsBtn.classList.toggle("is-visible", isProfileOrDesign);
-  const isTransactionView =
-    viewId === "transaction-history" || viewId === "transaction-entry" || viewId === "transaction-analysis";
   if (footerBackBtn) footerBackBtn.classList.toggle("is-visible", showFooterNav || isTransactionView);
 
   viewHandlers[viewId]?.();
