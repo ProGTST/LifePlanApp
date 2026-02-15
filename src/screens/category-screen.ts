@@ -23,7 +23,7 @@ import {
   createDragHandleCell,
   attachNameCellBehavior,
 } from "../utils/tableCells.ts";
-import { getCategoryList, setCategoryList as persistCategoryList } from "../utils/storage.ts";
+import { setCategoryList as persistCategoryList } from "../utils/storage.ts";
 import { setCategoryDirty } from "../utils/csvDirty.ts";
 import { registerViewHandler } from "../app/screen";
 import { openColorIconPicker } from "../utils/colorIconPicker.ts";
@@ -108,17 +108,6 @@ function sortCategoryListByTypeAndOrder(list: CategoryRow[]): void {
 }
 
 async function fetchCategoryList(): Promise<CategoryRow[]> {
-  const stored = getCategoryList();
-  if (stored != null && Array.isArray(stored) && stored.length > 0) {
-    const list = stored as CategoryRow[];
-    list.forEach((r, i) => {
-      if (r.SORT_ORDER === undefined || r.SORT_ORDER === "") r.SORT_ORDER = String(i);
-      if (r.COLOR === undefined) r.COLOR = "";
-      if (r.ICON_PATH === undefined) r.ICON_PATH = "";
-    });
-    sortCategoryListByTypeAndOrder(list);
-    return list;
-  }
   const { header, rows } = await fetchCsv("/data/CATEGORY.csv");
   if (header.length === 0) return [];
   const list: CategoryRow[] = [];
@@ -130,6 +119,7 @@ async function fetchCategoryList(): Promise<CategoryRow[]> {
     list.push(row);
   }
   sortCategoryListByTypeAndOrder(list);
+  persistCategoryList(list);
   return list;
 }
 

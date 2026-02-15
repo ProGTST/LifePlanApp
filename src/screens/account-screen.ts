@@ -24,7 +24,7 @@ import {
   createDragHandleCell,
   attachNameCellBehavior,
 } from "../utils/tableCells.ts";
-import { getAccountList, setAccountList as persistAccountList } from "../utils/storage.ts";
+import { setAccountList as persistAccountList } from "../utils/storage.ts";
 import { setAccountDirty } from "../utils/csvDirty.ts";
 import { registerViewHandler } from "../app/screen";
 import { openColorIconPicker } from "../utils/colorIconPicker.ts";
@@ -51,16 +51,6 @@ function nowStr(): string {
 }
 
 async function fetchAccountList(): Promise<AccountRow[]> {
-  const stored = getAccountList();
-  if (stored != null && Array.isArray(stored) && stored.length > 0) {
-    const list = stored as AccountRow[];
-    list.forEach((r, i) => {
-      if (r.SORT_ORDER === undefined || r.SORT_ORDER === "") r.SORT_ORDER = String(i);
-      if (r.COLOR === undefined) r.COLOR = "";
-      if (r.ICON_PATH === undefined) r.ICON_PATH = "";
-    });
-    return list;
-  }
   const { header, rows } = await fetchCsv("/data/ACCOUNT.csv");
   if (header.length === 0) return [];
   const list: AccountRow[] = [];
@@ -71,6 +61,7 @@ async function fetchAccountList(): Promise<AccountRow[]> {
     if (row.ICON_PATH === undefined) row.ICON_PATH = "";
     list.push(row);
   }
+  persistAccountList(list);
   return list;
 }
 
@@ -85,9 +76,6 @@ async function fetchUserList(): Promise<UserRow[]> {
 }
 
 async function fetchAccountPermissionList(): Promise<AccountPermissionRow[]> {
-  const stored = getAccountPermissionList();
-  if (stored != null && Array.isArray(stored)) return stored as AccountPermissionRow[];
-  // キャッシュを無効化してディスクに保存した最新の CSV を読む（Tauri 保存後に表示されない問題対策）
   const { header, rows } = await fetchCsv("/data/ACCOUNT_PERMISSION.csv", { cache: "reload" });
   if (header.length === 0) return [];
   const list: AccountPermissionRow[] = [];

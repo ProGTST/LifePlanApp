@@ -1,2 +1,3 @@
 USER_ID,SEQ_NO,MENUBAR_BG,MENUBAR_FG,HEADER_BG,HEADER_FG,MAIN_BG,MAIN_FG,VIEW_BG,VIEW_FG,FOOTER_BG,FOOTER_FG,BUTTON_BG,BUTTON_FG,BASE_BG,BASE_FG,ACCENT_BG,ACCENT_FG
 coara,1,#2c2c2e,#ffffff,#ffffff,#1a1a1a,#f0f2f5,#1a1a1a,#ffffff,#1a1a1a,#ffffff,#666666,#646cff,#ffffff,#ffffff,#333333,#646cff,#ffffff
+testuser001,1,#8d5376,#ffffff,#ffffff,#1a1a1a,#f0f2f5,#1a1a1a,#ffffff,#1a1a1a,#ffffff,#666666,#ac628f,#ffffff,#ffffff,#333333,#ac628f,#ffffff

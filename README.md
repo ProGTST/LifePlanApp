@@ -87,6 +87,25 @@ npm run tauri build
 Remove-Item -Recurse -Force "$env:TEMP\tauri-life-plan-gant" -ErrorAction SilentlyContinue
 ```
 
+## 各画面の初回表示データの取得元
+
+画面遷移で初期表示するデータが **CSV（API 経由）** か **localStorage** かを画面ごとに整理しました。
+
+| 画面 | 取得元 | 備考 |
+|------|--------|------|
+| **ログイン** | CSV（API） | USER.csv でユーザー一覧を取得 |
+| **ホーム** | CSV（API） | USER.csv でユーザー一覧を取得 |
+| **勘定項目** | CSV（API） | 勘定一覧・権限一覧・ユーザー一覧は画面表示時に必ず API から取得 |
+| **カテゴリー** | CSV（API） | カテゴリー一覧は画面表示時に必ず API から取得 |
+| **タグ** | CSV（API） | タグ一覧は画面表示時に必ず API から取得 |
+| **収支記録** | CSV（API） | カテゴリー・勘定・取引・タグ等をすべて API から取得 |
+| **収支履歴** | CSV（API） | 取引・カテゴリー・タグ・勘定・権限・タグ管理をすべて API から取得 |
+| **プロフィール** | CSV（API） | USER.csv でユーザー一覧を取得 |
+| **デザイン** | **CSV（API）＋ localStorage** | パレット一覧は COLOR_PALETTE.csv。ログインユーザー用の適用値は localStorage のカラーパレットで上書き |
+
+- **CSV（API）**: `fetchCsv` → 実体は GET `/api/data/:filename`（Fastify サーバーが `public/data/*.csv` を返す）。
+- 勘定項目・カテゴリー・タグは、画面遷移・初期表示のたびに初回は必ず CSV（API）から取得します。取得後に編集内容は localStorage にキャッシュされ、保存時に API へ反映されます。
+
 ## プロジェクト構成
 
 - `src/` … フロントエンド（Vite + TypeScript）
