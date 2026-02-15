@@ -1,6 +1,6 @@
 import { currentUserId, currentView } from "../state";
 import { fetchCsv, rowToObject } from "../utils/csv";
-import { registerViewHandler } from "../app/screen";
+import { registerViewHandler, registerRefreshHandler } from "../app/screen";
 import { colorPaletteListToCsv } from "../utils/csvExport.ts";
 import { PALETTE_KEYS, CSS_VAR_MAP, DEFAULT_PALETTE } from "../constants/index";
 import { setColorPaletteDirty, clearColorPaletteDirty } from "../utils/csvDirty.ts";
@@ -81,8 +81,9 @@ const LABELS: Record<string, string> = {
   ACCENT_FG: "強調文字色",
 };
 
-async function fetchPaletteList(): Promise<PaletteRow[]> {
-  const { header, rows } = await fetchCsv("/data/COLOR_PALETTE.csv");
+async function fetchPaletteList(noCache = false): Promise<PaletteRow[]> {
+  const init = noCache ? { cache: "reload" as RequestCache } : undefined;
+  const { header, rows } = await fetchCsv("/data/COLOR_PALETTE.csv", init);
   if (header.length === 0) return [];
   const list: PaletteRow[] = [];
   for (const cells of rows) {
@@ -320,10 +321,11 @@ export function saveColorPaletteCsvOnNavigate(): Promise<void> {
 
 /**
  * COLOR_PALETTE.csv と localStorage からパレットを取得し、デザインフォームを描画する。表示キーを setDisplayedKeys に登録する。
+ * @param forceReloadFromCsv - true のときキャッシュを使わず CSV を再取得する（最新化ボタン用）
  * @returns Promise
  */
-export async function loadAndRenderDesign(): Promise<void> {
-  paletteList = await fetchPaletteList();
+export async function loadAndRenderDesign(forceReloadFromCsv = false): Promise<void> {
+  paletteList = await fetchPaletteList(forceReloadFromCsv);
   const stored = currentUserId ? getColorPalette(currentUserId) : null;
   if (stored) {
     const row = getOrCreateCurrentPalette();
@@ -369,6 +371,7 @@ async function resetDesignToDefault(): Promise<void> {
  */
 export function initDesignView(): void {
   registerViewHandler("design", loadAndRenderDesign);
+  registerRefreshHandler("design", () => loadAndRenderDesign(true));
 
   document.getElementById("design-form")?.addEventListener("submit", async (e) => {
     e.preventDefault();

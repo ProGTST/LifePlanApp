@@ -30,7 +30,7 @@ import {
   getVersionConflictMessage,
 } from "../utils/csvVersionCheck.ts";
 import { setDisplayedKeys } from "../utils/csvWatch.ts";
-import { registerViewHandler } from "../app/screen";
+import { registerViewHandler, registerRefreshHandler } from "../app/screen";
 import { openColorIconPicker } from "../utils/colorIconPicker.ts";
 import { createIconWrap, applyColorIconToElement } from "../utils/iconWrap.ts";
 import { openOverlay, closeOverlay } from "../utils/overlay.ts";
@@ -140,10 +140,12 @@ function sortCategoryListByTypeAndOrder(list: CategoryRow[]): void {
 
 /**
  * CATEGORY.csv を取得し、カテゴリー行の配列に変換して返す。種別・SORT_ORDER でソート済み。
+ * @param noCache - true のときキャッシュを使わず再取得する（最新化ボタン用）
  * @returns Promise。カテゴリー行の配列
  */
-async function fetchCategoryList(): Promise<CategoryRow[]> {
-  const { header, rows } = await fetchCsv("/data/CATEGORY.csv");
+async function fetchCategoryList(noCache = false): Promise<CategoryRow[]> {
+  const init = noCache ? { cache: "reload" as RequestCache } : undefined;
+  const { header, rows } = await fetchCsv("/data/CATEGORY.csv", init);
   if (header.length === 0) return [];
   const list: CategoryRow[] = [];
   for (const cells of rows) {
@@ -415,10 +417,11 @@ async function deleteCategoryRow(categoryId: string): Promise<void> {
 
 /**
  * カテゴリー一覧を取得し、カテゴリーテーブルを描画する。表示キーを setDisplayedKeys に登録する。
+ * @param forceReloadFromCsv - true のときキャッシュを使わず CSV を再取得する（最新化ボタン用）
  * @returns Promise
  */
-export async function loadAndRenderCategoryList(): Promise<void> {
-  const list = await fetchCategoryList();
+export async function loadAndRenderCategoryList(forceReloadFromCsv = false): Promise<void> {
+  const list = await fetchCategoryList(forceReloadFromCsv);
   setCategoryListFull(list);
   setCategoryListLoaded(true);
   const sorted = categoryListFull.slice().sort((a, b) => sortOrderNum(a.SORT_ORDER, b.SORT_ORDER));
@@ -594,6 +597,7 @@ function updateCategoryViewButton(): void {
  */
 export function initCategoryView(): void {
   registerViewHandler("category", loadAndRenderCategoryList);
+  registerRefreshHandler("category", () => loadAndRenderCategoryList(true));
 
   document.querySelectorAll(".category-tab").forEach((btn) => {
     btn.addEventListener("click", () => {

@@ -30,7 +30,7 @@ import {
   getVersionConflictMessage,
 } from "../utils/csvVersionCheck.ts";
 import { setDisplayedKeys } from "../utils/csvWatch.ts";
-import { registerViewHandler } from "../app/screen";
+import { registerViewHandler, registerRefreshHandler } from "../app/screen";
 import { openColorIconPicker } from "../utils/colorIconPicker.ts";
 import { createIconWrap, applyColorIconToElement } from "../utils/iconWrap.ts";
 import { openOverlay, closeOverlay } from "../utils/overlay.ts";
@@ -38,10 +38,12 @@ import { ICON_DEFAULT_COLOR } from "../constants/colorPresets.ts";
 
 /**
  * TAG.csv を取得し、タグ行の配列に変換して返す。
+ * @param noCache - true のときキャッシュを使わず再取得する（最新化ボタン用）
  * @returns Promise。タグ行の配列
  */
-async function fetchTagList(): Promise<TagRow[]> {
-  const { header, rows } = await fetchCsv("/data/TAG.csv");
+async function fetchTagList(noCache = false): Promise<TagRow[]> {
+  const init = noCache ? { cache: "reload" as RequestCache } : undefined;
+  const { header, rows } = await fetchCsv("/data/TAG.csv", init);
   if (header.length === 0) return [];
   const list: TagRow[] = [];
   for (const cells of rows) {
@@ -233,10 +235,11 @@ async function deleteTagRow(tagId: string): Promise<void> {
 
 /**
  * タグ一覧を取得し、タグテーブルを描画する。表示キーを setDisplayedKeys に登録する。
+ * @param forceReloadFromCsv - true のときキャッシュを使わず CSV を再取得する（最新化ボタン用）
  * @returns Promise
  */
-export async function loadAndRenderTagList(): Promise<void> {
-  const list = await fetchTagList();
+export async function loadAndRenderTagList(forceReloadFromCsv = false): Promise<void> {
+  const list = await fetchTagList(forceReloadFromCsv);
   setTagListFull(list);
   setTagListLoaded(true);
   const sorted = tagListFull.slice().sort((a, b) => sortOrderNum(a.SORT_ORDER, b.SORT_ORDER));
@@ -342,6 +345,7 @@ function handleToggleDeleteMode(): void {
  */
 export function initTagView(): void {
   registerViewHandler("tag", loadAndRenderTagList);
+  registerRefreshHandler("tag", () => loadAndRenderTagList(true));
 
   document.getElementById("header-add-btn")?.addEventListener("click", () => {
     if (currentView === "tag") openTagModal();

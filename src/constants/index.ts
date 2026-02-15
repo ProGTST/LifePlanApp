@@ -23,6 +23,8 @@ export const VIEW_TITLES: Record<string, string> = {
   schedule: "スケジュール",
   calendar: "カレンダー",
   "transaction-history": "収支履歴",
+  "transaction-history-weekly": "カレンダー",
+  "transaction-history-calendar": "カレンダー",
   "transaction-entry": "収支記録",
   "transaction-analysis": "収支分析",
   account: "勘定項目",

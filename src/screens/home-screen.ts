@@ -2,7 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import type { UserRow } from "../types.ts";
 import { currentUserId } from "../state";
 import { fetchCsv, rowToObject } from "../utils/csv";
-import { registerViewHandler } from "../app/screen";
+import { registerViewHandler, registerRefreshHandler } from "../app/screen";
 import { PROFILE_ICON_DEFAULT_COLOR } from "../constants/colorPresets.ts";
 
 const PROFILE_NAME_LENGTH = 4;
@@ -23,10 +23,12 @@ function getDisplayNameAbbr(name: string): string {
 
 /**
  * USER.csv からユーザー一覧を取得する。
+ * @param noCache - true のときキャッシュを使わず再取得する（最新化ボタン用）
  * @returns Promise。UserRow の配列
  */
-async function fetchUserList(): Promise<UserRow[]> {
-  const { header, rows } = await fetchCsv("/data/USER.csv");
+async function fetchUserList(noCache = false): Promise<UserRow[]> {
+  const init = noCache ? { cache: "reload" as RequestCache } : undefined;
+  const { header, rows } = await fetchCsv("/data/USER.csv", init);
   if (header.length === 0) return [];
   const list: UserRow[] = [];
   for (const cells of rows) {
@@ -38,14 +40,15 @@ async function fetchUserList(): Promise<UserRow[]> {
 
 /**
  * ヘッダー左のプロフィールアイコン・表示名を描画する（ホーム表示時に呼ばれる）。
+ * @param forceReloadFromCsv - true のときキャッシュを使わず USER.csv を再取得する（最新化ボタン用）
  * @returns Promise
  */
-async function renderHeaderProfile(): Promise<void> {
+async function renderHeaderProfile(forceReloadFromCsv = false): Promise<void> {
   const iconEl = document.getElementById("header-profile-icon");
   const nameEl = document.getElementById("header-profile-name");
   if (!iconEl || !nameEl) return;
 
-  const userList = await fetchUserList();
+  const userList = await fetchUserList(forceReloadFromCsv);
   const user = userList.find((r) => r.ID === currentUserId);
   const name = (user?.NAME ?? "").trim();
   const iconPath = (user?.ICON_PATH ?? "").trim();
@@ -101,6 +104,7 @@ export function initHomeScreen(): void {
   registerViewHandler("home", () => {
     renderHeaderProfile();
   });
+  registerRefreshHandler("home", () => renderHeaderProfile(true));
 
   greetInputEl = document.querySelector("#greet-input");
   greetMsgEl = document.querySelector("#greet-msg");

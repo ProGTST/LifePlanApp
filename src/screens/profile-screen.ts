@@ -1,7 +1,7 @@
 import type { UserRow } from "../types.ts";
 import { currentUserId, currentView } from "../state";
 import { fetchCsv, rowToObject } from "../utils/csv";
-import { registerViewHandler } from "../app/screen";
+import { registerViewHandler, registerRefreshHandler } from "../app/screen";
 import { userListToCsv } from "../utils/csvExport.ts";
 import { PROFILE_ICON_DEFAULT_COLOR } from "../constants/colorPresets.ts";
 import { openColorIconPicker } from "../utils/colorIconPicker.ts";
@@ -20,10 +20,12 @@ let userList: UserRow[] = [];
 
 /**
  * USER.csv を取得し、ユーザー行の配列に変換して返す。
+ * @param noCache - true のときキャッシュを使わず再取得する（最新化ボタン用）
  * @returns Promise。ユーザー行の配列
  */
-async function fetchUserList(): Promise<UserRow[]> {
-  const { header, rows } = await fetchCsv("/data/USER.csv");
+async function fetchUserList(noCache = false): Promise<UserRow[]> {
+  const init = noCache ? { cache: "reload" as RequestCache } : undefined;
+  const { header, rows } = await fetchCsv("/data/USER.csv", init);
   if (header.length === 0) return [];
   const list: UserRow[] = [];
   for (const cells of rows) {
@@ -256,10 +258,11 @@ export function saveUserCsvOnNavigate(): Promise<void> {
 
 /**
  * USER.csv からユーザー一覧を取得し、プロフィールフォームを描画する。表示キーを setDisplayedKeys に登録する。
+ * @param forceReloadFromCsv - true のときキャッシュを使わず CSV を再取得する（最新化ボタン用）
  * @returns Promise
  */
-export async function loadAndRenderProfile(): Promise<void> {
-  userList = await fetchUserList();
+export async function loadAndRenderProfile(forceReloadFromCsv = false): Promise<void> {
+  userList = await fetchUserList(forceReloadFromCsv);
   setDisplayedKeys("profile", currentUserId ? [currentUserId] : []);
   renderProfileForm();
 }
@@ -270,6 +273,7 @@ export async function loadAndRenderProfile(): Promise<void> {
  */
 export function initProfileView(): void {
   registerViewHandler("profile", loadAndRenderProfile);
+  registerRefreshHandler("profile", () => loadAndRenderProfile(true));
 
   document.getElementById("header-save-btn")?.addEventListener("click", async () => {
     if (currentView !== "profile") return;

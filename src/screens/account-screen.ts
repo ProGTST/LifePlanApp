@@ -32,7 +32,7 @@ import {
   getVersionConflictMessage,
 } from "../utils/csvVersionCheck.ts";
 import { setDisplayedKeys } from "../utils/csvWatch.ts";
-import { registerViewHandler } from "../app/screen";
+import { registerViewHandler, registerRefreshHandler } from "../app/screen";
 import { openColorIconPicker } from "../utils/colorIconPicker.ts";
 import { createIconWrap, applyColorIconToElement } from "../utils/iconWrap.ts";
 import { openOverlay, closeOverlay } from "../utils/overlay.ts";
@@ -59,10 +59,12 @@ function getAccountPermissionRows(): AccountPermissionRow[] {
 
 /**
  * ACCOUNT.csv を取得し、勘定行の配列に変換して返す。
+ * @param noCache - true のときキャッシュを使わず再取得する（最新化ボタン用）
  * @returns Promise。勘定行の配列
  */
-async function fetchAccountList(): Promise<AccountRow[]> {
-  const { header, rows } = await fetchCsv("/data/ACCOUNT.csv");
+async function fetchAccountList(noCache = false): Promise<AccountRow[]> {
+  const init = noCache ? { cache: "reload" as RequestCache } : undefined;
+  const { header, rows } = await fetchCsv("/data/ACCOUNT.csv", init);
   if (header.length === 0) return [];
   const list: AccountRow[] = [];
   for (const cells of rows) {
@@ -425,10 +427,11 @@ function getDisplayedAccountIds(accountListForView: { ID: string }[]): string[] 
 
 /**
  * 勘定・勘定権限を取得し、勘定一覧テーブルを描画する。表示キーを setDisplayedKeys に登録する。
+ * @param forceReloadFromCsv - true のときキャッシュを使わず CSV を再取得する（最新化ボタン用）
  * @returns Promise
  */
-export async function loadAndRenderAccountList(): Promise<void> {
-  const [list] = await Promise.all([fetchAccountList(), fetchAccountPermissionList()]);
+export async function loadAndRenderAccountList(forceReloadFromCsv = false): Promise<void> {
+  const [list] = await Promise.all([fetchAccountList(forceReloadFromCsv), fetchAccountPermissionList()]);
   setAccountListFull(list);
   setAccountListLoaded(true);
   let next = currentUserId
@@ -872,6 +875,7 @@ function handleToggleDeleteMode(): void {
  */
 export function initAccountView(): void {
   registerViewHandler("account", loadAndRenderAccountList);
+  registerRefreshHandler("account", () => loadAndRenderAccountList(true));
 
   document.getElementById("header-add-btn")?.addEventListener("click", () => {
     if (currentView === "account") openAccountModal();

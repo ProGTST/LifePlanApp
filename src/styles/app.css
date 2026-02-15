@@ -413,7 +413,6 @@
 #app .btn-header-save,
 #app .btn-header-default,
 #app #transaction-history-reset-conditions-btn,
-#app #transaction-history-refresh-btn,
 #app #header-transaction-entry-submit,
 #app #header-transaction-entry-copy-as-new,
 #app #header-transaction-entry-reset,
@@ -433,7 +432,6 @@
 #app .btn-header-save.is-visible,
 #app .btn-header-default.is-visible,
 #app #transaction-history-reset-conditions-btn.is-visible,
-#app #transaction-history-refresh-btn.is-visible,
 #app #header-transaction-entry-submit.is-visible,
 #app #header-transaction-entry-copy-as-new.is-visible,
 #app #header-transaction-entry-reset.is-visible,
@@ -535,6 +533,11 @@
 
 .view-body--form {
   max-width: 32rem;
+}
+
+.calendar-view-message {
+  margin: 0 0 1rem;
+  color: var(--color-view-fg, #1a1a1a);
 }
 
 .settings-form .form-row {
@@ -2247,6 +2250,11 @@
 }
 
 /* ----- 収支履歴 ----- */
+/* 検索条件と収支履歴・カレンダー画面の view-body の間に余白 */
+#view-transaction-history > .view-body,
+#view-transaction-calendar > .view-body {
+  margin-top: 1rem;
+}
 #view-transaction-history .view-body + .view-body {
   margin-top: 1rem;
 }
@@ -2340,6 +2348,11 @@
 /* 日付欄のラベル幅を金額欄と同じに */
 .transaction-history-search-row:has(.transaction-history-date-input) .transaction-history-search-label {
   flex: 0 0 4.5rem;
+}
+
+/* カレンダーメニューから遷移したときは検索条件の日付行を非表示 */
+#app .transaction-history-search-row.transaction-history-search-row--hidden {
+  display: none !important;
 }
 
 /* 任意欄のラベル幅を小さく */
@@ -2563,6 +2576,10 @@
   display: flex;
 }
 
+.transaction-history-tabs-row.transaction-history-tabs-row--hidden {
+  display: none !important;
+}
+
 .transaction-history-tabs {
   display: flex;
   gap: 0.25rem;
@@ -2619,6 +2636,10 @@
   background: var(--color-button-bg);
   color: var(--color-button-fg);
   border-color: var(--color-button-bg);
+}
+
+#app .transaction-history-tab.transaction-history-tab--hidden {
+  display: none !important;
 }
 
 .transaction-history-panel--hidden {

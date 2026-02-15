@@ -24,7 +24,7 @@ import {
   updateCurrentMenuItem,
   openSidebarPanel,
 } from "./app/sidebar";
-import { showMainView } from "./app/screen";
+import { showMainView, triggerRefreshFromCsv } from "./app/screen";
 import { initHomeScreen } from "./screens/home-screen";
 import { initAccountView } from "./screens/account-screen";
 import { initCategoryView } from "./screens/category-screen";
@@ -50,6 +50,11 @@ function initAppScreen(): void {
   initTransactionHistoryView();
   initTransactionEntryView();
 
+  /* メニューバー・データ最新化: 常に表示。押下で現在画面の CSV 再取得・再描画 */
+  document.getElementById("menubar-refresh-btn")?.addEventListener("click", () => {
+    triggerRefreshFromCsv();
+  });
+
   /* フッター・ホーム / スケジュール / 収支履歴: メニュー遷移として該当画面へ */
   function navigateTo(view: string): void {
     showMainView(view);
@@ -60,6 +65,7 @@ function initAppScreen(): void {
   document.getElementById("footer-home-btn")?.addEventListener("click", () => navigateTo("home"));
   document.getElementById("footer-schedule-btn")?.addEventListener("click", () => navigateTo("schedule"));
   document.getElementById("footer-history-btn")?.addEventListener("click", () => navigateTo("transaction-history"));
+  document.getElementById("calendar-view-to-history-btn")?.addEventListener("click", () => navigateTo("transaction-history"));
   document.getElementById("footer-entry-btn")?.addEventListener("click", () => {
     setTransactionEntryEditId(null);
     setTransactionEntryViewOnly(false);

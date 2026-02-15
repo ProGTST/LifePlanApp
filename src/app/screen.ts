@@ -5,9 +5,11 @@ import {
   VIEW_TITLES,
   MASTER_LIST_VIEW_IDS,
 } from "../constants/index";
-import { currentView, setCurrentView } from "../state";
+import { currentView, setCurrentView, setTransactionHistoryInitialTab } from "../state";
 
 const viewHandlers: Record<string, () => void> = {};
+/** メニューバーの「データ最新化」押下時に呼ぶハンドラ。viewId -> fn（CSV から再取得して再描画） */
+const refreshHandlers: Record<string, () => void> = {};
 /** 画面遷移時（離脱時）に呼ぶ保存処理。viewId -> fn */
 const leaveSaveHandlers: Record<string, () => void> = {};
 
@@ -29,6 +31,29 @@ export function registerLeaveSaveHandler(viewId: string, fn: () => void): void {
  */
 export function registerViewHandler(viewId: string, fn: () => void): void {
   viewHandlers[viewId] = fn;
+}
+
+/**
+ * 指定ビューでメニューバー「データ最新化」押下時に呼ぶハンドラを登録する。
+ * @param viewId - ビュー ID
+ * @param fn - CSV から再取得して再描画する関数
+ * @returns なし
+ */
+export function registerRefreshHandler(viewId: string, fn: () => void): void {
+  refreshHandlers[viewId] = fn;
+}
+
+/**
+ * 現在のビュー用のデータ最新化を実行する。登録されていれば refresh ハンドラ、なければ view ハンドラを呼ぶ。
+ * @returns なし
+ */
+export function triggerRefreshFromCsv(): void {
+  const refreshFn = refreshHandlers[currentView];
+  if (refreshFn) {
+    refreshFn();
+  } else {
+    viewHandlers[currentView]?.();
+  }
 }
 
 /**
@@ -69,11 +94,24 @@ export function showMainView(viewId: string): void {
 
   setCurrentView(viewId);
 
+  const isTransactionHistorySubView =
+    viewId === "transaction-history-weekly" || viewId === "transaction-history-calendar";
+  if (isTransactionHistorySubView) {
+    setTransactionHistoryInitialTab(viewId === "transaction-history-weekly" ? "weekly" : "calendar");
+  }
+  const effectiveViewId = isTransactionHistorySubView ? "transaction-history-calendar" : viewId;
+
   container.querySelectorAll(".main-view").forEach((el) => {
     const v = el as HTMLElement;
-    const isTarget = v.dataset.view === viewId || v.id === viewId;
+    const isTarget = v.dataset.view === effectiveViewId || v.id === `view-${effectiveViewId}`;
     v.classList.toggle("main-view--hidden", !isTarget);
   });
+
+  const transactionHistoryCommon = document.getElementById("transaction-history-common");
+  if (transactionHistoryCommon) {
+    const showCommon = viewId === "transaction-history" || isTransactionHistorySubView;
+    transactionHistoryCommon.classList.toggle("main-view--hidden", !showCommon);
+  }
 
   const menubarTitleEl = document.getElementById("menubar-title");
   if (menubarTitleEl) menubarTitleEl.textContent = VIEW_TITLES[viewId] ?? viewId;
@@ -94,9 +132,11 @@ export function showMainView(viewId: string): void {
   if (headerDefaultBtn) headerDefaultBtn.classList.toggle("is-visible", viewId === "design");
 
   const headerResetConditionsBtn = document.getElementById("transaction-history-reset-conditions-btn");
-  if (headerResetConditionsBtn) headerResetConditionsBtn.classList.toggle("is-visible", viewId === "transaction-history");
-  const headerRefreshBtn = document.getElementById("transaction-history-refresh-btn");
-  if (headerRefreshBtn) headerRefreshBtn.classList.toggle("is-visible", viewId === "transaction-history");
+  if (headerResetConditionsBtn)
+    headerResetConditionsBtn.classList.toggle(
+      "is-visible",
+      viewId === "transaction-history" || isTransactionHistorySubView
+    );
 
   const headerTransactionEntrySubmit = document.getElementById("header-transaction-entry-submit");
   if (headerTransactionEntrySubmit) headerTransactionEntrySubmit.classList.toggle("is-visible", viewId === "transaction-entry");
@@ -127,7 +167,11 @@ export function showMainView(viewId: string): void {
   const isProfileOrDesign = viewId === "profile" || viewId === "design";
   const isMasterListOnly = showFooterNav && !isProfileOrDesign;
   const isTransactionView =
-    viewId === "transaction-history" || viewId === "transaction-entry" || viewId === "transaction-analysis";
+    viewId === "transaction-history" ||
+    viewId === "transaction-history-weekly" ||
+    viewId === "transaction-history-calendar" ||
+    viewId === "transaction-entry" ||
+    viewId === "transaction-analysis";
   const footerHomeBtn = document.getElementById("footer-home-btn");
   const footerScheduleBtn = document.getElementById("footer-schedule-btn");
   const footerHistoryBtn = document.getElementById("footer-history-btn");
@@ -137,25 +181,30 @@ export function showMainView(viewId: string): void {
   const footerSettingsBtn = document.getElementById("footer-settings-btn");
   const footerBackBtn = document.getElementById("footer-back-btn");
   if (footerHomeBtn) footerHomeBtn.classList.toggle("is-visible", showFooterNav || isTransactionView);
-  if (footerScheduleBtn) footerScheduleBtn.classList.toggle("is-visible", isMasterListOnly);
+  if (footerScheduleBtn)
+    footerScheduleBtn.classList.toggle("is-visible", isMasterListOnly || isTransactionHistorySubView);
   if (footerHistoryBtn)
     footerHistoryBtn.classList.toggle(
       "is-visible",
-      isMasterListOnly || viewId === "transaction-entry" || viewId === "transaction-analysis"
+      isMasterListOnly ||
+        viewId === "transaction-entry" ||
+        viewId === "transaction-analysis" ||
+        isTransactionHistorySubView
     );
   if (footerEntryBtn)
     footerEntryBtn.classList.toggle(
       "is-visible",
-      viewId === "transaction-history" || viewId === "transaction-analysis"
+      (viewId === "transaction-history" || viewId === "transaction-analysis") && !isTransactionHistorySubView
     );
   if (footerAnalysisBtn)
     footerAnalysisBtn.classList.toggle(
       "is-visible",
-      viewId === "transaction-history" || viewId === "transaction-entry"
+      (viewId === "transaction-history" || viewId === "transaction-entry") && !isTransactionHistorySubView
     );
   if (footerMenuBtn) footerMenuBtn.classList.toggle("is-visible", isProfileOrDesign);
   if (footerSettingsBtn) footerSettingsBtn.classList.toggle("is-visible", isProfileOrDesign);
   if (footerBackBtn) footerBackBtn.classList.toggle("is-visible", showFooterNav || isTransactionView);
 
-  viewHandlers[viewId]?.();
+  const handlerViewId = isTransactionHistorySubView ? "transaction-history" : viewId;
+  viewHandlers[handlerViewId]?.();
 }

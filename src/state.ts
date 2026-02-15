@@ -69,6 +69,18 @@ export function setSidebarOpenPanel(panel: string | null): void {
   sidebarOpenPanel = panel;
 }
 
+/** 収支履歴表示時に開くタブ（メニューから週カレンダー/月カレンダーで開いたとき用） */
+export let transactionHistoryInitialTab: "list" | "weekly" | "calendar" | null = null;
+
+/**
+ * 収支履歴表示時の初期タブを設定する。
+ * @param tab - "list" | "weekly" | "calendar" または null
+ * @returns なし
+ */
+export function setTransactionHistoryInitialTab(tab: "list" | "weekly" | "calendar" | null): void {
+  transactionHistoryInitialTab = tab;
+}
+
 /** 勘定項目：全件キャッシュ */
 export let accountListFull: AccountRow[] = [];
 

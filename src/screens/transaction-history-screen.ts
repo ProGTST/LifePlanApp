@@ -8,6 +8,7 @@ import type {
 } from "../types";
 import {
   currentUserId,
+  currentView,
   transactionList,
   setTransactionList,
   tagManagementList,
@@ -15,10 +16,12 @@ import {
   setTransactionEntryEditId,
   setTransactionEntryViewOnly,
   pushNavigation,
+  transactionHistoryInitialTab,
+  setTransactionHistoryInitialTab,
 } from "../state";
 import { setDisplayedKeys } from "../utils/csvWatch.ts";
 import { fetchCsv, rowToObject } from "../utils/csv";
-import { registerViewHandler, showMainView } from "../app/screen";
+import { registerViewHandler, registerRefreshHandler, showMainView } from "../app/screen";
 import { updateCurrentMenuItem } from "../app/sidebar";
 import { createIconWrap } from "../utils/iconWrap";
 import { openOverlay, closeOverlay } from "../utils/overlay.ts";
@@ -1317,6 +1320,25 @@ function renderCalendarPanel(): void {
 }
 
 /**
+ * 収支履歴・カレンダー共通の検索条件で、カレンダー画面のときは日付行を非表示にする。
+ * 収支履歴画面のときは一覧パネルの hidden を外す（カレンダーから戻った際に表示されなくなる不具合を防ぐ）。
+ * @returns なし
+ */
+function updateTransactionHistoryTabLayout(): void {
+  const fromCalendarMenu =
+    currentView === "transaction-history-weekly" || currentView === "transaction-history-calendar";
+  const dateRow = document.getElementById("transaction-history-date-row");
+  if (dateRow) {
+    dateRow.classList.toggle("transaction-history-search-row--hidden", fromCalendarMenu);
+    dateRow.setAttribute("aria-hidden", fromCalendarMenu ? "true" : "false");
+  }
+  if (currentView === "transaction-history") {
+    const listPanel = document.getElementById("transaction-history-list-panel");
+    listPanel?.classList.remove("transaction-history-panel--hidden");
+  }
+}
+
+/**
  * 収支履歴のタブ（一覧・週・カレンダー）を切り替え、該当パネルを表示する。
  * @param tabId - "list" | "weekly" | "calendar"
  * @returns なし
@@ -1357,17 +1379,17 @@ function switchTab(tabId: string): void {
 }
 
 /**
- * 計画・収支種別のフィルターボタンの表示を現在の選択状態に同期する（収支履歴画面内のボタンのみ）。
+ * 計画・収支種別のフィルターボタンの表示を現在の選択状態に同期する（共通検索エリア内のボタンのみ）。
  * @returns なし
  */
 function syncFilterButtons(): void {
-  const view = document.getElementById("view-transaction-history");
-  if (!view) return;
-  view.querySelectorAll(".transaction-history-filter-btn[data-status]").forEach((b) => {
+  const searchArea = document.getElementById("transaction-history-common");
+  if (!searchArea) return;
+  searchArea.querySelectorAll(".transaction-history-filter-btn[data-status]").forEach((b) => {
     const s = (b as HTMLButtonElement).dataset.status as "plan" | "actual";
     b.classList.toggle("is-active", filterStatus.includes(s));
   });
-  view.querySelectorAll(".transaction-history-filter-btn[data-type]").forEach((b) => {
+  searchArea.querySelectorAll(".transaction-history-filter-btn[data-type]").forEach((b) => {
     const t = (b as HTMLButtonElement).dataset.type as "income" | "expense" | "transfer";
     b.classList.toggle("is-active", filterType.includes(t));
   });
@@ -1765,6 +1787,7 @@ function resetConditions(): void {
  * @returns なし
  */
 function loadAndShow(forceReloadFromCsv = false): void {
+  updateTransactionHistoryTabLayout();
   syncFilterButtons();
   updateChosenDisplays();
   const dateFromEl = document.getElementById("transaction-history-date-from") as HTMLInputElement | null;
@@ -1802,13 +1825,19 @@ function loadAndShow(forceReloadFromCsv = false): void {
     permissionRows = permList;
     setTagManagementList(tagMgmt);
     renderList();
-    const activeTab = document.querySelector(".transaction-history-tab.is-active") as HTMLButtonElement | undefined;
-    if (activeTab?.dataset.tab === "weekly") {
-      renderWeeklyPanel();
-      if (selectedCalendarYM) renderCharts(selectedCalendarYM);
-    } else if (activeTab?.dataset.tab === "calendar") {
-      renderCalendarPanel();
-      if (selectedCalendarYM) renderCharts(selectedCalendarYM);
+    const initialTab = transactionHistoryInitialTab;
+    if (initialTab === "weekly" || initialTab === "calendar") {
+      setTransactionHistoryInitialTab(null);
+      switchTab(initialTab);
+    } else if (currentView === "transaction-history-weekly" || currentView === "transaction-history-calendar") {
+      const activeTab = document.querySelector(".transaction-history-tab.is-active") as HTMLButtonElement | undefined;
+      if (activeTab?.dataset.tab === "weekly") {
+        renderWeeklyPanel();
+        if (selectedCalendarYM) renderCharts(selectedCalendarYM);
+      } else if (activeTab?.dataset.tab === "calendar") {
+        renderCalendarPanel();
+        if (selectedCalendarYM) renderCharts(selectedCalendarYM);
+      }
     }
   });
 }
@@ -1828,12 +1857,12 @@ export function refreshTransactionHistory(): void {
  */
 export function initTransactionHistoryView(): void {
   registerViewHandler("transaction-history", loadAndShow);
+  registerRefreshHandler("transaction-history", () => loadAndShow(true));
+  registerRefreshHandler("transaction-history-weekly", () => loadAndShow(true));
+  registerRefreshHandler("transaction-history-calendar", () => loadAndShow(true));
 
   document.getElementById("transaction-history-reset-conditions-btn")?.addEventListener("click", () => {
     resetConditions();
-  });
-  document.getElementById("transaction-history-refresh-btn")?.addEventListener("click", () => {
-    loadAndShow(true);
   });
 
   document.querySelectorAll(".transaction-history-tab").forEach((btn) => {
@@ -1893,8 +1922,8 @@ export function initTransactionHistoryView(): void {
     renderList();
   });
 
-  const historyView = document.getElementById("view-transaction-history");
-  historyView?.querySelectorAll(".transaction-history-filter-btn[data-status]").forEach((btn) => {
+  const searchArea = document.getElementById("transaction-history-common");
+  searchArea?.querySelectorAll(".transaction-history-filter-btn[data-status]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const status = (btn as HTMLButtonElement).dataset.status as "plan" | "actual";
       if (filterStatus.includes(status)) {
@@ -1907,7 +1936,7 @@ export function initTransactionHistoryView(): void {
     });
   });
 
-  historyView?.querySelectorAll(".transaction-history-filter-btn[data-type]").forEach((btn) => {
+  searchArea?.querySelectorAll(".transaction-history-filter-btn[data-type]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const type = (btn as HTMLButtonElement).dataset.type as "income" | "expense" | "transfer";
       if (filterType.includes(type)) {
