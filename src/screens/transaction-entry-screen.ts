@@ -271,9 +271,10 @@ function renderTagChosenDisplay(): void {
   const el = document.getElementById("transaction-entry-tag-chosen");
   if (!el) return;
   el.innerHTML = "";
+  const tagSortOrderNum = (v: string | undefined): number => (v !== undefined && v !== "" ? Number(v) : 0);
   const sorted = tagRows
     .filter((t) => selectedTagIds.has(t.ID))
-    .sort((a, b) => (a.SORT_ORDER || "").localeCompare(b.SORT_ORDER || ""));
+    .sort((a, b) => tagSortOrderNum(a.SORT_ORDER) - tagSortOrderNum(b.SORT_ORDER));
   sorted.forEach((t) => {
     const chip = document.createElement("span");
     chip.className = "transaction-entry-tag-chip";
@@ -290,7 +291,8 @@ function openTransactionEntryTagModal(): void {
   const listEl = document.getElementById("transaction-entry-tag-select-list");
   if (!listEl) return;
   listEl.innerHTML = "";
-  const sorted = tagRows.slice().sort((a, b) => (a.SORT_ORDER || "").localeCompare(b.SORT_ORDER || ""));
+  const tagSortOrderNum = (v: string | undefined): number => (v !== undefined && v !== "" ? Number(v) : 0);
+  const sorted = tagRows.slice().sort((a, b) => tagSortOrderNum(a.SORT_ORDER) - tagSortOrderNum(b.SORT_ORDER));
   for (const row of sorted) {
     const item = createTagSelectItemRow(
       row.ID,
