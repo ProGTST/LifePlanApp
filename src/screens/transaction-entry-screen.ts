@@ -525,6 +525,11 @@ function updateTransactionEntryContinuousButtonVisibility(): void {
   btn.classList.toggle("is-on", continuousMode);
 }
 
+function updateTransactionEntryCopyAsNewButtonVisibility(): void {
+  const btn = document.getElementById("header-transaction-entry-copy-as-new");
+  if (btn) btn.classList.toggle("is-visible", !!editingTransactionId && !transactionEntryViewOnly);
+}
+
 /** 参照モード時: テキスト・入力・プルダウン・ボタンを readonly / disabled にする */
 function setTransactionEntryReadonly(readonly: boolean): void {
   const form = document.getElementById("transaction-entry-form");
@@ -736,6 +741,7 @@ export function initTransactionEntryView(): void {
       updateTransactionEntryDeleteButtonVisibility();
       updateTransactionEntrySubmitButtonVisibility();
       updateTransactionEntryContinuousButtonVisibility();
+      updateTransactionEntryCopyAsNewButtonVisibility();
       setTransactionEntryReadonly(transactionEntryViewOnly);
     })();
   });
@@ -878,12 +884,61 @@ export function initTransactionEntryView(): void {
       editingTransactionId = null;
       resetForm();
       updateTransactionEntryDeleteButtonVisibility();
+      updateTransactionEntryCopyAsNewButtonVisibility();
       updateTransactionEntryContinuousButtonVisibility();
       pushNavigation("transaction-history");
       showMainView("transaction-history");
     } catch (err) {
       console.error(err);
       alert("削除に失敗しました。");
+    }
+  });
+  document.getElementById("header-transaction-entry-copy-as-new")?.addEventListener("click", async () => {
+    if (!editingTransactionId) return;
+    const form = document.getElementById("transaction-entry-form");
+    if (!(form instanceof HTMLFormElement)) return;
+    if (!isTauri()) {
+      alert("参照登録はアプリ起動時（Tauri）でのみ実行できます。");
+      return;
+    }
+    try {
+      const { nextId, rows } = await fetchTransactionRows(true);
+      const newRow = buildNewRow(form, nextId);
+      const allRows = [...rows.map((r) => ({ ...r } as Record<string, string>)), newRow];
+      const csv = transactionListToCsv(allRows);
+      await saveTransactionCsv(csv);
+      const newTransactionId = String(nextId);
+      if (selectedTagIds.size > 0) {
+        const { nextId: nextMgmtId, rows: mgmtRows } = await fetchTagManagementRows(true);
+        const now = nowStr();
+        const userId = currentUserId;
+        const newMgmtRows = [...mgmtRows.map((r) => ({ ...r } as Record<string, string>))];
+        let id = nextMgmtId;
+        for (const tagId of selectedTagIds) {
+          newMgmtRows.push({
+            ID: String(id),
+            REGIST_DATETIME: now,
+            REGIST_USER: userId,
+            UPDATE_DATETIME: now,
+            UPDATE_USER: userId,
+            TRANSACTION_ID: newTransactionId,
+            TAG_ID: tagId,
+          });
+          id += 1;
+        }
+        const mgmtCsv = tagManagementListToCsv(newMgmtRows);
+        await saveTagManagementCsv(mgmtCsv);
+      }
+      editingTransactionId = null;
+      resetForm();
+      updateTransactionEntryDeleteButtonVisibility();
+      updateTransactionEntrySubmitButtonVisibility();
+      updateTransactionEntryCopyAsNewButtonVisibility();
+      pushNavigation("transaction-history");
+      showMainView("transaction-history");
+    } catch (err) {
+      console.error(err);
+      alert("参照登録に失敗しました。");
     }
   });
 

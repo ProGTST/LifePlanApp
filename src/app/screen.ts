@@ -90,6 +90,10 @@ export function showMainView(viewId: string): void {
     viewOnlyNotice.classList.remove("is-visible");
     viewOnlyNotice.setAttribute("aria-hidden", "true");
   }
+  const headerTransactionEntryCopyAsNew = document.getElementById("header-transaction-entry-copy-as-new");
+  if (headerTransactionEntryCopyAsNew && viewId !== "transaction-entry") {
+    headerTransactionEntryCopyAsNew.classList.remove("is-visible");
+  }
 
   const menubarProfileArea = document.getElementById("menubar-profile-area");
   if (menubarProfileArea) {

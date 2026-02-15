@@ -415,6 +415,7 @@
 #app #transaction-history-reset-conditions-btn,
 #app #transaction-history-refresh-btn,
 #app #header-transaction-entry-submit,
+#app #header-transaction-entry-copy-as-new,
 #app #header-transaction-entry-reset,
 #app #header-transaction-entry-continuous,
 #app #header-transaction-entry-delete {
@@ -434,6 +435,7 @@
 #app #transaction-history-reset-conditions-btn.is-visible,
 #app #transaction-history-refresh-btn.is-visible,
 #app #header-transaction-entry-submit.is-visible,
+#app #header-transaction-entry-copy-as-new.is-visible,
 #app #header-transaction-entry-reset.is-visible,
 #app #header-transaction-entry-continuous.is-visible,
 #app #header-transaction-entry-delete.is-visible {
