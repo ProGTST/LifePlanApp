@@ -829,9 +829,7 @@ export function initTransactionEntryView(): void {
           await saveTagManagementCsv(mgmtCsv);
         }
         resetForm();
-        if (continuousMode) {
-          alert("保存しました。");
-        } else {
+        if (!continuousMode) {
           pushNavigation("transaction-history");
           showMainView("transaction-history");
         }
