@@ -1,17 +1,38 @@
 import { COLOR_PRESETS, ICON_DEFAULT_COLOR, CUSTOM_ICON_BASE_PATH } from "../constants/colorPresets.ts";
 
+/** アイコンフォルダ名 → ピッカー用サブタイトル表示名 */
+const CUSTOM_ICON_FOLDER_SUBTITLES: Record<string, string> = {
+  "01-money": "ウォレット",
+  "02-person": "人",
+  "03-life": "生活",
+  "04-building": "建物",
+  "04-buildings": "建物",
+  "05-documents": "資料",
+  "06-work": "仕事",
+  "07-vehicle": "乗り物",
+  "11-hobby": "趣味",
+  "12-sports": "スポーツ",
+  "13-foods": "食べ物",
+  "14-creatures": "生き物",
+  "15-weather": "天気",
+  "16-events": "イベント",
+  "16-evets": "イベント",
+  "99-others": "その他",
+};
+
 let resolveApply: ((color: string, iconPath: string) => void) | null = null;
 let customColorButtonsBound = false;
 
-/** public/icon/custom/icons.json からアイコン一覧を取得（毎回取得して全アイコンを表示） */
-export async function fetchCustomIconList(): Promise<string[]> {
+/** public/icon/custom/icons.json からフォルダ別アイコン一覧を取得（フォルダ名 -> ファイル名の配列） */
+export async function fetchCustomIconList(): Promise<Record<string, string[]>> {
   try {
     const res = await fetch(`${CUSTOM_ICON_BASE_PATH}/icons.json?t=${Date.now()}`);
-    if (!res.ok) return [];
-    const json = (await res.json()) as string[];
-    return Array.isArray(json) ? json : [];
+    if (!res.ok) return {};
+    const json = (await res.json()) as Record<string, string[]>;
+    if (json && typeof json === "object" && !Array.isArray(json)) return json;
+    return {};
   } catch {
-    return [];
+    return {};
   }
 }
 
@@ -99,34 +120,42 @@ export function openColorIconPicker(
   // 選択中アイコンパスの正規化（比較用）
   const normalizedSelectedIcon = selectedIconPath.replace(/\/+$/, "").trim();
 
-  // アイコン一覧（非同期で取得）
+  // アイコン一覧（フォルダごとにサブタイトル付きで表示）
   iconsEl.innerHTML = "";
-  fetchCustomIconList().then((list) => {
-    list.forEach((filename) => {
-      const path = `${CUSTOM_ICON_BASE_PATH}/${filename}`;
-      const pathNorm = path.replace(/\/+$/, "").trim();
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "picker-icon-btn";
-      btn.dataset.iconPath = path;
-      if (pathNorm === normalizedSelectedIcon) btn.classList.add("is-selected");
-      const iconDiv = document.createElement("div");
-      iconDiv.className = "picker-icon-img";
-      iconDiv.style.webkitMaskImage = `url(${path})`;
-      iconDiv.style.maskImage = `url(${path})`;
-      btn.appendChild(iconDiv);
-      btn.addEventListener("click", () => {
-        if (btn.classList.contains("is-selected")) {
-          btn.classList.remove("is-selected");
-          selectedIconPath = "";
-        } else {
-          iconsEl.querySelectorAll(".picker-icon-btn").forEach((b) => b.classList.remove("is-selected"));
-          btn.classList.add("is-selected");
-          selectedIconPath = path;
-        }
-      });
-      iconsEl.appendChild(btn);
-    });
+  fetchCustomIconList().then((byFolder) => {
+    const folderNames = Object.keys(byFolder).sort((a, b) => a.localeCompare(b, "ja"));
+    for (const folderName of folderNames) {
+      const subtitle = document.createElement("div");
+      subtitle.className = "picker-icon-subtitle";
+      subtitle.textContent = CUSTOM_ICON_FOLDER_SUBTITLES[folderName] ?? folderName;
+      iconsEl.appendChild(subtitle);
+      const filenames = byFolder[folderName] || [];
+      for (const filename of filenames) {
+        const iconPath = `${CUSTOM_ICON_BASE_PATH}/${folderName}/${filename}`;
+        const pathNorm = iconPath.replace(/\/+$/, "").trim();
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "picker-icon-btn";
+        btn.dataset.iconPath = iconPath;
+        if (pathNorm === normalizedSelectedIcon) btn.classList.add("is-selected");
+        const iconDiv = document.createElement("div");
+        iconDiv.className = "picker-icon-img";
+        iconDiv.style.webkitMaskImage = `url(${iconPath})`;
+        iconDiv.style.maskImage = `url(${iconPath})`;
+        btn.appendChild(iconDiv);
+        btn.addEventListener("click", () => {
+          if (btn.classList.contains("is-selected")) {
+            btn.classList.remove("is-selected");
+            selectedIconPath = "";
+          } else {
+            iconsEl.querySelectorAll(".picker-icon-btn").forEach((b) => b.classList.remove("is-selected"));
+            btn.classList.add("is-selected");
+            selectedIconPath = iconPath;
+          }
+        });
+        iconsEl.appendChild(btn);
+      }
+    }
   });
 
   function close() {

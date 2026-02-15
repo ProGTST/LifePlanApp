@@ -245,22 +245,42 @@ function applyFilters(rows: TransactionRow[]): TransactionRow[] {
   });
 }
 
-/** 指定日付に表示する取引（実績は ACTUAL_DATE、予定は PLAN_DATE_TO で判定） */
+/**
+ * 指定日付に表示する取引（カレンダー用）。
+ * 実績は ACTUAL_DATE の日のみ。予定は月に1回表示：PLAN_DATE_FROM/TO がその月内なら FROM/TO の日のみ、そうでなければ月初1日のみ。
+ */
 function getTransactionsForDate(dateStr: string): TransactionRow[] {
   const filtered = applyFilters(transactionList);
   return filtered.filter((row) => {
     if (row.STATUS === "actual") return row.ACTUAL_DATE === dateStr;
-    return row.PLAN_DATE_TO === dateStr;
+    const planFrom = row.PLAN_DATE_FROM || "";
+    const planTo = row.PLAN_DATE_TO || "";
+    if (!planFrom || !planTo) return false;
+    const monthStr = dateStr.slice(0, 7);
+    const [y, m] = monthStr.split("-").map(Number);
+    const firstOfMonth = monthStr + "-01";
+    const lastDate = new Date(y, m, 0).getDate();
+    const lastDayStr = monthStr + "-" + String(lastDate).padStart(2, "0");
+    const overlapsMonth = planFrom <= lastDayStr && planTo >= firstOfMonth;
+    if (!overlapsMonth) return false;
+    const bothInMonth = planFrom >= firstOfMonth && planTo <= lastDayStr;
+    if (bothInMonth) return dateStr === planFrom;
+    return dateStr === firstOfMonth;
   });
 }
 
-/** 指定期間（from〜to、YYYY-MM-DD  inclusive）に含まれる取引 */
+/** 指定期間（from〜to、YYYY-MM-DD  inclusive）に含まれる取引。予定は PLAN_DATE_FROM〜PLAN_DATE_TO が期間と重なるものを含む */
 function getTransactionsInRange(from: string, to: string): TransactionRow[] {
   const filtered = applyFilters(transactionList);
   return filtered.filter((row) => {
-    const d = row.STATUS === "actual" ? row.ACTUAL_DATE : row.PLAN_DATE_TO;
-    if (!d) return false;
-    return d >= from && d <= to;
+    if (row.STATUS === "actual") {
+      const d = row.ACTUAL_DATE || "";
+      return d >= from && d <= to;
+    }
+    const planFrom = row.PLAN_DATE_FROM || "";
+    const planTo = row.PLAN_DATE_TO || "";
+    if (!planFrom || !planTo) return false;
+    return planFrom <= to && planTo >= from;
   });
 }
 
@@ -519,10 +539,28 @@ function renderWeeklyPanel(): void {
     const rows = getTransactionsInRange(week.from, week.to);
     const byDate = new Map<string, TransactionRow[]>();
     for (const row of rows) {
-      const dateStr = row.STATUS === "actual" ? row.ACTUAL_DATE : row.PLAN_DATE_TO;
-      if (!dateStr) continue;
-      if (!byDate.has(dateStr)) byDate.set(dateStr, []);
-      byDate.get(dateStr)!.push(row);
+      if (row.STATUS === "actual") {
+        const dateStr = row.ACTUAL_DATE || "";
+        if (!dateStr) continue;
+        if (!byDate.has(dateStr)) byDate.set(dateStr, []);
+        byDate.get(dateStr)!.push(row);
+      } else {
+        const planFrom = row.PLAN_DATE_FROM || "";
+        const planTo = row.PLAN_DATE_TO || "";
+        if (!planFrom || !planTo) continue;
+        const bothInWeek = planFrom >= week.from && planTo <= week.to;
+        if (bothInWeek) {
+          if (!byDate.has(planFrom)) byDate.set(planFrom, []);
+          byDate.get(planFrom)!.push(row);
+          if (planTo !== planFrom) {
+            if (!byDate.has(planTo)) byDate.set(planTo, []);
+            byDate.get(planTo)!.push(row);
+          }
+        } else {
+          if (!byDate.has(week.from)) byDate.set(week.from, []);
+          byDate.get(week.from)!.push(row);
+        }
+      }
     }
     const sortedDates = Array.from(byDate.keys()).sort();
     for (const dateStr of sortedDates) {
