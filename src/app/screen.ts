@@ -85,6 +85,12 @@ export function showMainView(viewId: string): void {
   const headerTransactionEntryContinuous = document.getElementById("header-transaction-entry-continuous");
   if (headerTransactionEntryContinuous) headerTransactionEntryContinuous.classList.remove("is-visible");
 
+  const viewOnlyNotice = document.getElementById("transaction-entry-view-only-notice");
+  if (viewOnlyNotice && viewId !== "transaction-entry") {
+    viewOnlyNotice.classList.remove("is-visible");
+    viewOnlyNotice.setAttribute("aria-hidden", "true");
+  }
+
   const menubarProfileArea = document.getElementById("menubar-profile-area");
   if (menubarProfileArea) {
     const showProfile = viewId !== "profile";

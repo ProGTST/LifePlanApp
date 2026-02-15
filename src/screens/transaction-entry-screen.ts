@@ -316,7 +316,8 @@ function fillCategorySelect(type: string): void {
   if (!listEl) return;
   listEl.innerHTML = "";
   const filtered = filterCategoriesByType(type);
-  const sorted = filtered.slice().sort((a, b) => (a.SORT_ORDER || "").localeCompare(b.SORT_ORDER || ""));
+  const sortOrderNum = (v: string | undefined): number => (v !== undefined && v !== "" ? Number(v) : 0);
+  const sorted = filtered.slice().sort((a, b) => sortOrderNum(a.SORT_ORDER) - sortOrderNum(b.SORT_ORDER));
   const keepCurrent = sorted.some((c) => c.ID === current);
   if (!keepCurrent) {
     valueEl.value = sorted.length > 0 ? sorted[0].ID : "";
@@ -344,9 +345,14 @@ function fillAccountDropdown(which: "out" | "in", visibleIds: Set<string>): void
   const listEl = document.getElementById(`${prefix}-list`);
   if (!listEl) return;
   const current = valueEl.value;
-  const sorted = accountRows
-    .filter((a) => visibleIds.has(a.ID))
-    .sort((a, b) => (a.ACCOUNT_NAME || "").localeCompare(b.ACCOUNT_NAME || ""));
+  const me = currentUserId;
+  const sortOrderNum = (v: string | undefined): number => (v !== undefined && v !== "" ? Number(v) : 0);
+  const owned = accountRows.filter((a) => visibleIds.has(a.ID) && a.USER_ID === me);
+  const permitted = accountRows.filter((a) => visibleIds.has(a.ID) && a.USER_ID !== me);
+  const sorted = [
+    ...owned.slice().sort((a, b) => sortOrderNum(a.SORT_ORDER) - sortOrderNum(b.SORT_ORDER)),
+    ...permitted.slice().sort((a, b) => sortOrderNum(a.SORT_ORDER) - sortOrderNum(b.SORT_ORDER)),
+  ];
   const keepCurrent = sorted.some((a) => a.ID === current);
   if (!keepCurrent) {
     valueEl.value = sorted.length > 0 ? sorted[0].ID : "";
