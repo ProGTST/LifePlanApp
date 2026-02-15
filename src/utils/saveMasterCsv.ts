@@ -7,11 +7,7 @@ import {
 } from "./csvExport.ts";
 import { flushMasterToStorage } from "./flushMasterStorage.ts";
 import { clearAccountDirty, clearCategoryDirty, clearTagDirty } from "./csvDirty.ts";
-
-/** Tauri 2 では invoke は __TAURI_INTERNALS__ 経由。__TAURI__ は withGlobalTauri: true のときのみ。 */
-function isTauri(): boolean {
-  return typeof (window as unknown as { __TAURI_INTERNALS__?: { invoke?: unknown } }).__TAURI_INTERNALS__?.invoke === "function";
-}
+import { saveCsvViaApi } from "./dataApi.ts";
 
 /** CSV 保存用：ID 昇順でソートした配列を返す */
 function sortRowsById(rows: Record<string, string>[]): Record<string, string>[] {
@@ -24,13 +20,10 @@ function sortRowsById(rows: Record<string, string>[]): Record<string, string>[] 
 }
 
 /**
- * localStorage の勘定・カテゴリー・タグを CSV 文字列に変換し、
- * Tauri 環境であれば app_data_dir/data/ に ACCOUNT.csv / CATEGORY.csv / TAG.csv として保存する。
+ * localStorage の勘定・カテゴリー・タグを CSV に変換し、API 経由で保存する。
  * 保存時は常に ID 昇順で出力する。
  */
 export async function saveMasterToCsv(): Promise<void> {
-  if (!isTauri()) return;
-
   const accountList = getAccountList();
   const categoryList = getCategoryList();
   const tagList = getTagList();
@@ -48,13 +41,13 @@ export async function saveMasterToCsv(): Promise<void> {
       ? tagListToCsv(sortRowsById(tagList as Record<string, string>[]))
       : "";
 
-  const { invoke } = await import("@tauri-apps/api/core");
-  await invoke("save_master_csv", { account, category, tag });
+  if (account) await saveCsvViaApi("ACCOUNT.csv", account);
+  if (category) await saveCsvViaApi("CATEGORY.csv", category);
+  if (tag) await saveCsvViaApi("TAG.csv", tag);
 }
 
 /** 勘定と勘定参照権限を ACCOUNT.csv / ACCOUNT_PERMISSION.csv に保存する（画面遷移時用）。保存完了後に clearAccountDirty。 */
 export function saveAccountCsvOnly(): Promise<void> {
-  if (!isTauri()) return Promise.resolve();
   flushMasterToStorage();
   const accountList = getAccountList();
   const account =
@@ -66,37 +59,32 @@ export function saveAccountCsvOnly(): Promise<void> {
     permissionList != null && Array.isArray(permissionList) && permissionList.length > 0
       ? accountPermissionListToCsv(sortRowsById(permissionList as Record<string, string>[]))
       : accountPermissionListToCsv([]);
-  return import("@tauri-apps/api/core").then(({ invoke }) =>
-    invoke("save_account_csv", { account, accountPermission: account_permission }).then(() => {
-      clearAccountDirty();
-    })
-  );
+  return Promise.all([
+    account ? saveCsvViaApi("ACCOUNT.csv", account) : Promise.resolve(),
+    saveCsvViaApi("ACCOUNT_PERMISSION.csv", account_permission),
+  ]).then(() => clearAccountDirty());
 }
 
 /** カテゴリーのみ CATEGORY.csv に保存する（画面遷移時用）。保存完了後に clearCategoryDirty。 */
 export function saveCategoryCsvOnly(): Promise<void> {
-  if (!isTauri()) return Promise.resolve();
   flushMasterToStorage();
   const categoryList = getCategoryList();
   const category =
     categoryList != null && Array.isArray(categoryList)
       ? categoryListToCsv(sortRowsById(categoryList as Record<string, string>[]))
       : "";
-  return import("@tauri-apps/api/core").then(({ invoke }) =>
-    invoke("save_category_csv", { category }).then(() => clearCategoryDirty())
+  return (category ? saveCsvViaApi("CATEGORY.csv", category) : Promise.resolve()).then(() =>
+    clearCategoryDirty()
   );
 }
 
 /** タグのみ TAG.csv に保存する（画面遷移時用）。保存完了後に clearTagDirty。 */
 export function saveTagCsvOnly(): Promise<void> {
-  if (!isTauri()) return Promise.resolve();
   flushMasterToStorage();
   const tagList = getTagList();
   const tag =
     tagList != null && Array.isArray(tagList)
       ? tagListToCsv(sortRowsById(tagList as Record<string, string>[]))
       : "";
-  return import("@tauri-apps/api/core").then(({ invoke }) =>
-    invoke("save_tag_csv", { tag }).then(() => clearTagDirty())
-  );
+  return (tag ? saveCsvViaApi("TAG.csv", tag) : Promise.resolve()).then(() => clearTagDirty());
 }

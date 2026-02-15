@@ -215,13 +215,10 @@ async function saveDesignForm(): Promise<void> {
     setColorPalette(currentUserId, toStore);
   }
 
-  const isTauri = typeof (window as unknown as { __TAURI_INTERNALS__?: { invoke?: unknown } }).__TAURI_INTERNALS__?.invoke === "function";
-  if (isTauri) {
-    const { invoke } = await import("@tauri-apps/api/core");
-    const csv = colorPaletteListToCsv(paletteList);
-    await invoke("save_color_palette_csv", { palette: csv });
-    clearColorPaletteDirty();
-  }
+  const { saveCsvViaApi } = await import("../utils/dataApi");
+  const csv = colorPaletteListToCsv(paletteList);
+  await saveCsvViaApi("COLOR_PALETTE.csv", csv);
+  clearColorPaletteDirty();
 
   // 画面に色を反映（Tauri でなくても編集内容を即時適用）。不正値はデフォルトにフォールバック
   const appEl = document.getElementById("app");
@@ -243,12 +240,10 @@ export function saveColorPaletteCsvOnNavigate(): Promise<void> {
       if (colorEl) palette[key] = colorEl.value;
     });
   }
-  const isTauri = typeof (window as unknown as { __TAURI_INTERNALS__?: { invoke?: unknown } }).__TAURI_INTERNALS__?.invoke === "function";
-  if (!isTauri) return Promise.resolve();
-  return import("@tauri-apps/api/core").then(({ invoke }) => {
-    const csv = colorPaletteListToCsv(paletteList);
-    return invoke("save_color_palette_csv", { palette: csv }).then(() => clearColorPaletteDirty());
-  });
+  const csv = colorPaletteListToCsv(paletteList);
+  return import("../utils/dataApi").then(({ saveCsvViaApi }) =>
+    saveCsvViaApi("COLOR_PALETTE.csv", csv).then(() => clearColorPaletteDirty())
+  );
 }
 
 export async function loadAndRenderDesign(): Promise<void> {

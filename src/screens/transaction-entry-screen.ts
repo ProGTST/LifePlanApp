@@ -3,6 +3,7 @@ import { currentUserId, transactionEntryEditId, setTransactionEntryEditId, trans
 import { ICON_DEFAULT_COLOR } from "../constants/colorPresets";
 import { fetchCsv, rowToObject } from "../utils/csv";
 import { transactionListToCsv, tagManagementListToCsv } from "../utils/csvExport";
+import { saveCsvViaApi } from "../utils/dataApi";
 import { registerViewHandler, showMainView } from "../app/screen";
 
 const CSV_NO_CACHE: RequestInit = { cache: "reload" };
@@ -20,10 +21,6 @@ let continuousMode = false;
 
 function nowStr(): string {
   return new Date().toISOString().slice(0, 19).replace("T", " ");
-}
-
-function isTauri(): boolean {
-  return typeof (window as unknown as { __TAURI_INTERNALS__?: { invoke?: unknown } }).__TAURI_INTERNALS__?.invoke === "function";
 }
 
 function getVisibleAccountIds(accounts: AccountRow[], permissions: AccountPermissionRow[]): Set<string> {
@@ -713,13 +710,11 @@ function buildUpdatedRow(form: HTMLFormElement, existing: TransactionRow): Recor
 }
 
 async function saveTransactionCsv(csv: string): Promise<void> {
-  const { invoke } = await import("@tauri-apps/api/core");
-  await invoke("save_transaction_csv", { transaction: csv });
+  await saveCsvViaApi("TRANSACTION.csv", csv);
 }
 
 async function saveTagManagementCsv(csv: string): Promise<void> {
-  const { invoke } = await import("@tauri-apps/api/core");
-  await invoke("save_tag_management_csv", { tagManagement: csv });
+  await saveCsvViaApi("TAG_MANAGEMENT.csv", csv);
 }
 
 export function initTransactionEntryView(): void {
@@ -766,10 +761,6 @@ export function initTransactionEntryView(): void {
     e.preventDefault();
     if (!(form instanceof HTMLFormElement)) return;
     if (transactionEntryViewOnly) return;
-    if (!isTauri()) {
-      alert("収支の保存はアプリ起動時（Tauri）でのみ保存できます。");
-      return;
-    }
     try {
       if (editingTransactionId) {
         const { rows } = await fetchTransactionRows(true);
@@ -866,10 +857,6 @@ export function initTransactionEntryView(): void {
   document.getElementById("header-transaction-entry-delete")?.addEventListener("click", async () => {
     if (!editingTransactionId) return;
     if (!confirm("この取引を削除しますか？")) return;
-    if (!isTauri()) {
-      alert("削除はアプリ起動時（Tauri）でのみ実行できます。");
-      return;
-    }
     try {
       const { rows: txRows } = await fetchTransactionRows(true);
       const newTxRows = txRows.filter((r) => r.ID !== editingTransactionId);
@@ -897,10 +884,6 @@ export function initTransactionEntryView(): void {
     if (!editingTransactionId) return;
     const form = document.getElementById("transaction-entry-form");
     if (!(form instanceof HTMLFormElement)) return;
-    if (!isTauri()) {
-      alert("参照登録はアプリ起動時（Tauri）でのみ実行できます。");
-      return;
-    }
     try {
       const { nextId, rows } = await fetchTransactionRows(true);
       const newRow = buildNewRow(form, nextId);

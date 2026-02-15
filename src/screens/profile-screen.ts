@@ -6,6 +6,7 @@ import { userListToCsv } from "../utils/csvExport.ts";
 import { PROFILE_ICON_DEFAULT_COLOR } from "../constants/colorPresets.ts";
 import { openColorIconPicker } from "../utils/colorIconPicker.ts";
 import { setUserDirty, clearUserDirty } from "../utils/csvDirty.ts";
+import { saveCsvViaApi } from "../utils/dataApi";
 
 const PROFILE_NAME_LENGTH = 4;
 
@@ -123,13 +124,9 @@ async function saveProfileForm(): Promise<void> {
   user.UPDATE_DATETIME = new Date().toISOString().slice(0, 19).replace("T", " ");
   user.UPDATE_USER = currentUserId ?? "";
 
-  const isTauri = typeof (window as unknown as { __TAURI_INTERNALS__?: { invoke?: unknown } }).__TAURI_INTERNALS__?.invoke === "function";
-  if (isTauri) {
-    const { invoke } = await import("@tauri-apps/api/core");
-    const csv = userListToCsv(userList as unknown as Record<string, string>[]);
-    await invoke("save_user_csv", { user: csv });
-    clearUserDirty();
-  }
+  const csv = userListToCsv(userList as unknown as Record<string, string>[]);
+  await saveCsvViaApi("USER.csv", csv);
+  clearUserDirty();
 }
 
 async function handleProfileIconFileSelect(e: Event): Promise<void> {
@@ -204,12 +201,8 @@ export function saveUserCsvOnNavigate(): Promise<void> {
     user.UPDATE_DATETIME = new Date().toISOString().slice(0, 19).replace("T", " ");
     user.UPDATE_USER = currentUserId ?? "";
   }
-  const isTauri = typeof (window as unknown as { __TAURI_INTERNALS__?: { invoke?: unknown } }).__TAURI_INTERNALS__?.invoke === "function";
-  if (!isTauri) return Promise.resolve();
-  return import("@tauri-apps/api/core").then(({ invoke }) => {
-    const csv = userListToCsv(userList as unknown as Record<string, string>[]);
-    return invoke("save_user_csv", { user: csv }).then(() => clearUserDirty());
-  });
+  const csv = userListToCsv(userList as unknown as Record<string, string>[]);
+  return saveCsvViaApi("USER.csv", csv).then(() => clearUserDirty());
 }
 
 export async function loadAndRenderProfile(): Promise<void> {

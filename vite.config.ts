@@ -11,6 +11,9 @@ export default defineConfig(async () => ({
     port: 5173,
     strictPort: true,
     host: host || false,
+    proxy: {
+      "/api": { target: "http://localhost:3000", changeOrigin: true },
+    },
     hmr: host
       ? {
           protocol: "ws",

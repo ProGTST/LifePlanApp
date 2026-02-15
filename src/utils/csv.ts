@@ -55,16 +55,16 @@ function splitCsvLogicalRows(text: string): string[] {
 }
 
 /**
- * CSVファイルを取得し、ヘッダーと行の配列に分解する。
+ * CSVファイルを API (GET /api/data/:filename) から取得し、ヘッダーと行の配列に分解する。
  * init を渡すと fetch の第二引数に渡す（例: { cache: 'reload' } でキャッシュを無効化）。
  */
 export async function fetchCsv(
   path: string,
   init?: RequestInit
 ): Promise<{ header: string[]; rows: string[][] }> {
-  const res = await fetch(path, init);
-  if (!res.ok) return { header: [], rows: [] };
-  const text = await res.text();
+  const { fetchCsvFromApi } = await import("./dataApi");
+  const name = path.replace(/^\/data\//, "").replace(/^\//, "") || path.split("/").pop() || "";
+  const text = await fetchCsvFromApi(name, init);
   const logicalRows = splitCsvLogicalRows(text);
   if (logicalRows.length < 1) return { header: [], rows: [] };
   const header = parseCsvLine(logicalRows[0]);
