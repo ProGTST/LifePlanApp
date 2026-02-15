@@ -6,7 +6,8 @@ import {
   SIDEBAR_PANEL_MENU,
   SIDEBAR_PANEL_SETTINGS,
 } from "./constants/index";
-import { setCurrentUserId, setAccountListLoaded, currentView, popNavigation, pushNavigation, setTransactionEntryEditId, setTransactionEntryViewOnly } from "./state";
+import { setCurrentUserId, setAccountListLoaded, currentView, currentUserId, popNavigation, pushNavigation, setTransactionEntryEditId, setTransactionEntryViewOnly } from "./state";
+import { startCsvWatch } from "./utils/csvWatch";
 import { applyUserPalette } from "./app/palette";
 import {
   initSidebarToggle,
@@ -73,6 +74,9 @@ function initAppScreen(): void {
 
   /* 初期表示のヘッダー・フッター・プロフィール領域をホームに合わせる */
   showMainView("home");
+
+  /* CSV 監視: 他ユーザーの更新時に該当画面表示中のみ通知 */
+  startCsvWatch(() => ({ view: currentView, userId: currentUserId }));
 }
 
 window.addEventListener("DOMContentLoaded", () => {

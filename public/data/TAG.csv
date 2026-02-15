@@ -10,3 +10,4 @@ ID,VERSION,REGIST_DATETIME,REGIST_USER,UPDATE_DATETIME,UPDATE_USER,TAG_NAME,COLO
 9,0,2026-02-12 06:08:04,coara,2026-02-15 01:21:24,coara,プロポーズする,#646CFF,/icon/custom/99-others/gem-solid-full.svg,4
 10,0,2026-02-15 01:21:32,coara,2026-02-15 01:21:32,coara,入籍する,#646CFF,/icon/custom/99-others/gem-solid-full.svg,5
 11,0,2026-02-15 01:22:11,coara,2026-02-15 01:22:29,coara,家具・家電の購入,#646CFF,/icon/custom/03-life/couch-solid-full.svg,7
+12,1,2026-02-15 16:22:17,testuser001,2026-02-15 16:35:15,testuser001,テストタグ1,#ea6f76,/icon/custom/01-money/coins-solid-full.svg,11

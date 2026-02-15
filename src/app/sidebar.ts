@@ -11,6 +11,7 @@ import {
   sidebarOpenPanel,
 } from "../state";
 import { showMainView } from "./screen";
+import { stopCsvWatch } from "../utils/csvWatch";
 
 export function closeSidebar(): void {
   const sidebar = document.getElementById("app-sidebar");
@@ -99,6 +100,7 @@ export function initSidebarToggle(): void {
     sidebar?.classList.remove("is-visible");
     sidebar?.setAttribute("aria-hidden", "true");
     setSidebarOpenPanel(null);
+    stopCsvWatch();
     sessionStorage.removeItem(USER_ID_STORAGE_KEY);
     window.location.href = LOGIN_PAGE_PATH;
   });

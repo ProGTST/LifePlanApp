@@ -1158,6 +1158,11 @@ function loadAndShow(forceReloadFromCsv = false): void {
   });
 }
 
+/** CSV 監視からの「最新のデータを取得」用。キャッシュを無視して再取得する。 */
+export function refreshTransactionHistory(): void {
+  loadAndShow(true);
+}
+
 export function initTransactionHistoryView(): void {
   registerViewHandler("transaction-history", loadAndShow);
 
