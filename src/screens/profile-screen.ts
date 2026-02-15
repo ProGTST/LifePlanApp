@@ -1,7 +1,7 @@
 import type { UserRow } from "../types.ts";
 import { currentUserId, currentView } from "../state";
 import { fetchCsv, rowToObject } from "../utils/csv";
-import { registerViewHandler, registerLeaveSaveHandler } from "../app/screen";
+import { registerViewHandler } from "../app/screen";
 import { userListToCsv } from "../utils/csvExport.ts";
 import { PROFILE_ICON_DEFAULT_COLOR } from "../constants/colorPresets.ts";
 import { openColorIconPicker } from "../utils/colorIconPicker.ts";
@@ -212,7 +212,6 @@ export async function loadAndRenderProfile(): Promise<void> {
 
 export function initProfileView(): void {
   registerViewHandler("profile", loadAndRenderProfile);
-  registerLeaveSaveHandler("profile", saveUserCsvOnNavigate);
 
   document.getElementById("header-save-btn")?.addEventListener("click", async () => {
     if (currentView !== "profile") return;

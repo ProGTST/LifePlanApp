@@ -14,7 +14,7 @@ import {
   updateCurrentMenuItem,
   openSidebarPanel,
 } from "./app/sidebar";
-import { showMainView, registerLeaveSaveHandler } from "./app/screen";
+import { showMainView } from "./app/screen";
 import { initHomeScreen } from "./screens/home-screen";
 import { initAccountView } from "./screens/account-screen";
 import { initCategoryView } from "./screens/category-screen";
@@ -23,8 +23,6 @@ import { initProfileView } from "./screens/profile-screen";
 import { initDesignView } from "./screens/design-screen";
 import { initTransactionHistoryView } from "./screens/transaction-history-screen";
 import { initTransactionEntryView } from "./screens/transaction-entry-screen";
-import { saveAccountCsvOnly, saveCategoryCsvOnly, saveTagCsvOnly } from "./utils/saveMasterCsv.ts";
-import { saveDirtyCsvsOnly } from "./utils/saveDirtyCsvs.ts";
 
 function initAppScreen(): void {
   initHomeScreen();
@@ -37,10 +35,6 @@ function initAppScreen(): void {
   initDesignView();
   initTransactionHistoryView();
   initTransactionEntryView();
-
-  registerLeaveSaveHandler("account", saveAccountCsvOnly);
-  registerLeaveSaveHandler("category", saveCategoryCsvOnly);
-  registerLeaveSaveHandler("tag", saveTagCsvOnly);
 
   /* フッター・ホーム / スケジュール / 収支履歴: メニュー遷移として該当画面へ */
   function navigateTo(view: string): void {
@@ -93,7 +87,7 @@ window.addEventListener("DOMContentLoaded", () => {
     initAppScreen();
   });
 
-  // Tauri 環境: ウィンドウ×ボタンで閉じる前に保存してから閉じる。保存に失敗しても必ず destroy する
+  // Tauri 環境: ウィンドウ×ボタンで閉じる
   const isTauri = typeof (window as unknown as { __TAURI_INTERNALS__?: { invoke?: unknown } }).__TAURI_INTERNALS__?.invoke === "function";
   if (isTauri) {
     import("@tauri-apps/api/window").then(async ({ getCurrentWindow }) => {
@@ -101,11 +95,7 @@ window.addEventListener("DOMContentLoaded", () => {
       await appWindow.center();
       await appWindow.onCloseRequested(async (event) => {
         event.preventDefault();
-        try {
-          await saveDirtyCsvsOnly();
-        } finally {
-          await appWindow.destroy();
-        }
+        await appWindow.destroy();
       });
     });
   }

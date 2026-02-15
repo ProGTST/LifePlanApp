@@ -11,7 +11,6 @@ import {
   sidebarOpenPanel,
 } from "../state";
 import { showMainView } from "./screen";
-import { saveDirtyCsvsOnly } from "../utils/saveDirtyCsvs.ts";
 
 export function closeSidebar(): void {
   const sidebar = document.getElementById("app-sidebar");
@@ -100,7 +99,6 @@ export function initSidebarToggle(): void {
     sidebar?.classList.remove("is-visible");
     sidebar?.setAttribute("aria-hidden", "true");
     setSidebarOpenPanel(null);
-    await saveDirtyCsvsOnly();
     sessionStorage.removeItem(USER_ID_STORAGE_KEY);
     window.location.href = LOGIN_PAGE_PATH;
   });

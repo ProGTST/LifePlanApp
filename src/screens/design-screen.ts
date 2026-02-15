@@ -1,6 +1,6 @@
 import { currentUserId, currentView } from "../state";
 import { fetchCsv, rowToObject } from "../utils/csv";
-import { registerViewHandler, registerLeaveSaveHandler } from "../app/screen";
+import { registerViewHandler } from "../app/screen";
 import { colorPaletteListToCsv } from "../utils/csvExport.ts";
 import { PALETTE_KEYS, CSS_VAR_MAP, DEFAULT_PALETTE } from "../constants/index";
 import { setColorPaletteDirty, clearColorPaletteDirty } from "../utils/csvDirty.ts";
@@ -277,7 +277,6 @@ async function resetDesignToDefault(): Promise<void> {
 
 export function initDesignView(): void {
   registerViewHandler("design", loadAndRenderDesign);
-  registerLeaveSaveHandler("design", saveColorPaletteCsvOnNavigate);
 
   document.getElementById("design-form")?.addEventListener("submit", async (e) => {
     e.preventDefault();
