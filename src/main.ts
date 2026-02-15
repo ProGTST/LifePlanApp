@@ -6,7 +6,20 @@ import {
   SIDEBAR_PANEL_MENU,
   SIDEBAR_PANEL_SETTINGS,
 } from "./constants/index";
-import { setCurrentUserId, setAccountListLoaded, currentView, currentUserId, popNavigation, pushNavigation, setTransactionEntryEditId, setTransactionEntryViewOnly } from "./state";
+import {
+  setCurrentUserId,
+  setAccountListLoaded,
+  currentView,
+  currentUserId,
+  accountList,
+  categoryList,
+  tagList,
+  transactionList,
+  popNavigation,
+  pushNavigation,
+  setTransactionEntryEditId,
+  setTransactionEntryViewOnly,
+} from "./state";
 import { startCsvWatch } from "./utils/csvWatch";
 import { applyUserPalette } from "./app/palette";
 import {
@@ -21,7 +34,7 @@ import { initAccountView } from "./screens/account-screen";
 import { initCategoryView } from "./screens/category-screen";
 import { initTagView } from "./screens/tag-screen";
 import { initProfileView } from "./screens/profile-screen";
-import { initDesignView } from "./screens/design-screen";
+import { initDesignView, getCurrentDesignPaletteKeys } from "./screens/design-screen";
 import { initTransactionHistoryView } from "./screens/transaction-history-screen";
 import { initTransactionEntryView } from "./screens/transaction-entry-screen";
 
@@ -75,8 +88,28 @@ function initAppScreen(): void {
   /* 初期表示のヘッダー・フッター・プロフィール領域をホームに合わせる */
   showMainView("home");
 
-  /* CSV 監視: 他ユーザーの更新時に該当画面表示中のみ通知 */
-  startCsvWatch(() => ({ view: currentView, userId: currentUserId }));
+  /* CSV 監視: 他ユーザーの更新時、該当画面表示かつ更新されたデータを表示しているときのみ通知 */
+  startCsvWatch(
+    () => ({ view: currentView, userId: currentUserId }),
+    (viewId: string) => {
+      switch (viewId) {
+        case "profile":
+          return currentUserId ? [currentUserId] : [];
+        case "design":
+          return getCurrentDesignPaletteKeys();
+        case "account":
+          return accountList.map((a) => a.ID);
+        case "category":
+          return categoryList.map((c) => c.ID);
+        case "tag":
+          return tagList.map((t) => t.ID);
+        case "transaction-history":
+          return transactionList.map((t) => t.ID);
+        default:
+          return [];
+      }
+    }
+  );
 }
 
 window.addEventListener("DOMContentLoaded", () => {

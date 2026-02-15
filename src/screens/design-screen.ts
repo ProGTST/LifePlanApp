@@ -282,6 +282,14 @@ export async function loadAndRenderDesign(): Promise<void> {
   renderDesignForm();
 }
 
+/** CSV監視用：現在ユーザーがデザイン画面で表示しているパレットのキー（USER_ID:SEQ_NO）一覧 */
+export function getCurrentDesignPaletteKeys(): string[] {
+  if (!currentUserId) return [];
+  return paletteList
+    .filter((r) => r.USER_ID === currentUserId)
+    .map((r) => `${r.USER_ID}:${r.SEQ_NO}`);
+}
+
 async function resetDesignToDefault(): Promise<void> {
   const row = getOrCreateCurrentPalette();
   PALETTE_KEYS.forEach((key) => {
