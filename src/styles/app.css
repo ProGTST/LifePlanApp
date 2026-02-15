@@ -416,6 +416,7 @@
 #app #transaction-history-refresh-btn,
 #app #header-transaction-entry-submit,
 #app #header-transaction-entry-reset,
+#app #header-transaction-entry-continuous,
 #app #header-transaction-entry-delete {
   display: none;
   padding: 0 1rem;
@@ -434,8 +435,29 @@
 #app #transaction-history-refresh-btn.is-visible,
 #app #header-transaction-entry-submit.is-visible,
 #app #header-transaction-entry-reset.is-visible,
+#app #header-transaction-entry-continuous.is-visible,
 #app #header-transaction-entry-delete.is-visible {
   display: inline-flex;
+}
+
+#app #header-transaction-entry-continuous.btn-header-transaction-entry-continuous {
+  background-color: var(--color-base-bg, #ffffff);
+  color: var(--color-base-fg, #333333);
+  border: 1px solid var(--color-base-fg, #333333);
+}
+
+#app #header-transaction-entry-continuous.btn-header-transaction-entry-continuous.is-on {
+  background-color: var(--color-accent-bg, #646cff);
+  color: var(--color-accent-fg, #ffffff);
+  border-color: var(--color-accent-bg, #646cff);
+}
+
+#app #header-transaction-entry-continuous.btn-header-transaction-entry-continuous:hover {
+  filter: brightness(0.95);
+}
+
+#app #header-transaction-entry-continuous.btn-header-transaction-entry-continuous.is-on:hover {
+  filter: brightness(1.1);
 }
 
 #app #header-transaction-entry-delete.btn-header-transaction-entry-delete {
@@ -2665,6 +2687,14 @@
 
 .transaction-history-week-block-item:last-child {
   border-bottom: none;
+}
+
+/* 権限付与勘定に紐づく取引：参照権限は薄黄、編集権限は薄緑（一覧と同じ） */
+.transaction-history-week-block-item.transaction-history-week-block-item--permission-view {
+  background: #fffde7;
+}
+.transaction-history-week-block-item.transaction-history-week-block-item--permission-edit {
+  background: #e8f5e9;
 }
 
 .transaction-history-week-block-item .transaction-history-type-icon {

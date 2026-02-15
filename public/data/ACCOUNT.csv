@@ -4,4 +4,5 @@ ID,REGIST_DATETIME,REGIST_USER,UPDATE_DATETIME,UPDATE_USER,USER_ID,ACCOUNT_NAME,
 3,2026-02-12 06:06:02,coara,2026-02-14 13:06:18,coara,coara,paypay,#EA6F76,,0
 4,2026-02-12 06:06:07,coara,2026-02-12 06:06:07,coara,coara,その他,#C6D6DE,,4
 5,2026-02-14 16:01:24,coara,2026-02-14 16:01:24,coara,coara,家族ウォレット,#ed83c3,,5
-6,2026-02-14 16:24:26,panda,2026-02-14 16:24:26,panda,panda,あーちゃん共有,#FC7C5F,,0
+6,2026-02-14 16:24:26,panda,2026-02-15 00:44:43,panda,panda,あーちゃん、編集可,#FC7C5F,,0
+7,2026-02-15 00:45:09,panda,2026-02-15 00:45:09,panda,panda,あーちゃん、参照のみ,#59b97d,,1

@@ -13,10 +13,12 @@ import {
   tagManagementList,
   setTagManagementList,
   setTransactionEntryEditId,
+  setTransactionEntryViewOnly,
   pushNavigation,
 } from "../state";
 import { fetchCsv, rowToObject } from "../utils/csv";
 import { registerViewHandler, showMainView } from "../app/screen";
+import { updateCurrentMenuItem } from "../app/sidebar";
 import { ICON_DEFAULT_COLOR } from "../constants/colorPresets";
 
 // ---------------------------------------------------------------------------
@@ -414,9 +416,12 @@ function renderList(): void {
     tr.dataset.transactionId = row.ID;
     tr.classList.add("transaction-history-row--clickable");
     tr.addEventListener("click", () => {
+      const permType = getRowPermissionType(row);
+      setTransactionEntryViewOnly(permType === "view");
       setTransactionEntryEditId(row.ID);
       pushNavigation("transaction-entry");
       showMainView("transaction-entry");
+      updateCurrentMenuItem();
     });
     tbody.appendChild(tr);
   });
@@ -528,6 +533,9 @@ function renderWeeklyPanel(): void {
       for (const row of byDate.get(dateStr)!) {
         const item = document.createElement("div");
         item.className = "transaction-history-week-block-item";
+        const permType = getRowPermissionType(row);
+        if (permType === "view") item.classList.add("transaction-history-week-block-item--permission-view");
+        else if (permType === "edit") item.classList.add("transaction-history-week-block-item--permission-edit");
         item.dataset.transactionId = row.ID;
         item.setAttribute("role", "button");
         item.setAttribute("tabindex", "0");
@@ -555,9 +563,12 @@ function renderWeeklyPanel(): void {
         amountSpan.textContent = row.AMOUNT ? Number(row.AMOUNT).toLocaleString() : "—";
         item.appendChild(amountSpan);
         const openEntry = (): void => {
+          const permType = getRowPermissionType(row);
+          setTransactionEntryViewOnly(permType === "view");
           setTransactionEntryEditId(row.ID);
           pushNavigation("transaction-entry");
           showMainView("transaction-entry");
+          updateCurrentMenuItem();
         };
         item.addEventListener("click", openEntry);
         item.addEventListener("keydown", (e) => {

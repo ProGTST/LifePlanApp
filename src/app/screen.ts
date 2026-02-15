@@ -82,6 +82,8 @@ export function showMainView(viewId: string): void {
   if (headerTransactionEntryReset) headerTransactionEntryReset.classList.toggle("is-visible", viewId === "transaction-entry");
   const headerTransactionEntryDelete = document.getElementById("header-transaction-entry-delete");
   if (headerTransactionEntryDelete) headerTransactionEntryDelete.classList.remove("is-visible");
+  const headerTransactionEntryContinuous = document.getElementById("header-transaction-entry-continuous");
+  if (headerTransactionEntryContinuous) headerTransactionEntryContinuous.classList.remove("is-visible");
 
   const menubarProfileArea = document.getElementById("menubar-profile-area");
   if (menubarProfileArea) {

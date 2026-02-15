@@ -1,5 +1,5 @@
 import type { TransactionRow, CategoryRow, AccountRow, AccountPermissionRow, TagRow, TagManagementRow } from "../types";
-import { currentUserId, transactionEntryEditId, setTransactionEntryEditId, pushNavigation } from "../state";
+import { currentUserId, transactionEntryEditId, setTransactionEntryEditId, transactionEntryViewOnly, pushNavigation } from "../state";
 import { ICON_DEFAULT_COLOR } from "../constants/colorPresets";
 import { fetchCsv, rowToObject } from "../utils/csv";
 import { transactionListToCsv, tagManagementListToCsv } from "../utils/csvExport";
@@ -14,6 +14,9 @@ let tagRows: TagRow[] = [];
 let visibleAccountIds: Set<string> = new Set();
 let selectedTagIds: Set<string> = new Set();
 let editingTransactionId: string | null = null;
+
+/** 連続モード（新規登録時のみ有効。ONだと保存後に画面遷移せず連続登録） */
+let continuousMode = false;
 
 function nowStr(): string {
   return new Date().toISOString().slice(0, 19).replace("T", " ");
@@ -496,7 +499,22 @@ function getFirstVisibleAccountId(_which: "out" | "in"): string {
 
 function updateTransactionEntryDeleteButtonVisibility(): void {
   const btn = document.getElementById("header-transaction-entry-delete");
-  if (btn) btn.classList.toggle("is-visible", !!editingTransactionId);
+  if (btn) btn.classList.toggle("is-visible", !!editingTransactionId && !transactionEntryViewOnly);
+}
+
+function updateTransactionEntrySubmitButtonVisibility(): void {
+  const btn = document.getElementById("header-transaction-entry-submit");
+  if (!btn) return;
+  const showSubmit = !editingTransactionId || !transactionEntryViewOnly;
+  btn.classList.toggle("is-visible", showSubmit);
+}
+
+function updateTransactionEntryContinuousButtonVisibility(): void {
+  const btn = document.getElementById("header-transaction-entry-continuous");
+  if (!btn) return;
+  const isNewEntry = !editingTransactionId;
+  btn.classList.toggle("is-visible", isNewEntry);
+  btn.classList.toggle("is-on", continuousMode);
 }
 
 async function loadFormForEdit(transactionId: string): Promise<void> {
@@ -671,6 +689,8 @@ export function initTransactionEntryView(): void {
         editingTransactionId = null;
       }
       updateTransactionEntryDeleteButtonVisibility();
+      updateTransactionEntrySubmitButtonVisibility();
+      updateTransactionEntryContinuousButtonVisibility();
     })();
   });
 
@@ -693,6 +713,7 @@ export function initTransactionEntryView(): void {
   form?.addEventListener("submit", async (e) => {
     e.preventDefault();
     if (!(form instanceof HTMLFormElement)) return;
+    if (transactionEntryViewOnly) return;
     if (!isTauri()) {
       alert("収支の保存はアプリ起動時（Tauri）でのみ保存できます。");
       return;
@@ -733,7 +754,6 @@ export function initTransactionEntryView(): void {
         await saveTagManagementCsv(mgmtCsv);
         editingTransactionId = null;
         resetForm();
-        alert("更新しました。");
         pushNavigation("transaction-history");
         showMainView("transaction-history");
       } else {
@@ -765,9 +785,12 @@ export function initTransactionEntryView(): void {
           await saveTagManagementCsv(mgmtCsv);
         }
         resetForm();
-        alert("保存しました。");
-        pushNavigation("transaction-history");
-        showMainView("transaction-history");
+        if (continuousMode) {
+          alert("保存しました。");
+        } else {
+          pushNavigation("transaction-history");
+          showMainView("transaction-history");
+        }
       }
     } catch (err) {
       console.error(err);
@@ -779,7 +802,17 @@ export function initTransactionEntryView(): void {
     const form = document.getElementById("transaction-entry-form");
     if (form instanceof HTMLFormElement) form.requestSubmit();
   });
-  document.getElementById("header-transaction-entry-reset")?.addEventListener("click", () => resetForm());
+  document.getElementById("header-transaction-entry-reset")?.addEventListener("click", async () => {
+    if (editingTransactionId) {
+      await loadFormForEdit(editingTransactionId);
+    } else {
+      resetForm();
+    }
+  });
+  document.getElementById("header-transaction-entry-continuous")?.addEventListener("click", () => {
+    continuousMode = !continuousMode;
+    updateTransactionEntryContinuousButtonVisibility();
+  });
   document.getElementById("header-transaction-entry-delete")?.addEventListener("click", async () => {
     if (!editingTransactionId) return;
     if (!confirm("この取引を削除しますか？")) return;
@@ -801,9 +834,9 @@ export function initTransactionEntryView(): void {
       editingTransactionId = null;
       resetForm();
       updateTransactionEntryDeleteButtonVisibility();
+      updateTransactionEntryContinuousButtonVisibility();
       pushNavigation("transaction-history");
       showMainView("transaction-history");
-      alert("削除しました。");
     } catch (err) {
       console.error(err);
       alert("削除に失敗しました。");

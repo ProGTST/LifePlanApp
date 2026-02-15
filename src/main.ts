@@ -6,7 +6,7 @@ import {
   SIDEBAR_PANEL_MENU,
   SIDEBAR_PANEL_SETTINGS,
 } from "./constants/index";
-import { setCurrentUserId, setAccountListLoaded, currentView, popNavigation, pushNavigation, setTransactionEntryEditId } from "./state";
+import { setCurrentUserId, setAccountListLoaded, currentView, popNavigation, pushNavigation, setTransactionEntryEditId, setTransactionEntryViewOnly } from "./state";
 import { applyUserPalette } from "./app/palette";
 import {
   initSidebarToggle,
@@ -55,6 +55,7 @@ function initAppScreen(): void {
   document.getElementById("footer-history-btn")?.addEventListener("click", () => navigateTo("transaction-history"));
   document.getElementById("footer-entry-btn")?.addEventListener("click", () => {
     setTransactionEntryEditId(null);
+    setTransactionEntryViewOnly(false);
     navigateTo("transaction-entry");
   });
   document.getElementById("footer-analysis-btn")?.addEventListener("click", () => navigateTo("transaction-analysis"));
@@ -73,8 +74,8 @@ function initAppScreen(): void {
     if (!canGoBack) return;
     const target = popNavigation();
     if (target === null) return;
-    updateCurrentMenuItem();
     showMainView(target);
+    updateCurrentMenuItem();
   });
 
   /* 初期表示のヘッダー・フッター・プロフィール領域をホームに合わせる */

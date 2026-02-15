@@ -141,3 +141,9 @@ export let transactionEntryEditId: string | null = null;
 export function setTransactionEntryEditId(id: string | null): void {
   transactionEntryEditId = id;
 }
+
+/** 収支記録画面で参照のみで開いた場合 true（保存・削除ボタンを非表示） */
+export let transactionEntryViewOnly = false;
+export function setTransactionEntryViewOnly(viewOnly: boolean): void {
+  transactionEntryViewOnly = viewOnly;
+}
