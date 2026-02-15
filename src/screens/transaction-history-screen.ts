@@ -255,9 +255,19 @@ function applyFilters(rows: TransactionRow[]): TransactionRow[] {
   const filtered = rows.filter((row) => {
     if (filterStatus.length > 0 && !filterStatus.includes(row.STATUS as "plan" | "actual")) return false;
     if (filterType.length > 0 && !filterType.includes(row.TYPE as "income" | "expense" | "transfer")) return false;
-    const date = row.ACTUAL_DATE || "";
-    if (filterDateFrom && date < filterDateFrom) return false;
-    if (filterDateTo && date > filterDateTo) return false;
+    if (filterDateFrom || filterDateTo) {
+      if (row.STATUS === "actual") {
+        const date = row.ACTUAL_DATE || "";
+        if (filterDateFrom && date < filterDateFrom) return false;
+        if (filterDateTo && date > filterDateTo) return false;
+      } else {
+        const planFrom = row.PLAN_DATE_FROM || "";
+        const planTo = row.PLAN_DATE_TO || "";
+        if (!planFrom || !planTo) return false;
+        if (filterDateFrom && planTo < filterDateFrom) return false;
+        if (filterDateTo && planFrom > filterDateTo) return false;
+      }
+    }
     if (filterCategoryIds.length > 0 && !filterCategoryIds.includes(row.CATEGORY_ID)) return false;
     const amount = Number(row.AMOUNT) || 0;
     if (filterAmountMin !== "" && !isNaN(Number(filterAmountMin)) && amount < Number(filterAmountMin)) return false;
@@ -1235,9 +1245,8 @@ function resetConditions(): void {
   filterFreeText = "";
   const today = new Date();
   const fromDate = new Date(today.getFullYear() - 1, today.getMonth(), today.getDate());
-  const toDate = new Date(today.getFullYear(), today.getMonth() + 6, today.getDate());
   filterDateFrom = formatDateYMD(fromDate);
-  filterDateTo = formatDateYMD(toDate);
+  filterDateTo = "";
 
   const dateFromEl = document.getElementById("transaction-history-date-from") as HTMLInputElement | null;
   const dateToEl = document.getElementById("transaction-history-date-to") as HTMLInputElement | null;
@@ -1246,8 +1255,8 @@ function resetConditions(): void {
     dateFromEl.classList.remove("is-empty");
   }
   if (dateToEl) {
-    dateToEl.value = filterDateTo;
-    dateToEl.classList.remove("is-empty");
+    dateToEl.value = "";
+    dateToEl.classList.add("is-empty");
   }
   const amountMinEl = document.getElementById("transaction-history-amount-min") as HTMLInputElement | null;
   const amountMaxEl = document.getElementById("transaction-history-amount-max") as HTMLInputElement | null;
@@ -1277,16 +1286,19 @@ function loadAndShow(forceReloadFromCsv = false): void {
   if (filterDateFrom === "" && filterDateTo === "") {
     const today = new Date();
     const fromDate = new Date(today.getFullYear() - 1, today.getMonth(), today.getDate());
-    const toDate = new Date(today.getFullYear(), today.getMonth() + 6, today.getDate());
-    const fromStr = formatDateYMD(fromDate);
-    const toStr = formatDateYMD(toDate);
-    filterDateFrom = fromStr;
-    filterDateTo = toStr;
-    if (dateFromEl) dateFromEl.value = fromStr;
-    if (dateToEl) dateToEl.value = toStr;
+    filterDateFrom = formatDateYMD(fromDate);
+    if (dateFromEl) {
+      dateFromEl.value = filterDateFrom;
+      dateFromEl.classList.remove("is-empty");
+    }
+    if (dateToEl) {
+      dateToEl.value = "";
+      dateToEl.classList.add("is-empty");
+    }
+  } else {
+    if (dateFromEl) dateFromEl.classList.toggle("is-empty", !dateFromEl.value);
+    if (dateToEl) dateToEl.classList.toggle("is-empty", !dateToEl.value);
   }
-  if (dateFromEl) dateFromEl.classList.toggle("is-empty", !dateFromEl.value);
-  if (dateToEl) dateToEl.classList.toggle("is-empty", !dateToEl.value);
   Promise.all([
     fetchTransactionList(forceReloadFromCsv),
     fetchCategoryList(forceReloadFromCsv),
