@@ -231,13 +231,17 @@ function applyFilters(rows: TransactionRow[]): TransactionRow[] {
     const bd = b.ACTUAL_DATE || "";
     const cmpDate = bd.localeCompare(ad);
     if (cmpDate !== 0) return cmpDate;
+    const apf = a.PLAN_DATE_FROM || "";
+    const bpf = b.PLAN_DATE_FROM || "";
+    const cmpPlanFrom = bpf.localeCompare(apf);
+    if (cmpPlanFrom !== 0) return cmpPlanFrom;
     const apt = a.PLAN_DATE_TO || "";
     const bpt = b.PLAN_DATE_TO || "";
-    const cmpPlan = apt.localeCompare(bpt);
-    if (cmpPlan !== 0) return cmpPlan;
+    const cmpPlanTo = bpt.localeCompare(apt);
+    if (cmpPlanTo !== 0) return cmpPlanTo;
     const ar = a.REGIST_DATETIME || "";
     const br = b.REGIST_DATETIME || "";
-    return ar.localeCompare(br);
+    return br.localeCompare(ar);
   });
 }
 
