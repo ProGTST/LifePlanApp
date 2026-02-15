@@ -2653,6 +2653,7 @@
   border-bottom: 1px solid var(--gray-400);
   color: var(--color-view-fg, #1a1a1a);
   background: #f8f8f8;
+  text-align: center;
 }
 
 .transaction-history-week-block-title--current {
@@ -2762,6 +2763,61 @@
   font-size: 0.875rem;
   color: var(--color-view-fg, #1a1a1a);
   text-align: right;
+}
+
+.transaction-history-week-block-footer {
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.5rem 0.5rem 0.5rem;
+  border-top: 1px solid var(--gray-300);
+  font-size: 0.875rem;
+  color: var(--color-view-fg, #1a1a1a);
+}
+
+.transaction-history-week-block-footer-section-title {
+  font-weight: 600;
+  font-size: 0.8125rem;
+  margin-top: 0.5rem;
+  margin-bottom: 0.15rem;
+  padding: 0.2rem 0.35rem;
+  background: var(--gray-200);
+  color: var(--color-view-fg, #1a1a1a);
+  border-radius: var(--radius-sm);
+}
+
+.transaction-history-week-block-footer-section-title:first-child {
+  margin-top: 0;
+}
+
+.transaction-history-week-block-footer-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-weight: 500;
+}
+
+.transaction-history-week-block-footer-cell {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.transaction-history-week-block-footer-label {
+  flex: 0 0 auto;
+}
+
+.transaction-history-week-block-footer-amount {
+  flex: 0 0 auto;
+  text-align: right;
+  min-width: 3.5rem;
+}
+
+.transaction-history-week-block-footer-cell--balance {
+  font-weight: 600;
+}
+
+.transaction-history-week-block-footer-amount--negative {
+  color: var(--danger, #c00);
 }
 
 /* 収支一覧テーブル：日付列の幅を小さく */
@@ -3088,6 +3144,11 @@
   color: var(--color-accent-fg);
 }
 
+.transaction-history-calendar-day--today .transaction-history-plan-icon,
+.transaction-history-calendar-day--today .transaction-history-type-icon {
+  border: 1px solid var(--color-accent-fg);
+}
+
 .transaction-history-calendar-day-num {
   font-size: 0.75rem;
   font-weight: 600;
@@ -3116,6 +3177,14 @@
   box-sizing: border-box;
 }
 
+.transaction-history-calendar-day .transaction-history-plan-icon {
+  flex-shrink: 0;
+  width: 22px;
+  min-width: 22px;
+  height: 22px;
+  box-sizing: border-box;
+}
+
 .transaction-history-calendar-day-summary-amount {
   margin-left: auto;
   text-align: right;
@@ -3134,4 +3203,130 @@
 .transaction-history-calendar-income {
   font-size: 0.7rem;
   color: var(--gray-700);
+}
+
+.transaction-history-calendar-footer {
+  margin-top: 0.75rem;
+  padding: 0.5rem 0.5rem 0.5rem 0.5rem;
+  border-top: 1px solid var(--gray-300);
+  font-size: 0.875rem;
+  color: var(--color-view-fg, #1a1a1a);
+}
+
+.transaction-history-calendar-footer-section-title {
+  font-weight: 600;
+  font-size: 0.8125rem;
+  margin-top: 0.5rem;
+  margin-bottom: 0.15rem;
+  padding: 0.2rem 0.35rem;
+  background: var(--gray-200);
+  color: var(--color-view-fg, #1a1a1a);
+  border-radius: var(--radius-sm);
+}
+
+.transaction-history-calendar-footer-section-title:first-child {
+  margin-top: 0;
+}
+
+.transaction-history-calendar-footer-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-weight: 500;
+}
+
+.transaction-history-calendar-footer-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.transaction-history-calendar-footer-label {
+  flex: 0 0 auto;
+}
+
+.transaction-history-calendar-footer-amount {
+  flex: 0 0 auto;
+  text-align: right;
+  min-width: 3.5rem;
+}
+
+.transaction-history-calendar-footer-amount--negative {
+  color: var(--danger, #c00);
+  font-weight: 600;
+}
+
+/* 週カレンダー・月カレンダー共通：グラフエリア */
+.transaction-history-charts-body {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--gray-300);
+}
+
+.transaction-history-charts-section {
+  margin: 0;
+  padding: 0 0.5rem 1rem;
+}
+
+.transaction-history-charts-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 0.75rem;
+  color: var(--color-view-fg, #1a1a1a);
+}
+
+.transaction-history-charts-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.transaction-history-chart-figure {
+  margin: 0;
+  padding: 0.75rem;
+  background: var(--color-view-bg, #fff);
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius-md);
+}
+
+.transaction-history-chart-figure--diff {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.transaction-history-charts-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+}
+
+.transaction-history-charts-row .transaction-history-chart-figure {
+  flex: 1 1 280px;
+  min-width: 0;
+}
+
+.transaction-history-chart-caption {
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: var(--color-view-fg, #1a1a1a);
+}
+
+.transaction-history-chart-wrap {
+  position: relative;
+  min-height: 180px;
+}
+
+.transaction-history-chart-wrap--diff {
+  min-height: 260px;
+}
+
+.transaction-history-chart-wrap canvas {
+  max-width: 100%;
+  max-height: 240px;
+}
+
+.transaction-history-chart-wrap--diff canvas {
+  max-height: 320px;
 }

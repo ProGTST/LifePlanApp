@@ -23,6 +23,8 @@ import { updateCurrentMenuItem } from "../app/sidebar";
 import { createIconWrap } from "../utils/iconWrap";
 import { openOverlay, closeOverlay } from "../utils/overlay.ts";
 import { ICON_DEFAULT_COLOR } from "../constants/colorPresets";
+import { Chart, registerables } from "chart.js";
+import ChartDataLabels from "chartjs-plugin-datalabels";
 
 // ---------------------------------------------------------------------------
 // 定数・状態
@@ -309,28 +311,337 @@ function applyFilters(rows: TransactionRow[]): TransactionRow[] {
 }
 
 /**
- * 指定日付に表示する取引を返す（カレンダー用）。実績は ACTUAL_DATE の日のみ。予定は月に1回表示。
+ * 指定日付のカレンダー表示用サマリーを返す。予・実は件数、収・支・振は金額（予定の金額は予定終了日のみ集計）。
  * @param dateStr - 日付（YYYY-MM-DD）
- * @returns 取引行の配列
+ * @returns planCount, actualCount, incomeAmount, expenseAmount, transferAmount
  */
-function getTransactionsForDate(dateStr: string): TransactionRow[] {
+function getCalendarDaySummary(
+  dateStr: string
+): { planCount: number; actualCount: number; incomeAmount: number; expenseAmount: number; transferAmount: number } {
   const filtered = applyFilters(transactionList);
-  return filtered.filter((row) => {
-    if (row.STATUS === "actual") return row.ACTUAL_DATE === dateStr;
+  let planCount = 0;
+  let actualCount = 0;
+  let incomeAmount = 0;
+  let expenseAmount = 0;
+  let transferAmount = 0;
+  for (const row of filtered) {
+    if (row.STATUS === "actual") {
+      if (row.ACTUAL_DATE === dateStr) {
+        actualCount += 1;
+        const type = (row.TYPE || "expense").toLowerCase();
+        if (type === "income") incomeAmount += Number(row.AMOUNT) || 0;
+        else if (type === "expense") expenseAmount += Number(row.AMOUNT) || 0;
+        else if (type === "transfer") transferAmount += Number(row.AMOUNT) || 0;
+      }
+      continue;
+    }
     const planFrom = row.PLAN_DATE_FROM || "";
     const planTo = row.PLAN_DATE_TO || "";
-    if (!planFrom || !planTo) return false;
-    const monthStr = dateStr.slice(0, 7);
-    const [y, m] = monthStr.split("-").map(Number);
-    const firstOfMonth = monthStr + "-01";
-    const lastDate = new Date(y, m, 0).getDate();
-    const lastDayStr = monthStr + "-" + String(lastDate).padStart(2, "0");
-    const overlapsMonth = planFrom <= lastDayStr && planTo >= firstOfMonth;
-    if (!overlapsMonth) return false;
-    const bothInMonth = planFrom >= firstOfMonth && planTo <= lastDayStr;
-    if (bothInMonth) return dateStr === planFrom;
-    return dateStr === firstOfMonth;
-  });
+    if (!planFrom || !planTo) continue;
+    const inPlanRange = planFrom <= dateStr && dateStr <= planTo;
+    if (inPlanRange) planCount += 1;
+    if (dateStr === planTo) {
+      const type = (row.TYPE || "").toLowerCase();
+      if (type === "income") incomeAmount += Number(row.AMOUNT) || 0;
+      else if (type === "expense") expenseAmount += Number(row.AMOUNT) || 0;
+      else if (type === "transfer") transferAmount += Number(row.AMOUNT) || 0;
+    }
+  }
+  return { planCount, actualCount, incomeAmount, expenseAmount, transferAmount };
+}
+
+/**
+ * 指定年月の収入合計・支出合計を予定と実績で分けて返す（カレンダー月合計用）。実績は ACTUAL_DATE、予定は PLAN_DATE_TO がその月のものを集計。
+ * @param year - 年
+ * @param month - 月（1-12）
+ * @returns planIncome, planExpense, actualIncome, actualExpense
+ */
+function getCalendarMonthTotals(
+  year: number,
+  month: number
+): { planIncome: number; planExpense: number; actualIncome: number; actualExpense: number } {
+  const monthStr = `${year}-${String(month).padStart(2, "0")}`;
+  const firstDay = monthStr + "-01";
+  const lastDate = new Date(year, month, 0).getDate();
+  const lastDay = monthStr + "-" + String(lastDate).padStart(2, "0");
+  const filtered = applyFilters(transactionList);
+  let planIncome = 0;
+  let planExpense = 0;
+  let actualIncome = 0;
+  let actualExpense = 0;
+  for (const row of filtered) {
+    if (row.STATUS === "actual") {
+      const d = row.ACTUAL_DATE || "";
+      if (d < firstDay || d > lastDay) continue;
+      const type = (row.TYPE || "expense").toLowerCase();
+      const amount = Number(row.AMOUNT) || 0;
+      if (type === "income") actualIncome += amount;
+      else if (type === "expense") actualExpense += amount;
+      continue;
+    }
+    const planTo = row.PLAN_DATE_TO || "";
+    if (!planTo || planTo < firstDay || planTo > lastDay) continue;
+    const type = (row.TYPE || "").toLowerCase();
+    const amount = Number(row.AMOUNT) || 0;
+    if (type === "income") planIncome += amount;
+    else if (type === "expense") planExpense += amount;
+  }
+  return { planIncome, planExpense, actualIncome, actualExpense };
+}
+
+/** グラフ用に登録済みか */
+let chartJsRegistered = false;
+/** 作成した Chart インスタンス（破棄用） */
+const chartInstances: Chart[] = [];
+
+/**
+ * 指定年月のグラフ用データを集計する。日別の予定・実績収支とカテゴリー別集計を返す。
+ * @param ym - 年月（YYYY-MM）
+ * @returns 日別系列とカテゴリー別集計
+ */
+function getChartDataForMonth(ym: string): {
+  labels: string[];
+  planIncomeByDay: number[];
+  actualIncomeByDay: number[];
+  planExpenseByDay: number[];
+  actualExpenseByDay: number[];
+  planIncomeByCategory: Array<{ id: string; name: string; amount: number; color: string }>;
+  planExpenseByCategory: Array<{ id: string; name: string; amount: number; color: string }>;
+  actualIncomeByCategory: Array<{ id: string; name: string; amount: number; color: string }>;
+  actualExpenseByCategory: Array<{ id: string; name: string; amount: number; color: string }>;
+} {
+  const m = ym.match(/^(\d{4})-(\d{2})$/);
+  if (!m) {
+    return {
+      labels: [],
+      planIncomeByDay: [],
+      actualIncomeByDay: [],
+      planExpenseByDay: [],
+      actualExpenseByDay: [],
+      planIncomeByCategory: [],
+      planExpenseByCategory: [],
+      actualIncomeByCategory: [],
+      actualExpenseByCategory: [],
+    };
+  }
+  const year = parseInt(m[1], 10);
+  const month = parseInt(m[2], 10);
+  const firstDay = ym + "-01";
+  const lastDate = new Date(year, month, 0).getDate();
+  const lastDay = ym + "-" + String(lastDate).padStart(2, "0");
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const labels: string[] = [];
+  const planIncomeByDay: number[] = [];
+  const actualIncomeByDay: number[] = [];
+  const planExpenseByDay: number[] = [];
+  const actualExpenseByDay: number[] = [];
+  for (let d = 1; d <= lastDate; d++) {
+    labels.push(pad(d) + "日");
+    planIncomeByDay.push(0);
+    actualIncomeByDay.push(0);
+    planExpenseByDay.push(0);
+    actualExpenseByDay.push(0);
+  }
+  const planIncomeCat: Record<string, number> = {};
+  const planExpenseCat: Record<string, number> = {};
+  const actualIncomeCat: Record<string, number> = {};
+  const actualExpenseCat: Record<string, number> = {};
+  const filtered = applyFilters(transactionList);
+  for (const row of filtered) {
+    const type = (row.TYPE || "expense").toLowerCase();
+    const amount = Number(row.AMOUNT) || 0;
+    const catId = row.CATEGORY_ID || "";
+    if (row.STATUS === "actual") {
+      const d = row.ACTUAL_DATE || "";
+      if (d < firstDay || d > lastDay) continue;
+      const dayIdx = parseInt(d.slice(8, 10), 10) - 1;
+      if (dayIdx < 0 || dayIdx >= labels.length) continue;
+      if (type === "income") {
+        actualIncomeByDay[dayIdx] += amount;
+        actualIncomeCat[catId] = (actualIncomeCat[catId] || 0) + amount;
+      } else if (type === "expense") {
+        actualExpenseByDay[dayIdx] += amount;
+        actualExpenseCat[catId] = (actualExpenseCat[catId] || 0) + amount;
+      }
+      continue;
+    }
+    const planTo = row.PLAN_DATE_TO || "";
+    if (!planTo || planTo < firstDay || planTo > lastDay) continue;
+    const dayIdx = parseInt(planTo.slice(8, 10), 10) - 1;
+    if (dayIdx < 0 || dayIdx >= labels.length) continue;
+    if (type === "income") {
+      planIncomeByDay[dayIdx] += amount;
+      planIncomeCat[catId] = (planIncomeCat[catId] || 0) + amount;
+    } else if (type === "expense") {
+      planExpenseByDay[dayIdx] += amount;
+      planExpenseCat[catId] = (planExpenseCat[catId] || 0) + amount;
+    }
+  }
+  const toCategoryArray = (
+    rec: Record<string, number>
+  ): Array<{ id: string; name: string; amount: number; color: string }> =>
+    Object.entries(rec).map(([id, amount]) => ({
+      id,
+      name: getCategoryById(id)?.CATEGORY_NAME?.trim() || "未分類",
+      amount,
+      color: getCategoryById(id)?.COLOR || "#888888",
+    }));
+  return {
+    labels,
+    planIncomeByDay,
+    actualIncomeByDay,
+    planExpenseByDay,
+    actualExpenseByDay,
+    planIncomeByCategory: toCategoryArray(planIncomeCat),
+    planExpenseByCategory: toCategoryArray(planExpenseCat),
+    actualIncomeByCategory: toCategoryArray(actualIncomeCat),
+    actualExpenseByCategory: toCategoryArray(actualExpenseCat),
+  };
+}
+
+/**
+ * 週カレンダー・月カレンダー用のグラフを描画する。指定年月のデータで 6 本のグラフを更新する。
+ * @param ym - 年月（YYYY-MM）
+ * @returns なし
+ */
+function renderCharts(ym: string): void {
+  chartInstances.forEach((ch) => ch.destroy());
+  chartInstances.length = 0;
+  if (!ym || !/^\d{4}-\d{2}$/.test(ym)) return;
+  if (!chartJsRegistered) {
+    Chart.register(...registerables, ChartDataLabels);
+    chartJsRegistered = true;
+  }
+  const data = getChartDataForMonth(ym);
+  const chartOptions = { responsive: true, maintainAspectRatio: true, aspectRatio: 2 };
+  const incomeDiffByDay = data.labels.map((_, i) => data.actualIncomeByDay[i] - data.planIncomeByDay[i]);
+  const expenseDiffByDay = data.labels.map((_, i) => data.planExpenseByDay[i] - data.actualExpenseByDay[i]);
+  const mixedOptions = {
+    ...chartOptions,
+    scales: {
+      x: { title: { display: true, text: "日付" } },
+      y: { title: { display: true, text: "金額" }, beginAtZero: false },
+    },
+  };
+  const incomeDiffCanvas = document.getElementById("transaction-history-chart-income-diff") as HTMLCanvasElement | null;
+  if (incomeDiffCanvas) {
+    const ch = new Chart(incomeDiffCanvas, {
+      type: "bar",
+      data: {
+        labels: data.labels,
+        datasets: [
+          {
+            type: "bar",
+            label: "差分(実績−予定)",
+            data: incomeDiffByDay,
+            backgroundColor: "rgba(100, 100, 100, 0.6)",
+            order: 2,
+          },
+          {
+            type: "line",
+            label: "実績収入",
+            data: data.actualIncomeByDay,
+            borderColor: "rgb(46, 125, 50)",
+            backgroundColor: "rgba(46, 125, 50, 0.1)",
+            fill: false,
+            tension: 0.2,
+            order: 1,
+          },
+          {
+            type: "line",
+            label: "予定収入",
+            data: data.planIncomeByDay,
+            borderColor: "rgba(46, 125, 50, 0.7)",
+            borderDash: [4, 2],
+            backgroundColor: "transparent",
+            fill: false,
+            tension: 0.2,
+            order: 1,
+          },
+        ],
+      },
+      options: mixedOptions,
+    });
+    chartInstances.push(ch);
+  }
+  const expenseDiffCanvas = document.getElementById("transaction-history-chart-expense-diff") as HTMLCanvasElement | null;
+  if (expenseDiffCanvas) {
+    const ch = new Chart(expenseDiffCanvas, {
+      type: "bar",
+      data: {
+        labels: data.labels,
+        datasets: [
+          {
+            type: "bar",
+            label: "差分(予定−実績)",
+            data: expenseDiffByDay,
+            backgroundColor: "rgba(100, 100, 100, 0.6)",
+            order: 2,
+          },
+          {
+            type: "line",
+            label: "実績支出",
+            data: data.actualExpenseByDay,
+            borderColor: "rgb(198, 40, 40)",
+            backgroundColor: "rgba(198, 40, 40, 0.1)",
+            fill: false,
+            tension: 0.2,
+            order: 1,
+          },
+          {
+            type: "line",
+            label: "予定支出",
+            data: data.planExpenseByDay,
+            borderColor: "rgba(198, 40, 40, 0.7)",
+            borderDash: [4, 2],
+            backgroundColor: "transparent",
+            fill: false,
+            tension: 0.2,
+            order: 1,
+          },
+        ],
+      },
+      options: mixedOptions,
+    });
+    chartInstances.push(ch);
+  }
+  const pieOptions = {
+    ...chartOptions,
+    plugins: {
+      legend: { position: "bottom" as const },
+      datalabels: {
+        formatter: (value: number, ctx: { chart: Chart; dataIndex: number }) => {
+          const ds = ctx.chart.data.datasets[0];
+          const total = (ds.data as number[]).reduce((a, b) => a + b, 0);
+          const pct = total ? Math.round((value / total) * 100) : 0;
+          return `${pct}%`;
+        },
+        color: "#fff",
+        font: { size: 11, weight: "bold" as const },
+      },
+    },
+  };
+  const makePie = (
+    canvasId: string,
+    items: Array<{ name: string; amount: number; color: string }>
+  ): void => {
+    const el = document.getElementById(canvasId) as HTMLCanvasElement | null;
+    if (!el) return;
+    const safeItems = items.length > 0 ? items : [{ name: "データなし", amount: 1, color: "#e0e0e0" }];
+    const ch = new Chart(el, {
+      type: "pie",
+      data: {
+        labels: safeItems.map((i) => i.name),
+        datasets: [{ data: safeItems.map((i) => i.amount), backgroundColor: safeItems.map((i) => i.color) }],
+      },
+      options: pieOptions,
+    });
+    chartInstances.push(ch);
+  };
+  makePie("transaction-history-chart-plan-income-pie", data.planIncomeByCategory);
+  makePie("transaction-history-chart-plan-expense-pie", data.planExpenseByCategory);
+  makePie("transaction-history-chart-actual-income-pie", data.actualIncomeByCategory);
+  makePie("transaction-history-chart-actual-expense-pie", data.actualExpenseByCategory);
 }
 
 /**
@@ -607,6 +918,16 @@ function isCurrentWeek(from: string, to: string): boolean {
   return today >= from && today <= to;
 }
 
+/** YYYY-MM-DD に日数を加算した日付を返す（週表示の予定「中間日」判定用） */
+function addDays(dateStr: string, delta: number): string {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const date = new Date(y, m - 1, d + delta);
+  const yy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const dd = String(date.getDate()).padStart(2, "0");
+  return `${yy}-${mm}-${dd}`;
+}
+
 /**
  * 週表示パネルを描画する。選択年月の週ごとにブロックを生成し、各週の取引を表示する。
  * @returns なし
@@ -640,31 +961,57 @@ function renderWeeklyPanel(): void {
     const list = document.createElement("div");
     list.className = "transaction-history-week-block-list";
     const rows = getTransactionsInRange(week.from, week.to);
-    const byDate = new Map<string, TransactionRow[]>();
+    const byDate = new Map<string, { row: TransactionRow; showAmount: boolean }[]>();
+    const push = (dateStr: string, row: TransactionRow, showAmount: boolean): void => {
+      if (!byDate.has(dateStr)) byDate.set(dateStr, []);
+      byDate.get(dateStr)!.push({ row, showAmount });
+    };
+    const inWeek = (d: string): boolean => d >= week.from && d <= week.to;
     for (const row of rows) {
       if (row.STATUS === "actual") {
         const dateStr = row.ACTUAL_DATE || "";
         if (!dateStr) continue;
-        if (!byDate.has(dateStr)) byDate.set(dateStr, []);
-        byDate.get(dateStr)!.push(row);
+        push(dateStr, row, true);
       } else {
         const planFrom = row.PLAN_DATE_FROM || "";
         const planTo = row.PLAN_DATE_TO || "";
         if (!planFrom || !planTo) continue;
-        const bothInWeek = planFrom >= week.from && planTo <= week.to;
-        if (bothInWeek) {
-          if (!byDate.has(planFrom)) byDate.set(planFrom, []);
-          byDate.get(planFrom)!.push(row);
-          if (planTo !== planFrom) {
-            if (!byDate.has(planTo)) byDate.set(planTo, []);
-            byDate.get(planTo)!.push(row);
-          }
+        const fromInWeek = inWeek(planFrom);
+        const toInWeek = inWeek(planTo);
+        if (planFrom === planTo) {
+          if (fromInWeek) push(planFrom, row, true);
         } else {
-          if (!byDate.has(week.from)) byDate.set(week.from, []);
-          byDate.get(week.from)!.push(row);
+          if (fromInWeek) push(planFrom, row, false);
+          if (toInWeek) push(planTo, row, true);
+          const firstMid = addDays(planFrom, 1);
+          const lastMid = addDays(planTo, -1);
+          const hasMiddleInWeek = firstMid <= lastMid && week.from <= lastMid && firstMid <= week.to;
+          if (hasMiddleInWeek && !fromInWeek && !toInWeek) push(week.from, row, false);
         }
       }
     }
+    let planIncome = 0;
+    let planExpense = 0;
+    let actualIncome = 0;
+    let actualExpense = 0;
+    for (const items of byDate.values()) {
+      for (const { row, showAmount } of items) {
+        if (!showAmount) continue;
+        const amount = Number(row.AMOUNT) || 0;
+        const type = (row.TYPE || "expense") as "income" | "expense" | "transfer";
+        const isPlan = row.STATUS === "plan";
+        if (type === "income") {
+          if (isPlan) planIncome += amount;
+          else actualIncome += amount;
+        } else if (type === "expense") {
+          if (isPlan) planExpense += amount;
+          else actualExpense += amount;
+        }
+      }
+    }
+    const planBalance = planIncome - planExpense;
+    const actualBalance = actualIncome - actualExpense;
+
     const sortedDates = Array.from(byDate.keys()).sort();
     for (const dateStr of sortedDates) {
       const dayGroup = document.createElement("div");
@@ -675,7 +1022,7 @@ function renderWeeklyPanel(): void {
       dayGroup.appendChild(dayTitle);
       const dayItems = document.createElement("div");
       dayItems.className = "transaction-history-week-day-items";
-      for (const row of byDate.get(dateStr)!) {
+      for (const { row, showAmount } of byDate.get(dateStr)!) {
         const item = document.createElement("div");
         item.className = "transaction-history-week-block-item";
         const permType = getRowPermissionType(row);
@@ -703,7 +1050,7 @@ function renderWeeklyPanel(): void {
         item.appendChild(nameSpan);
         const amountSpan = document.createElement("span");
         amountSpan.className = "transaction-history-week-block-amount";
-        amountSpan.textContent = row.AMOUNT ? Number(row.AMOUNT).toLocaleString() : "—";
+        amountSpan.textContent = showAmount && row.AMOUNT ? Number(row.AMOUNT).toLocaleString() : "0";
         item.appendChild(amountSpan);
         const openEntry = (): void => {
           const permType = getRowPermissionType(row);
@@ -726,6 +1073,44 @@ function renderWeeklyPanel(): void {
       list.appendChild(dayGroup);
     }
     block.appendChild(list);
+
+    const footer = document.createElement("div");
+    footer.className = "transaction-history-week-block-footer";
+    footer.setAttribute("role", "group");
+    footer.setAttribute("aria-label", "週合計");
+    const addFooterSection = (
+      sectionLabel: string,
+      income: number,
+      expense: number,
+      balance: number
+    ): void => {
+      const sectionTitle = document.createElement("div");
+      sectionTitle.className = "transaction-history-week-block-footer-section-title";
+      sectionTitle.textContent = sectionLabel;
+      footer.appendChild(sectionTitle);
+      const footerRow = document.createElement("div");
+      footerRow.className = "transaction-history-week-block-footer-row";
+      const incomeCell = document.createElement("div");
+      incomeCell.className = "transaction-history-week-block-footer-cell";
+      incomeCell.innerHTML = `<span class="transaction-history-week-block-footer-label">収入</span><span class="transaction-history-week-block-footer-amount">${income.toLocaleString()}</span>`;
+      const expenseCell = document.createElement("div");
+      expenseCell.className = "transaction-history-week-block-footer-cell";
+      expenseCell.innerHTML = `<span class="transaction-history-week-block-footer-label">支出</span><span class="transaction-history-week-block-footer-amount">${expense.toLocaleString()}</span>`;
+      const balanceCell = document.createElement("div");
+      balanceCell.className = "transaction-history-week-block-footer-cell transaction-history-week-block-footer-cell--balance";
+      const balanceAmountClass =
+        balance < 0
+          ? "transaction-history-week-block-footer-amount transaction-history-week-block-footer-amount--negative"
+          : "transaction-history-week-block-footer-amount";
+      balanceCell.innerHTML = `<span class="transaction-history-week-block-footer-label">総合計</span><span class="${balanceAmountClass}">${balance.toLocaleString()}</span>`;
+      footerRow.appendChild(incomeCell);
+      footerRow.appendChild(expenseCell);
+      footerRow.appendChild(balanceCell);
+      footer.appendChild(footerRow);
+    };
+    addFooterSection("予定", planIncome, planExpense, planBalance);
+    addFooterSection("実績", actualIncome, actualExpense, actualBalance);
+    block.appendChild(footer);
     container.appendChild(block);
   }
 }
@@ -784,32 +1169,77 @@ function renderCalendarPanel(): void {
       num.className = "transaction-history-calendar-day-num";
       num.textContent = String(day);
       cell.appendChild(num);
-      const txList = getTransactionsForDate(dateStr);
-      const totalsByType: { expense: number; income: number; transfer: number } = {
-        expense: 0,
-        income: 0,
-        transfer: 0,
-      };
-      txList.forEach((row) => {
-        const type = (row.TYPE || "expense") as "expense" | "income" | "transfer";
-        totalsByType[type] += Number(row.AMOUNT) || 0;
-      });
-      const order: ("expense" | "income" | "transfer")[] = ["expense", "income", "transfer"];
-      for (const type of order) {
-        if (totalsByType[type] === 0) continue;
+      const summary = getCalendarDaySummary(dateStr);
+      const addSummaryLine = (
+        iconModifierClass: string,
+        iconText: string,
+        label: string,
+        text: string
+      ): void => {
         const line = document.createElement("div");
         line.className = "transaction-history-calendar-day-summary";
         const typeIcon = document.createElement("span");
-        typeIcon.className = "transaction-history-type-icon";
-        typeIcon.classList.add(`transaction-history-type-icon--${type}`);
-        typeIcon.textContent = type === "income" ? "収" : type === "expense" ? "支" : "振";
-        typeIcon.setAttribute("aria-label", type === "income" ? "収入" : type === "expense" ? "支出" : "振替");
-        const amountSpan = document.createElement("span");
-        amountSpan.className = "transaction-history-calendar-day-summary-amount";
-        amountSpan.textContent = totalsByType[type].toLocaleString();
+        typeIcon.className = `transaction-history-type-icon ${iconModifierClass}`;
+        typeIcon.textContent = iconText;
+        typeIcon.setAttribute("aria-label", label);
+        const textSpan = document.createElement("span");
+        textSpan.className = "transaction-history-calendar-day-summary-amount";
+        textSpan.textContent = text;
         line.appendChild(typeIcon);
-        line.appendChild(amountSpan);
+        line.appendChild(textSpan);
         cell.appendChild(line);
+      };
+      if (summary.planCount > 0) {
+        const iconEl = document.createElement("span");
+        iconEl.className = "transaction-history-plan-icon";
+        iconEl.textContent = "予";
+        iconEl.setAttribute("aria-label", "予定");
+        const line = document.createElement("div");
+        line.className = "transaction-history-calendar-day-summary";
+        line.appendChild(iconEl);
+        const textSpan = document.createElement("span");
+        textSpan.className = "transaction-history-calendar-day-summary-amount";
+        textSpan.textContent = `${summary.planCount}件`;
+        line.appendChild(textSpan);
+        cell.appendChild(line);
+      }
+      if (summary.actualCount > 0) {
+        const iconEl = document.createElement("span");
+        iconEl.className = "transaction-history-plan-icon";
+        iconEl.textContent = "実";
+        iconEl.setAttribute("aria-label", "実績");
+        const line = document.createElement("div");
+        line.className = "transaction-history-calendar-day-summary";
+        line.appendChild(iconEl);
+        const textSpan = document.createElement("span");
+        textSpan.className = "transaction-history-calendar-day-summary-amount";
+        textSpan.textContent = `${summary.actualCount}件`;
+        line.appendChild(textSpan);
+        cell.appendChild(line);
+      }
+      if (summary.incomeAmount > 0) {
+        addSummaryLine(
+          "transaction-history-type-icon--income",
+          "収",
+          "収入",
+          summary.incomeAmount.toLocaleString()
+        );
+      }
+      if (summary.expenseAmount > 0) {
+        addSummaryLine(
+          "transaction-history-type-icon--expense",
+          "支",
+          "支出",
+          summary.expenseAmount.toLocaleString()
+        );
+      }
+      if (summary.transferAmount > 0) {
+        addSummaryLine(
+          "transaction-history-type-icon--transfer",
+          "振",
+          "振替",
+          summary.transferAmount.toLocaleString()
+        );
       }
       const showListForDate = (): void => {
         filterDateFrom = dateStr;
@@ -838,6 +1268,52 @@ function renderCalendarPanel(): void {
     }
     grid.appendChild(cell);
   }
+
+  const panel = grid.parentElement;
+  const existingFooter = document.getElementById("transaction-history-calendar-footer");
+  if (existingFooter) existingFooter.remove();
+  const { planIncome, planExpense, actualIncome, actualExpense } = getCalendarMonthTotals(year, month);
+  const planBalance = planIncome - planExpense;
+  const actualBalance = actualIncome - actualExpense;
+  const footer = document.createElement("div");
+  footer.id = "transaction-history-calendar-footer";
+  footer.className = "transaction-history-calendar-footer";
+  footer.setAttribute("role", "group");
+  footer.setAttribute("aria-label", "月合計");
+  const addFooterSection = (
+    sectionLabel: string,
+    income: number,
+    expense: number,
+    balance: number
+  ): void => {
+    const sectionTitle = document.createElement("div");
+    sectionTitle.className = "transaction-history-calendar-footer-section-title";
+    sectionTitle.textContent = sectionLabel;
+    footer.appendChild(sectionTitle);
+    const footerRow = document.createElement("div");
+    footerRow.className = "transaction-history-calendar-footer-row";
+    const addFooterLine = (label: string, value: number, negativeRed = false): void => {
+      const line = document.createElement("div");
+      line.className = "transaction-history-calendar-footer-line";
+      const labelSpan = document.createElement("span");
+      labelSpan.className = "transaction-history-calendar-footer-label";
+      labelSpan.textContent = label;
+      const valueSpan = document.createElement("span");
+      valueSpan.className = "transaction-history-calendar-footer-amount";
+      if (negativeRed && value < 0) valueSpan.classList.add("transaction-history-calendar-footer-amount--negative");
+      valueSpan.textContent = value.toLocaleString();
+      line.appendChild(labelSpan);
+      line.appendChild(valueSpan);
+      footerRow.appendChild(line);
+    };
+    addFooterLine("収入", income);
+    addFooterLine("支出", expense);
+    addFooterLine("総合計", balance, true);
+    footer.appendChild(footerRow);
+  };
+  addFooterSection("予定", planIncome, planExpense, planBalance);
+  addFooterSection("実績", actualIncome, actualExpense, actualBalance);
+  panel?.appendChild(footer);
 }
 
 /**
@@ -858,6 +1334,10 @@ function switchTab(tabId: string): void {
     (panel as HTMLElement).classList.toggle("transaction-history-panel--hidden", !isList && !isWeekly && !isCalendar);
   });
 
+  const chartsBody = document.getElementById("transaction-history-charts-body");
+  const isChartsVisible = tabId === "weekly" || tabId === "calendar";
+  if (chartsBody) chartsBody.classList.toggle("transaction-history-panel--hidden", !isChartsVisible);
+
   const tabsRow = document.querySelector(".transaction-history-tabs-row");
   const centerWrap = document.querySelector(".transaction-history-tabs-row-center");
   const ymInput = document.getElementById("transaction-history-calendar-ym") as HTMLInputElement;
@@ -872,6 +1352,7 @@ function switchTab(tabId: string): void {
     ymInput.value = selectedCalendarYM;
     if (tabId === "weekly") renderWeeklyPanel();
     else if (tabId === "calendar") renderCalendarPanel();
+    renderCharts(selectedCalendarYM);
   }
 }
 
@@ -1269,8 +1750,13 @@ function resetConditions(): void {
   updateChosenDisplays();
   renderList();
   const activeTab = document.querySelector(".transaction-history-tab.is-active") as HTMLButtonElement | undefined;
-  if (activeTab?.dataset.tab === "weekly") renderWeeklyPanel();
-  else if (activeTab?.dataset.tab === "calendar") renderCalendarPanel();
+  if (activeTab?.dataset.tab === "weekly") {
+    renderWeeklyPanel();
+    if (selectedCalendarYM) renderCharts(selectedCalendarYM);
+  } else if (activeTab?.dataset.tab === "calendar") {
+    renderCalendarPanel();
+    if (selectedCalendarYM) renderCharts(selectedCalendarYM);
+  }
 }
 
 /**
@@ -1317,8 +1803,13 @@ function loadAndShow(forceReloadFromCsv = false): void {
     setTagManagementList(tagMgmt);
     renderList();
     const activeTab = document.querySelector(".transaction-history-tab.is-active") as HTMLButtonElement | undefined;
-    if (activeTab?.dataset.tab === "weekly") renderWeeklyPanel();
-    else if (activeTab?.dataset.tab === "calendar") renderCalendarPanel();
+    if (activeTab?.dataset.tab === "weekly") {
+      renderWeeklyPanel();
+      if (selectedCalendarYM) renderCharts(selectedCalendarYM);
+    } else if (activeTab?.dataset.tab === "calendar") {
+      renderCalendarPanel();
+      if (selectedCalendarYM) renderCharts(selectedCalendarYM);
+    }
   });
 }
 
@@ -1362,6 +1853,7 @@ export function initTransactionHistoryView(): void {
     const tab = tabList?.dataset.tab;
     if (tab === "weekly") renderWeeklyPanel();
     else if (tab === "calendar") renderCalendarPanel();
+    if (tab === "weekly" || tab === "calendar") renderCharts(ym);
   }
   calendarPrev?.addEventListener("click", () => {
     if (!selectedCalendarYM) return;

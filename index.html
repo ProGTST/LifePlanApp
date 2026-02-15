@@ -200,9 +200,9 @@
                   <div class="transaction-history-tabs-row">
                     <div class="transaction-history-tabs-row-left">
                       <div class="transaction-history-tabs" role="tablist" aria-label="表示切替">
-                        <button type="button" class="transaction-history-tab is-active" role="tab" aria-selected="true" data-tab="list" id="transaction-history-tab-list">一覧</button>
-                        <button type="button" class="transaction-history-tab" role="tab" aria-selected="false" data-tab="weekly" id="transaction-history-tab-weekly">週単位</button>
-                        <button type="button" class="transaction-history-tab" role="tab" aria-selected="false" data-tab="calendar" id="transaction-history-tab-calendar">カレンダー</button>
+                        <button type="button" class="transaction-history-tab is-active" role="tab" aria-selected="true" data-tab="list" id="transaction-history-tab-list">収支一覧</button>
+                        <button type="button" class="transaction-history-tab" role="tab" aria-selected="false" data-tab="weekly" id="transaction-history-tab-weekly">週カレンダー</button>
+                        <button type="button" class="transaction-history-tab" role="tab" aria-selected="false" data-tab="calendar" id="transaction-history-tab-calendar">月カレンダー</button>
                       </div>
                     </div>
                     <div class="transaction-history-tabs-row-center" aria-hidden="true">
@@ -237,6 +237,41 @@
                   <div id="transaction-history-calendar-panel" class="transaction-history-panel transaction-history-panel--hidden" role="tabpanel" aria-labelledby="transaction-history-tab-calendar">
                     <div id="transaction-history-calendar-grid" class="transaction-history-calendar-grid" aria-label="カレンダー"></div>
                   </div>
+                </section>
+              </div>
+              <div id="transaction-history-charts-body" class="view-body transaction-history-charts-body transaction-history-panel--hidden" aria-label="グラフ">
+                <section class="transaction-history-charts-section">
+                    <h2 class="transaction-history-charts-title">収支グラフ</h2>
+                    <div class="transaction-history-charts-grid">
+                      <figure class="transaction-history-chart-figure transaction-history-chart-figure--diff">
+                        <figcaption class="transaction-history-chart-caption">1. 予定収入と実績収入の差分</figcaption>
+                        <div class="transaction-history-chart-wrap transaction-history-chart-wrap--diff"><canvas id="transaction-history-chart-income-diff" aria-label="予定収入と実績収入の差分チャート"></canvas></div>
+                      </figure>
+                      <figure class="transaction-history-chart-figure transaction-history-chart-figure--diff">
+                        <figcaption class="transaction-history-chart-caption">2. 予定支出と実績支出の差分</figcaption>
+                        <div class="transaction-history-chart-wrap transaction-history-chart-wrap--diff"><canvas id="transaction-history-chart-expense-diff" aria-label="予定支出と実績支出の差分チャート"></canvas></div>
+                      </figure>
+                      <div class="transaction-history-charts-row">
+                        <figure class="transaction-history-chart-figure">
+                          <figcaption class="transaction-history-chart-caption">3. 予定収入のカテゴリー割合</figcaption>
+                          <div class="transaction-history-chart-wrap"><canvas id="transaction-history-chart-plan-income-pie" aria-label="予定収入のカテゴリー割合円グラフ"></canvas></div>
+                        </figure>
+                        <figure class="transaction-history-chart-figure">
+                          <figcaption class="transaction-history-chart-caption">実績収入のカテゴリー割合</figcaption>
+                          <div class="transaction-history-chart-wrap"><canvas id="transaction-history-chart-actual-income-pie" aria-label="実績収入のカテゴリー割合円グラフ"></canvas></div>
+                        </figure>
+                      </div>
+                      <div class="transaction-history-charts-row">
+                        <figure class="transaction-history-chart-figure">
+                          <figcaption class="transaction-history-chart-caption">4. 予定支出のカテゴリー割合</figcaption>
+                          <div class="transaction-history-chart-wrap"><canvas id="transaction-history-chart-plan-expense-pie" aria-label="予定支出のカテゴリー割合円グラフ"></canvas></div>
+                        </figure>
+                        <figure class="transaction-history-chart-figure">
+                          <figcaption class="transaction-history-chart-caption">実績支出のカテゴリー割合</figcaption>
+                          <div class="transaction-history-chart-wrap"><canvas id="transaction-history-chart-actual-expense-pie" aria-label="実績支出のカテゴリー割合円グラフ"></canvas></div>
+                        </figure>
+                      </div>
+                    </div>
                 </section>
               </div>
             </div>

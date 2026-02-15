@@ -20,6 +20,8 @@ let accountRows: AccountRow[] = [];
 let permissionRows: AccountPermissionRow[] = [];
 let tagRows: TagRow[] = [];
 let visibleAccountIds: Set<string> = new Set();
+/** 出金元・入金先プルダウンに表示する勘定 ID（権限が edit のもののみ） */
+let editableAccountIds: Set<string> = new Set();
 let selectedTagIds: Set<string> = new Set();
 let editingTransactionId: string | null = null;
 
@@ -38,6 +40,23 @@ function getVisibleAccountIds(accounts: AccountRow[], permissions: AccountPermis
   if (!me) return ids;
   accounts.filter((a) => a.USER_ID === me).forEach((a) => ids.add(a.ID));
   permissions.filter((p) => p.USER_ID === me).forEach((p) => ids.add(p.ACCOUNT_ID));
+  return ids;
+}
+
+/**
+ * 出金元・入金先プルダウンに表示する勘定 ID の Set を返す（自分の勘定 + 権限が edit のもののみ）。
+ * @param accounts - 勘定行の配列
+ * @param permissions - 権限行の配列
+ * @returns 勘定 ID の Set
+ */
+function getEditableAccountIds(accounts: AccountRow[], permissions: AccountPermissionRow[]): Set<string> {
+  const ids = new Set<string>();
+  const me = currentUserId;
+  if (!me) return ids;
+  accounts.filter((a) => a.USER_ID === me).forEach((a) => ids.add(a.ID));
+  permissions
+    .filter((p) => p.USER_ID === me && (p.PERMISSION_TYPE || "").toLowerCase() === "edit")
+    .forEach((p) => ids.add(p.ACCOUNT_ID));
   return ids;
 }
 
@@ -470,7 +489,25 @@ function updateAccountRowsVisibility(type: string): void {
     inVal.value = "";
     updateAccountTriggerDisplay("in", "");
   }
-  fillAccountSelects(visibleAccountIds);
+  fillAccountSelects(editableAccountIds);
+}
+
+/**
+ * 収支種別に応じた勘定（出金元・入金先）の入力チェックを行う。
+ * @returns エラー時はメッセージ、問題なければ null
+ */
+function validateAccountByType(): string | null {
+  const type = (getTypeInput()?.value ?? "").toLowerCase();
+  const accountOut = (getAccountOutValueEl()?.value ?? "").trim();
+  const accountIn = (getAccountInValueEl()?.value ?? "").trim();
+  if (type === "income" && !accountIn) return "入金先を選択してください。";
+  if (type === "expense" && !accountOut) return "出金元を選択してください。";
+  if (type === "transfer") {
+    if (!accountOut && !accountIn) return "出金元と入金先を選択してください。";
+    if (!accountOut) return "出金元を選択してください。";
+    if (!accountIn) return "入金先を選択してください。";
+  }
+  return null;
 }
 
 function getTypeInput(): HTMLInputElement | null {
@@ -569,9 +606,14 @@ function resetForm(): void {
   renderTagChosenDisplay();
 }
 
-function getFirstVisibleAccountId(_which: "out" | "in"): string {
+/**
+ * プルダウンに表示される勘定のうち先頭の ID を返す（権限 edit のもののみ対象）。
+ * @param _which - "out" | "in"（未使用・呼び出し元でどちらの列か判別用）
+ * @returns 勘定 ID または空文字
+ */
+function getFirstEditableAccountId(_which: "out" | "in"): string {
   const sorted = accountRows
-    .filter((a) => visibleAccountIds.has(a.ID))
+    .filter((a) => editableAccountIds.has(a.ID))
     .sort((a, b) => (a.ACCOUNT_NAME || "").localeCompare(b.ACCOUNT_NAME || ""));
   return sorted.length > 0 ? sorted[0].ID : "";
 }
@@ -674,14 +716,14 @@ async function loadFormForEdit(transactionId: string): Promise<void> {
   if (accountInEl) accountInEl.value = row.ACCOUNT_ID_IN || "";
   if (accountOutEl) accountOutEl.value = row.ACCOUNT_ID_OUT || "";
   fillCategorySelect(type);
-  fillAccountSelects(visibleAccountIds);
+  fillAccountSelects(editableAccountIds);
   updateAccountRowsVisibility(type);
   if (type === "expense") {
-    const firstIn = getFirstVisibleAccountId("in");
+    const firstIn = getFirstEditableAccountId("in");
     if (accountInEl) accountInEl.value = firstIn;
     updateAccountTriggerDisplay("in", firstIn);
   } else if (type === "income") {
-    const firstOut = getFirstVisibleAccountId("out");
+    const firstOut = getFirstEditableAccountId("out");
     if (accountOutEl) accountOutEl.value = firstOut;
     updateAccountTriggerDisplay("out", firstOut);
   } else {
@@ -707,10 +749,11 @@ async function loadOptions(): Promise<void> {
   permissionRows = permissions;
   tagRows = tags;
   visibleAccountIds = getVisibleAccountIds(accountRows, permissionRows);
+  editableAccountIds = getEditableAccountIds(accountRows, permissionRows);
   const typeInput = getTypeInput();
   const type = typeInput?.value ?? "expense";
   fillCategorySelect(type);
-  fillAccountSelects(visibleAccountIds);
+  fillAccountSelects(editableAccountIds);
   updateAccountRowsVisibility(type);
   renderTagChosenDisplay();
 }
@@ -837,11 +880,22 @@ export function initTransactionEntryView(): void {
     });
   });
 
+  const dateFromEl = document.getElementById("transaction-entry-date-from") as HTMLInputElement | null;
+  const dateToEl = document.getElementById("transaction-entry-date-to") as HTMLInputElement | null;
+  dateFromEl?.addEventListener("change", () => {
+    if (dateToEl && dateFromEl.value) dateToEl.value = dateFromEl.value;
+  });
+
   const form = document.getElementById("transaction-entry-form");
   form?.addEventListener("submit", async (e) => {
     e.preventDefault();
     if (!(form instanceof HTMLFormElement)) return;
     if (transactionEntryViewOnly) return;
+    const accountError = validateAccountByType();
+    if (accountError) {
+      alert(accountError);
+      return;
+    }
     try {
       if (editingTransactionId) {
         const { rows } = await fetchTransactionRows(true);
