@@ -51,6 +51,11 @@ let selectedCalendarYM = "";
 // データ取得
 // ---------------------------------------------------------------------------
 
+/**
+ * TRANSACTION.csv を取得し、取引行の配列に変換して返す。
+ * @param noCache - true のときキャッシュを使わない
+ * @returns Promise。取引行の配列
+ */
 async function fetchTransactionList(noCache = false): Promise<TransactionRow[]> {
   const init = noCache ? CSV_NO_CACHE : undefined;
   const { header, rows } = await fetchCsv("/data/TRANSACTION.csv", init);
@@ -63,6 +68,11 @@ async function fetchTransactionList(noCache = false): Promise<TransactionRow[]> 
   return list;
 }
 
+/**
+ * ACCOUNT_PERMISSION.csv を取得し、権限行の配列に変換して返す。
+ * @param noCache - true のときキャッシュを使わない
+ * @returns Promise。権限行の配列
+ */
 async function fetchAccountPermissionList(noCache = false): Promise<AccountPermissionRow[]> {
   const init = noCache ? CSV_NO_CACHE : undefined;
   const { header, rows } = await fetchCsv("/data/ACCOUNT_PERMISSION.csv", init);
@@ -75,7 +85,12 @@ async function fetchAccountPermissionList(noCache = false): Promise<AccountPermi
   return list;
 }
 
-/** ログインユーザーが参照できる勘定ID（自分の勘定 + 権限付与された勘定） */
+/**
+ * ログインユーザーが参照できる勘定 ID の Set を返す（自分の勘定 + 権限付与された勘定）。
+ * @param accountRows - 勘定行の配列
+ * @param permissionRows - 権限行の配列
+ * @returns 勘定 ID の Set
+ */
 function getVisibleAccountIds(
   accountRows: AccountRow[],
   permissionRows: AccountPermissionRow[]
@@ -88,7 +103,12 @@ function getVisibleAccountIds(
   return ids;
 }
 
-/** 表示対象の取引のみに絞る（参照可能な勘定に紐づくもの） */
+/**
+ * 表示対象の取引のみに絞る（参照可能な勘定に紐づくもの）。
+ * @param txList - 取引行の配列
+ * @param visibleAccountIds - 参照可能な勘定 ID の Set
+ * @returns 絞り込み後の取引行の配列
+ */
 function filterTransactionsByVisibleAccounts(
   txList: TransactionRow[],
   visibleAccountIds: Set<string>
@@ -100,6 +120,11 @@ function filterTransactionsByVisibleAccounts(
   });
 }
 
+/**
+ * CATEGORY.csv を取得し、カテゴリー行の配列に変換して返す。
+ * @param noCache - true のときキャッシュを使わない
+ * @returns Promise。カテゴリー行の配列
+ */
 async function fetchCategoryList(noCache = false): Promise<CategoryRow[]> {
   const init = noCache ? CSV_NO_CACHE : undefined;
   const { header, rows } = await fetchCsv("/data/CATEGORY.csv", init);
@@ -111,6 +136,11 @@ async function fetchCategoryList(noCache = false): Promise<CategoryRow[]> {
   return list;
 }
 
+/**
+ * ACCOUNT.csv を取得し、勘定行の配列に変換して返す。
+ * @param noCache - true のときキャッシュを使わない
+ * @returns Promise。勘定行の配列
+ */
 async function fetchAccountList(noCache = false): Promise<AccountRow[]> {
   const init = noCache ? CSV_NO_CACHE : undefined;
   const { header, rows } = await fetchCsv("/data/ACCOUNT.csv", init);
@@ -122,6 +152,11 @@ async function fetchAccountList(noCache = false): Promise<AccountRow[]> {
   return list;
 }
 
+/**
+ * TAG.csv を取得し、タグ行の配列に変換して返す。
+ * @param noCache - true のときキャッシュを使わない
+ * @returns Promise。タグ行の配列
+ */
 async function fetchTagList(noCache = false): Promise<TagRow[]> {
   const init = noCache ? CSV_NO_CACHE : undefined;
   const { header, rows } = await fetchCsv("/data/TAG.csv", init);
@@ -135,6 +170,11 @@ async function fetchTagList(noCache = false): Promise<TagRow[]> {
   return list;
 }
 
+/**
+ * TAG_MANAGEMENT.csv を取得し、タグ管理行の配列に変換して返す。
+ * @param noCache - true のときキャッシュを使わない
+ * @returns Promise。タグ管理行の配列
+ */
 async function fetchTagManagementList(noCache = false): Promise<TagManagementRow[]> {
   const init = noCache ? CSV_NO_CACHE : undefined;
   const { header, rows } = await fetchCsv("/data/TAG_MANAGEMENT.csv", init);
@@ -146,15 +186,29 @@ async function fetchTagManagementList(noCache = false): Promise<TagManagementRow
   return list;
 }
 
+/**
+ * ID でカテゴリー行を検索する。
+ * @param id - カテゴリー ID
+ * @returns 該当行または undefined
+ */
 function getCategoryById(id: string): CategoryRow | undefined {
   return categoryRows.find((c) => c.ID === id);
 }
 
+/**
+ * ID で勘定行を検索する。
+ * @param id - 勘定 ID
+ * @returns 該当行または undefined
+ */
 function getAccountById(id: string): AccountRow | undefined {
   return accountRows.find((a) => a.ID === id);
 }
 
-/** 取引に紐づくタグの一覧（TAG_MANAGEMENT と TAG から取得） */
+/**
+ * 取引に紐づくタグの一覧を返す（TAG_MANAGEMENT と TAG から取得）。
+ * @param transactionId - 取引 ID
+ * @returns タグ行の配列
+ */
 function getTagsForTransaction(transactionId: string): TagRow[] {
   const tagIds = tagManagementList
     .filter((t) => t.TRANSACTION_ID === transactionId)
@@ -168,6 +222,13 @@ function getTagsForTransaction(transactionId: string): TagRow[] {
 // DOM ヘルパー・フィルタ・一覧描画
 // ---------------------------------------------------------------------------
 
+/**
+ * 色・アイコンを表示する div ラッパーを生成する。
+ * @param color - 背景色
+ * @param iconPath - アイコン画像パス（省略可）
+ * @param className - 要素に付与するクラス名
+ * @returns ラッパー要素
+ */
 function renderIconWrap(color: string, iconPath: string | undefined, className: string): HTMLDivElement {
   const wrap = document.createElement("div");
   wrap.className = className;
@@ -181,7 +242,13 @@ function renderIconWrap(color: string, iconPath: string | undefined, className: 
   return wrap;
 }
 
-/** 勘定のアイコン+名前を指定要素に追加する（一覧の勘定セル用） */
+/**
+ * 勘定のアイコンと名前を指定要素に追加する（一覧の勘定セル用）。
+ * @param parent - 追加先の親要素
+ * @param acc - 勘定行
+ * @param tag - ラッパーに使うタグ名（div または span）
+ * @returns なし
+ */
 function appendAccountWrap(
   parent: HTMLElement,
   acc: AccountRow,
@@ -199,6 +266,11 @@ function appendAccountWrap(
   parent.appendChild(wrap);
 }
 
+/**
+ * 画面上のフィルター条件（状態・種別・日付・カテゴリー・タグ・勘定・金額・フリーテキスト）を適用し、ソート済みの配列を返す。
+ * @param rows - 取引行の配列
+ * @returns フィルター適用・ソート後の配列
+ */
 function applyFilters(rows: TransactionRow[]): TransactionRow[] {
   const filtered = rows.filter((row) => {
     if (filterStatus.length > 0 && !filterStatus.includes(row.STATUS as "plan" | "actual")) return false;
@@ -247,8 +319,9 @@ function applyFilters(rows: TransactionRow[]): TransactionRow[] {
 }
 
 /**
- * 指定日付に表示する取引（カレンダー用）。
- * 実績は ACTUAL_DATE の日のみ。予定は月に1回表示：PLAN_DATE_FROM/TO がその月内なら FROM/TO の日のみ、そうでなければ月初1日のみ。
+ * 指定日付に表示する取引を返す（カレンダー用）。実績は ACTUAL_DATE の日のみ。予定は月に1回表示。
+ * @param dateStr - 日付（YYYY-MM-DD）
+ * @returns 取引行の配列
  */
 function getTransactionsForDate(dateStr: string): TransactionRow[] {
   const filtered = applyFilters(transactionList);
@@ -270,7 +343,12 @@ function getTransactionsForDate(dateStr: string): TransactionRow[] {
   });
 }
 
-/** 指定期間（from〜to、YYYY-MM-DD  inclusive）に含まれる取引。予定は PLAN_DATE_FROM〜PLAN_DATE_TO が期間と重なるものを含む */
+/**
+ * 指定期間（from〜to、YYYY-MM-DD  inclusive）に含まれる取引を返す。予定は PLAN_DATE_FROM〜PLAN_DATE_TO が期間と重なるものを含む。
+ * @param from - 開始日
+ * @param to - 終了日
+ * @returns 取引行の配列
+ */
 function getTransactionsInRange(from: string, to: string): TransactionRow[] {
   const filtered = applyFilters(transactionList);
   return filtered.filter((row) => {
@@ -285,7 +363,11 @@ function getTransactionsInRange(from: string, to: string): TransactionRow[] {
   });
 }
 
-/** 取引が権限付与された勘定に紐づく場合、その権限種別（参照→薄黄、編集→薄緑の行背景に利用） */
+/**
+ * 取引が権限付与された勘定に紐づく場合、その権限種別を返す（参照→薄黄、編集→薄緑の行背景に利用）。
+ * @param row - 取引行
+ * @returns "view" | "edit" | null
+ */
 function getRowPermissionType(row: TransactionRow): "view" | "edit" | null {
   const me = currentUserId;
   if (!me) return null;
@@ -306,7 +388,11 @@ function getRowPermissionType(row: TransactionRow): "view" | "edit" | null {
   return null;
 }
 
-/** 予定データで予定終了日が今日より過去か（日付のみで比較しタイムゾーンに左右されない） */
+/**
+ * 予定データで予定終了日が今日より過去かどうかを返す（日付のみで比較、タイムゾーンに左右されない）。
+ * @param row - 取引行
+ * @returns 過去の予定なら true
+ */
 function isPlanDateToPast(row: TransactionRow): boolean {
   if (row.STATUS !== "plan" || !row.PLAN_DATE_TO?.trim()) return false;
   const s = row.PLAN_DATE_TO.trim();
@@ -324,6 +410,10 @@ function isPlanDateToPast(row: TransactionRow): boolean {
   return planD < todayD;
 }
 
+/**
+ * 収支履歴の一覧タブのテーブルを描画する。フィルター適用済みの取引を行で表示する。
+ * @returns なし
+ */
 function renderList(): void {
   const tbody = document.getElementById("transaction-history-tbody");
   if (!tbody) return;
@@ -453,7 +543,12 @@ function renderList(): void {
   });
 }
 
-/** 選択年月の週一覧（各週は日曜〜土曜の範囲で、当月に含まれる日がある週のみ） */
+/**
+ * 選択年月の週一覧を返す。各週は日曜〜土曜の範囲で、当月に含まれる日がある週のみ。
+ * @param year - 年
+ * @param month - 月（1-12）
+ * @returns 週情報の配列（from, to, weekNumber, dateRange）
+ */
 function getWeeksInMonth(
   year: number,
   month: number
@@ -483,7 +578,11 @@ function getWeeksInMonth(
 
 const WEEKDAY_JA = ["日", "月", "火", "水", "木", "金", "土"];
 
-/** YYYY-MM-DD を "2月1日(日)" 形式にフォーマット */
+/**
+ * YYYY-MM-DD を "2月1日(日)" 形式にフォーマットする。
+ * @param dateStr - 日付文字列
+ * @returns フォーマット後の文字列
+ */
 function formatDateMdWeek(dateStr: string): string {
   const match = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (!match) return "—";
@@ -495,7 +594,10 @@ function formatDateMdWeek(dateStr: string): string {
   return `${month}月${day}日(${week})`;
 }
 
-/** 今日の日付を YYYY-MM-DD で返す */
+/**
+ * 今日の日付を YYYY-MM-DD で返す。
+ * @returns 日付文字列
+ */
 function getTodayYMD(): string {
   const d = new Date();
   const y = d.getFullYear();
@@ -504,12 +606,21 @@ function getTodayYMD(): string {
   return `${y}-${m}-${day}`;
 }
 
-/** 指定週（from〜to）に今日が含まれるか */
+/**
+ * 指定週（from〜to）に今日が含まれるかどうかを返す。
+ * @param from - 週の開始日（YYYY-MM-DD）
+ * @param to - 週の終了日（YYYY-MM-DD）
+ * @returns 含まれる場合 true
+ */
 function isCurrentWeek(from: string, to: string): boolean {
   const today = getTodayYMD();
   return today >= from && today <= to;
 }
 
+/**
+ * 週表示パネルを描画する。選択年月の週ごとにブロックを生成し、各週の取引を表示する。
+ * @returns なし
+ */
 function renderWeeklyPanel(): void {
   const container = document.getElementById("transaction-history-weekly-blocks");
   if (!container) return;
@@ -631,13 +742,22 @@ function renderWeeklyPanel(): void {
   }
 }
 
-/** カレンダー用：指定年月の1日の曜日（0=日）と末日 */
+/**
+ * カレンダー用に指定年月の1日の曜日（0=日）と末日を返す。
+ * @param year - 年
+ * @param month - 月（1-12）
+ * @returns firstDay（0-6）, lastDate（その月の日数）
+ */
 function getMonthCalendarInfo(year: number, month: number): { firstDay: number; lastDate: number } {
   const first = new Date(year, month - 1, 1);
   const last = new Date(year, month, 0);
   return { firstDay: first.getDay(), lastDate: last.getDate() };
 }
 
+/**
+ * カレンダータブの月表示を描画する。日付セルに取引サマリーを表示する。
+ * @returns なし
+ */
 function renderCalendarPanel(): void {
   const grid = document.getElementById("transaction-history-calendar-grid");
   if (!grid) return;
@@ -732,6 +852,11 @@ function renderCalendarPanel(): void {
   }
 }
 
+/**
+ * 収支履歴のタブ（一覧・週・カレンダー）を切り替え、該当パネルを表示する。
+ * @param tabId - "list" | "weekly" | "calendar"
+ * @returns なし
+ */
 function switchTab(tabId: string): void {
   document.querySelectorAll(".transaction-history-tab").forEach((btn) => {
     const b = btn as HTMLButtonElement;
@@ -762,7 +887,10 @@ function switchTab(tabId: string): void {
   }
 }
 
-/** 計画・収支種別のフィルターボタンの表示を現在の選択状態に同期する（収支履歴画面内のボタンのみ） */
+/**
+ * 計画・収支種別のフィルターボタンの表示を現在の選択状態に同期する（収支履歴画面内のボタンのみ）。
+ * @returns なし
+ */
 function syncFilterButtons(): void {
   const view = document.getElementById("view-transaction-history");
   if (!view) return;
@@ -780,7 +908,15 @@ const CHOSEN_REMOVE_ICON = "/icon/circle-xmark-solid-full.svg";
 const CHOSEN_LABEL_DEFAULT_BG = "#646cff";
 const CHOSEN_LABEL_DEFAULT_FG = "#ffffff";
 
-/** 選択表示欄にラベル要素を並べて表示する。onRemove を渡すと各ラベル横に削除アイコンを表示。getColor で項目の背景色を指定（未設定時はデフォルト色） */
+/**
+ * 選択表示欄にラベル要素を並べて表示する。onRemove を渡すと各ラベル横に削除アイコンを表示する。
+ * @param container - 表示先のコンテナ要素
+ * @param ids - 表示する ID の配列
+ * @param getName - ID から表示名を取得する関数
+ * @param onRemove - 削除クリック時に呼ぶ関数（省略可）
+ * @param getColor - ID から背景色を取得する関数（省略時はデフォルト色）
+ * @returns なし
+ */
 function setChosenDisplayLabels(
   container: HTMLElement | null,
   ids: string[],
@@ -824,7 +960,10 @@ function setChosenDisplayLabels(
   }
 }
 
-/** カテゴリー・タグ・勘定項目の選択表示欄を更新する（選択された項目名をラベルで表示、項目の COLOR を背景色に、削除アイコン付き） */
+/**
+ * カテゴリー・タグ・勘定項目の選択表示欄を更新する（選択された項目名をラベルで表示、COLOR を背景色に、削除アイコン付き）。
+ * @returns なし
+ */
 function updateChosenDisplays(): void {
   const categoryEl = document.getElementById("transaction-history-category-display");
   const tagEl = document.getElementById("transaction-history-tag-display");
@@ -864,6 +1003,11 @@ function updateChosenDisplays(): void {
   );
 }
 
+/**
+ * 指定 ID の選択モーダル（オーバーレイ）を閉じる。
+ * @param overlayId - オーバーレイ要素の ID
+ * @returns なし
+ */
 function closeSelectModal(overlayId: string): void {
   const overlay = document.getElementById(overlayId);
   if (overlay) {
@@ -872,6 +1016,11 @@ function closeSelectModal(overlayId: string): void {
   }
 }
 
+/**
+ * 選択モーダル内のリストで選択中の ID 一覧を返す。
+ * @param listContainerId - リストコンテナ要素の ID
+ * @returns 選択された ID の配列
+ */
 function getSelectedIdsFromList(listContainerId: string): string[] {
   const container = document.getElementById(listContainerId);
   if (!container) return [];
@@ -881,6 +1030,16 @@ function getSelectedIdsFromList(listContainerId: string): string[] {
     .filter((id): id is string => id != null);
 }
 
+/**
+ * フィルター用選択モーダル内の1行（チェック・アイコン・名前）を生成する。
+ * @param id - 項目 ID
+ * @param name - 表示名
+ * @param color - アイコン背景色
+ * @param iconPath - アイコン画像パス
+ * @param isSelected - 初期選択状態
+ * @param onToggle - 選択切替時に呼ぶコールバック（省略可）
+ * @returns 行要素
+ */
 function createSelectItemRow(
   id: string,
   name: string,
@@ -930,7 +1089,11 @@ let categorySelectModalType: "income" | "expense" | "transfer" = "expense";
 /** カテゴリー選択モーダル内の選択ID（タブ切替でも保持） */
 let categorySelectModalSelectedIds = new Set<string>();
 
-/** 収支種別に応じてカテゴリーを絞り込む */
+/**
+ * 収支種別に応じてカテゴリーを絞り込む。
+ * @param type - 種別（income / expense / transfer）
+ * @returns カテゴリー行の配列
+ */
 function filterCategoriesByType(type: "income" | "expense" | "transfer"): CategoryRow[] {
   if (type === "income") return categoryRows.filter((c) => (c.TYPE || "").toLowerCase() === "income");
   if (type === "expense") return categoryRows.filter((c) => (c.TYPE || "").toLowerCase() === "expense");
@@ -938,7 +1101,11 @@ function filterCategoriesByType(type: "income" | "expense" | "transfer"): Catego
   return categoryRows;
 }
 
-/** カテゴリー選択モーダルの一覧を指定種別で描画する */
+/**
+ * カテゴリー選択モーダルの一覧を指定種別で描画する。
+ * @param type - 種別（income / expense / transfer）
+ * @returns なし
+ */
 function renderCategorySelectList(type: "income" | "expense" | "transfer"): void {
   const listEl = document.getElementById("transaction-history-category-select-list");
   if (!listEl) return;
@@ -961,6 +1128,10 @@ function renderCategorySelectList(type: "income" | "expense" | "transfer"): void
   }
 }
 
+/**
+ * カテゴリーフィルター用選択モーダルを開く。現在のフィルター選択を反映する。
+ * @returns なし
+ */
 function openCategorySelectModal(): void {
   categorySelectModalType = "expense";
   categorySelectModalSelectedIds = new Set(filterCategoryIds);
@@ -979,6 +1150,10 @@ function openCategorySelectModal(): void {
   }
 }
 
+/**
+ * タグフィルター用選択モーダルを開く。現在のフィルター選択を反映して一覧を描画する。
+ * @returns なし
+ */
 function openTagSelectModal(): void {
   const listEl = document.getElementById("transaction-history-tag-select-list");
   if (!listEl) return;
@@ -1007,7 +1182,10 @@ let accountSelectModalTab: "own" | "shared" = "own";
 /** 勘定項目選択モーダル内の選択ID（タブ切替でも保持） */
 let accountSelectModalSelectedIds = new Set<string>();
 
-/** 自分の勘定一覧（USER_ID がログインユーザーと一致） */
+/**
+ * 自分の勘定一覧を返す（USER_ID がログインユーザーと一致するもの）。SORT_ORDER でソート済み。
+ * @returns 勘定行の配列
+ */
 function getOwnAccountRows(): AccountRow[] {
   const me = currentUserId;
   if (!me) return [];
@@ -1016,7 +1194,10 @@ function getOwnAccountRows(): AccountRow[] {
     .sort((a, b) => (a.SORT_ORDER || "").localeCompare(b.SORT_ORDER || ""));
 }
 
-/** 参照可能な共有勘定一覧（他ユーザー所有で権限付与されているもの） */
+/**
+ * 参照可能な共有勘定一覧を返す（他ユーザー所有で権限付与されているもの）。SORT_ORDER でソート済み。
+ * @returns 勘定行の配列
+ */
 function getSharedAccountRows(): AccountRow[] {
   const me = currentUserId;
   if (!me) return [];
@@ -1026,7 +1207,11 @@ function getSharedAccountRows(): AccountRow[] {
     .sort((a, b) => (a.SORT_ORDER || "").localeCompare(b.SORT_ORDER || ""));
 }
 
-/** 勘定項目選択モーダルの一覧を指定タブで描画する */
+/**
+ * 勘定項目選択モーダルの一覧を指定タブ（個人 or 共有）で描画する。
+ * @param tab - "own" | "shared"
+ * @returns なし
+ */
 function renderAccountSelectList(tab: "own" | "shared"): void {
   const listEl = document.getElementById("transaction-history-account-select-list");
   if (!listEl) return;
@@ -1048,6 +1233,10 @@ function renderAccountSelectList(tab: "own" | "shared"): void {
   }
 }
 
+/**
+ * 勘定項目フィルター用選択モーダルを開く。現在のフィルター選択を反映する。
+ * @returns なし
+ */
 function openAccountSelectModal(): void {
   accountSelectModalTab = "own";
   accountSelectModalSelectedIds = new Set(filterAccountIds);
@@ -1066,7 +1255,11 @@ function openAccountSelectModal(): void {
   }
 }
 
-/** 日付を YYYY-MM-DD にフォーマット */
+/**
+ * 日付を YYYY-MM-DD にフォーマットする。
+ * @param d - 日付
+ * @returns フォーマット後の文字列
+ */
 function formatDateYMD(d: Date): string {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -1074,7 +1267,10 @@ function formatDateYMD(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
-/** 検索条件を初期状態に戻す */
+/**
+ * 検索条件を初期状態に戻す。フィルター状態・日付・金額・フリーテキスト等をクリアする。
+ * @returns なし
+ */
 function resetConditions(): void {
   filterStatus = ["plan", "actual"];
   filterType = ["income", "expense", "transfer"];
@@ -1116,8 +1312,9 @@ function resetConditions(): void {
 }
 
 /**
- * 収支履歴のデータを読み込んで表示する。
- * @param forceReloadFromCsv true のときはキャッシュを使わず CSV を再取得する（最新化ボタン用）
+ * 収支履歴のデータを読み込んで表示する。フィルター・タブに応じて一覧・週・カレンダーを描画する。
+ * @param forceReloadFromCsv - true のときはキャッシュを使わず CSV を再取得する（最新化ボタン用）
+ * @returns なし
  */
 function loadAndShow(forceReloadFromCsv = false): void {
   syncFilterButtons();

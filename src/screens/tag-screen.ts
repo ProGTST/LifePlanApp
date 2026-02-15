@@ -34,6 +34,10 @@ import { registerViewHandler } from "../app/screen";
 import { openColorIconPicker } from "../utils/colorIconPicker.ts";
 import { ICON_DEFAULT_COLOR } from "../constants/colorPresets.ts";
 
+/**
+ * TAG.csv を取得し、タグ行の配列に変換して返す。
+ * @returns Promise。タグ行の配列
+ */
 async function fetchTagList(): Promise<TagRow[]> {
   const { header, rows } = await fetchCsv("/data/TAG.csv");
   if (header.length === 0) return [];
@@ -48,11 +52,21 @@ async function fetchTagList(): Promise<TagRow[]> {
   return list;
 }
 
+/**
+ * タグの変更を dirty にし、TAG.csv の保存を非同期で実行する。
+ * @returns なし
+ */
 function persistTag(): void {
   setTagDirty();
   saveTagCsvOnly().catch((e) => console.error("saveTagCsvOnly", e));
 }
 
+/**
+ * 一覧セルで編集したタグ名を保存する。空の場合は削除。バージョンチェック後に永続化。
+ * @param tagId - 対象タグ ID
+ * @param newName - 新しいタグ名
+ * @returns Promise
+ */
 async function saveTagNameFromCell(tagId: string, newName: string): Promise<void> {
   const trimmed = newName.trim();
   if (!trimmed) {
@@ -72,7 +86,12 @@ async function saveTagNameFromCell(tagId: string, newName: string): Promise<void
   persistTag();
 }
 
-/** 画面上のスロットを元に表示順を並び替え、永続化・再描画 */
+/**
+ * 画面上のスロットを元に表示順を並び替え、SORT_ORDER と tagList を更新して永続化・再描画する。
+ * @param fromIndex - ドラッグ元の行インデックス
+ * @param toSlot - ドロップ先スロット（0=先頭の前 ～ n=末尾の後）
+ * @returns Promise
+ */
 async function moveTagOrder(fromIndex: number, toSlot: number): Promise<void> {
   const sorted = tagList.slice();
   const originalLength = sorted.length;
@@ -100,6 +119,10 @@ async function moveTagOrder(fromIndex: number, toSlot: number): Promise<void> {
 
 const TAG_TABLE_COL_COUNT = 4;
 
+/**
+ * タグ一覧テーブル（tag-tbody）を描画する。ドラッグ並び替え・名前編集・色アイコン・削除に対応。
+ * @returns なし
+ */
 function renderTagTable(): void {
   const tbody = document.getElementById("tag-tbody");
   if (!tbody) return;
@@ -192,6 +215,11 @@ function renderTagTable(): void {
   });
 }
 
+/**
+ * 指定タグを一覧と state から削除し、TAG.csv を永続化する。
+ * @param tagId - 削除するタグ ID
+ * @returns Promise
+ */
 async function deleteTagRow(tagId: string): Promise<void> {
   const row = tagListFull.find((r) => r.ID === tagId);
   if (!row) return;
@@ -225,6 +253,10 @@ export async function loadAndRenderTagList(): Promise<void> {
   renderTagTable();
 }
 
+/**
+ * タグ追加モーダルを開く。フォームを初期化し、オーバーレイを表示する。
+ * @returns なし
+ */
 function openTagModal(): void {
   const formName = document.getElementById("tag-form-name") as HTMLInputElement;
   const formColor = document.getElementById("tag-form-color") as HTMLInputElement;
@@ -240,6 +272,10 @@ function openTagModal(): void {
   }
 }
 
+/**
+ * タグフォームの色・アイコンフィールドの値をプレビュー要素に反映する。
+ * @returns なし
+ */
 function updateTagFormColorIconPreview(): void {
   const color = (document.getElementById("tag-form-color") as HTMLInputElement)?.value || ICON_DEFAULT_COLOR;
   const path = (document.getElementById("tag-form-icon-path") as HTMLInputElement)?.value || "";
@@ -251,6 +287,10 @@ function updateTagFormColorIconPreview(): void {
   wrap.style.maskImage = path ? `url(${path})` : "";
 }
 
+/**
+ * タグ追加モーダルを閉じる。
+ * @returns なし
+ */
 function closeTagModal(): void {
   const overlay = document.getElementById("tag-modal-overlay");
   if (overlay) {
@@ -259,6 +299,10 @@ function closeTagModal(): void {
   }
 }
 
+/**
+ * タグモーダルのフォーム内容を検証し、新規タグを追加して永続化する。完了後にモーダルを閉じ一覧を再描画する。
+ * @returns なし
+ */
 function saveTagFormFromModal(): void {
   const formName = document.getElementById("tag-form-name") as HTMLInputElement;
   if (!formName) return;
@@ -301,6 +345,10 @@ function saveTagFormFromModal(): void {
   renderTagTable();
 }
 
+/**
+ * タグ画面の削除モードをトグルし、削除ボタンの表示とヘッダーボタンの状態を更新する。
+ * @returns なし
+ */
 function handleToggleDeleteMode(): void {
   toggleTagDeleteMode();
   document.getElementById("header-delete-btn")?.classList.toggle("is-active", tagDeleteMode);

@@ -45,14 +45,22 @@ let selectedCategoryType: CategoryType = "expense";
 /** ツリービュー表示フラグ（初期は ON） */
 let categoryTreeViewMode = true;
 
-/** 同じ種別の行だけに絞り、SORT_ORDER 昇順で返す */
+/**
+ * 現在選択中の種別の行だけに絞り、SORT_ORDER 昇順で返す。
+ * @returns カテゴリー行の配列
+ */
 function getSameTypeFiltered(): CategoryRow[] {
   return categoryListFull
     .filter((r) => r.TYPE === selectedCategoryType)
     .sort((a, b) => sortOrderNum(a.SORT_ORDER, b.SORT_ORDER));
 }
 
-/** 指定カテゴリーの子・孫・曾孫…のIDをすべて返す（循環防止用） */
+/**
+ * 指定カテゴリーの子・孫・曾孫…の ID をすべて返す（循環防止・親選択除外用）。
+ * @param categoryId - 起点となるカテゴリー ID
+ * @param rows - カテゴリー行の配列
+ * @returns 子孫 ID の Set
+ */
 function getDescendantIds(categoryId: string, rows: CategoryRow[]): Set<string> {
   const descendants = new Set<string>();
   let currentLevel: string[] = [categoryId];
@@ -71,7 +79,11 @@ function getDescendantIds(categoryId: string, rows: CategoryRow[]): Set<string> 
   return descendants;
 }
 
-/** 親プルダウン用：同じ種別のうち、自カテゴリーとその子孫を除いた一覧 */
+/**
+ * 親プルダウン用。同じ種別のうち、自カテゴリーとその子孫を除いた一覧を返す。
+ * @param currentCategoryId - 自分自身のカテゴリー ID（除外する）
+ * @returns 親候補のカテゴリー行の配列
+ */
 function getSameTypeCategoriesForParentSelect(currentCategoryId: string): CategoryRow[] {
   const rows = getSameTypeFiltered();
   const excludeIds = getDescendantIds(currentCategoryId, rows);
@@ -79,12 +91,20 @@ function getSameTypeCategoriesForParentSelect(currentCategoryId: string): Catego
   return rows.filter((r) => !excludeIds.has(r.ID));
 }
 
-/** 指定種別のカテゴリー一覧（モーダル用） */
+/**
+ * 指定種別のカテゴリー一覧を返す（モーダル・親選択用）。
+ * @param type - 種別（income / expense / transfer）
+ * @returns カテゴリー行の配列
+ */
 function getCategoriesByType(type: CategoryType): CategoryRow[] {
   return categoryList.filter((r) => r.TYPE === type);
 }
 
-/** ツリーベースの表示順（ルート→子の階層）。同階層の並びは引数 rows の配列順に従う */
+/**
+ * ツリーベースの表示順（ルート→子の階層）で行と深さの配列を返す。同階層の並びは引数 rows の配列順に従う。
+ * @param rows - カテゴリー行の配列
+ * @returns 行と深さの配列
+ */
 function getCategoryRowsInTreeOrder(rows: CategoryRow[]): { row: CategoryRow; depth: number }[] {
   const idSet = new Set(rows.map((r) => r.ID));
   const roots = rows.filter((r) => !r.PARENT_ID || !idSet.has(r.PARENT_ID));
@@ -100,7 +120,11 @@ function getCategoryRowsInTreeOrder(rows: CategoryRow[]): { row: CategoryRow; de
   return result;
 }
 
-/** 種別ごとに SORT_ORDER 順に並べる（表示順＝配列順のため初回ロード時に使用）。種別順は 支出→収入→振替 */
+/**
+ * 種別ごとに SORT_ORDER 順に並べる（表示順＝配列順のため初回ロード時に使用）。種別順は 支出→収入→振替。
+ * @param list - ソート対象のカテゴリー配列（破壊的変更）
+ * @returns なし
+ */
 function sortCategoryListByTypeAndOrder(list: CategoryRow[]): void {
   list.sort((a, b) => {
     if (a.TYPE !== b.TYPE) {
@@ -112,6 +136,10 @@ function sortCategoryListByTypeAndOrder(list: CategoryRow[]): void {
   });
 }
 
+/**
+ * CATEGORY.csv を取得し、カテゴリー行の配列に変換して返す。種別・SORT_ORDER でソート済み。
+ * @returns Promise。カテゴリー行の配列
+ */
 async function fetchCategoryList(): Promise<CategoryRow[]> {
   const { header, rows } = await fetchCsv("/data/CATEGORY.csv");
   if (header.length === 0) return [];
@@ -127,11 +155,21 @@ async function fetchCategoryList(): Promise<CategoryRow[]> {
   return list;
 }
 
+/**
+ * カテゴリーの変更を dirty にし、CATEGORY.csv の保存を非同期で実行する。
+ * @returns なし
+ */
 function persistCategory(): void {
   setCategoryDirty();
   saveCategoryCsvOnly().catch((e) => console.error("saveCategoryCsvOnly", e));
 }
 
+/**
+ * 一覧セルで編集したカテゴリー名を保存する。空の場合は削除。バージョンチェック後に永続化・再描画。
+ * @param categoryId - 対象カテゴリー ID
+ * @param newName - 新しいカテゴリー名
+ * @returns Promise
+ */
 async function saveCategoryNameFromCell(categoryId: string, newName: string): Promise<void> {
   const trimmed = newName.trim();
   if (!trimmed) {
@@ -155,6 +193,12 @@ async function saveCategoryNameFromCell(categoryId: string, newName: string): Pr
   persistCategory();
 }
 
+/**
+ * 親カテゴリープルダウンで選択した親を保存する。バージョンチェック後に永続化・一覧再描画。
+ * @param categoryId - 対象カテゴリー ID
+ * @param parentId - 新しい親カテゴリー ID（空の場合はルート）
+ * @returns Promise
+ */
 async function saveParentFromSelect(categoryId: string, parentId: string): Promise<void> {
   const row = categoryListFull.find((r) => r.ID === categoryId);
   if (!row) return;
@@ -176,8 +220,12 @@ async function saveParentFromSelect(categoryId: string, parentId: string): Promi
   renderCategoryTable();
 }
 
-/** toSlot: 0=先頭の前, 1=1行目と2行目の間, ..., n=末尾の後 */
-/** 表示順を splice で並び替え。同種別の位置を sorted の並びで差し替え（表示順＝配列順） */
+/**
+ * 画面上のスロットを元に同種別内の表示順を並び替え、SORT_ORDER と categoryListFull を更新して永続化・再描画する。
+ * @param fromIndex - ドラッグ元の行インデックス
+ * @param toSlot - ドロップ先スロット（0=先頭の前 ～ n=末尾の後）
+ * @returns Promise
+ */
 async function moveCategoryOrder(fromIndex: number, toSlot: number): Promise<void> {
   const orderedRows = getSameTypeFiltered();
   const sorted = orderedRows.slice();
@@ -214,6 +262,10 @@ async function moveCategoryOrder(fromIndex: number, toSlot: number): Promise<voi
 const CATEGORY_TABLE_COL_COUNT = 5;
 const CATEGORY_ICON_DEFAULT_COLOR = "#646cff";
 
+/**
+ * カテゴリー一覧テーブル（category-tbody）を描画する。ツリー/フラット切替・ドラッグ並び替え・名前編集・親選択・削除に対応。
+ * @returns なし
+ */
 function renderCategoryTable(): void {
   const tbody = document.getElementById("category-tbody");
   const table = document.getElementById("category-table");
@@ -342,6 +394,11 @@ function renderCategoryTable(): void {
   });
 }
 
+/**
+ * 指定カテゴリーを一覧と state から削除し、CATEGORY.csv を永続化する。
+ * @param categoryId - 削除するカテゴリー ID
+ * @returns Promise
+ */
 async function deleteCategoryRow(categoryId: string): Promise<void> {
   const row = categoryListFull.find((r) => r.ID === categoryId);
   if (!row) return;
@@ -381,7 +438,11 @@ export async function loadAndRenderCategoryList(): Promise<void> {
   renderCategoryTable();
 }
 
-/** 追加モーダル内の親カテゴリープルダウンを指定種別で再描画 */
+/**
+ * 追加モーダル内の親カテゴリープルダウンを指定種別の候補で再描画する。
+ * @param type - 種別（income / expense / transfer）
+ * @returns なし
+ */
 function fillCategoryFormParentSelect(type: CategoryType): void {
   const formParent = document.getElementById("category-form-parent") as HTMLSelectElement | null;
   if (!formParent) return;
@@ -399,6 +460,10 @@ function fillCategoryFormParentSelect(type: CategoryType): void {
   });
 }
 
+/**
+ * カテゴリー追加モーダルを開く。フォームを初期化し、オーバーレイを表示する。
+ * @returns なし
+ */
 function openCategoryModal(): void {
   const formName = document.getElementById("category-form-name") as HTMLInputElement;
   const formType = document.getElementById("category-form-type") as HTMLSelectElement;
@@ -419,6 +484,10 @@ function openCategoryModal(): void {
   }
 }
 
+/**
+ * カテゴリー追加モーダルを閉じる。
+ * @returns なし
+ */
 function closeCategoryModal(): void {
   const overlay = document.getElementById("category-modal-overlay");
   if (overlay) {
@@ -427,6 +496,10 @@ function closeCategoryModal(): void {
   }
 }
 
+/**
+ * カテゴリーフォームの色・アイコンフィールドの値をプレビュー要素に反映する。
+ * @returns なし
+ */
 function updateCategoryFormColorIconPreview(): void {
   const color = (document.getElementById("category-form-color") as HTMLInputElement)?.value || ICON_DEFAULT_COLOR;
   const path = (document.getElementById("category-form-icon-path") as HTMLInputElement)?.value || "";
@@ -438,6 +511,10 @@ function updateCategoryFormColorIconPreview(): void {
   wrap.style.maskImage = path ? `url(${path})` : "";
 }
 
+/**
+ * カテゴリーモーダルのフォーム内容を検証し、新規カテゴリーを追加して永続化する。完了後にモーダルを閉じ一覧を再描画する。
+ * @returns なし
+ */
 function saveCategoryFormFromModal(): void {
   const formName = document.getElementById("category-form-name") as HTMLInputElement;
   const formType = document.getElementById("category-form-type") as HTMLSelectElement;
@@ -488,12 +565,20 @@ function saveCategoryFormFromModal(): void {
   renderCategoryTable();
 }
 
+/**
+ * カテゴリー画面の削除モードをトグルし、削除ボタンの表示とヘッダーボタンの状態を更新する。
+ * @returns なし
+ */
 function handleToggleDeleteMode(): void {
   toggleCategoryDeleteMode();
   document.getElementById("header-delete-btn")?.classList.toggle("is-active", categoryDeleteMode);
   renderCategoryTable();
 }
 
+/**
+ * 種別タブのアクティブ状態と aria-selected を現在の選択種別に合わせて更新する。
+ * @returns なし
+ */
 function updateCategoryTabsActive(): void {
   document.querySelectorAll(".category-tab").forEach((btn) => {
     const type = (btn as HTMLButtonElement).dataset.type;
@@ -503,7 +588,10 @@ function updateCategoryTabsActive(): void {
   });
 }
 
-/** ツリービュー/フラットビューボタンのラベルと見た目を現在のモードに合わせて更新 */
+/**
+ * ツリービュー/フラットビューボタンのラベルと見た目を現在のモードに合わせて更新する。
+ * @returns なし
+ */
 function updateCategoryViewButton(): void {
   const btn = document.getElementById("category-tree-view-btn");
   if (!btn) return;

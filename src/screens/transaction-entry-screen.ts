@@ -24,6 +24,12 @@ let editingTransactionId: string | null = null;
 /** 連続モード（新規登録時のみ有効。ONだと保存後に画面遷移せず連続登録） */
 let continuousMode = false;
 
+/**
+ * ログインユーザーが参照できる勘定 ID の Set を返す（自分の勘定 + 権限付与された勘定）。
+ * @param accounts - 勘定行の配列
+ * @param permissions - 権限行の配列
+ * @returns 勘定 ID の Set
+ */
 function getVisibleAccountIds(accounts: AccountRow[], permissions: AccountPermissionRow[]): Set<string> {
   const ids = new Set<string>();
   const me = currentUserId;
@@ -33,6 +39,11 @@ function getVisibleAccountIds(accounts: AccountRow[], permissions: AccountPermis
   return ids;
 }
 
+/**
+ * CATEGORY.csv を取得し、カテゴリー行の配列に変換して返す。
+ * @param noCache - true のときキャッシュを使わない
+ * @returns Promise。カテゴリー行の配列
+ */
 async function fetchCategoryList(noCache = false): Promise<CategoryRow[]> {
   const init = noCache ? CSV_NO_CACHE : undefined;
   const { header, rows } = await fetchCsv("/data/CATEGORY.csv", init);
@@ -40,6 +51,11 @@ async function fetchCategoryList(noCache = false): Promise<CategoryRow[]> {
   return rows.map((cells) => rowToObject(header, cells) as unknown as CategoryRow);
 }
 
+/**
+ * ACCOUNT.csv を取得し、勘定行の配列に変換して返す。
+ * @param noCache - true のときキャッシュを使わない
+ * @returns Promise。勘定行の配列
+ */
 async function fetchAccountList(noCache = false): Promise<AccountRow[]> {
   const init = noCache ? CSV_NO_CACHE : undefined;
   const { header, rows } = await fetchCsv("/data/ACCOUNT.csv", init);
@@ -47,6 +63,11 @@ async function fetchAccountList(noCache = false): Promise<AccountRow[]> {
   return rows.map((cells) => rowToObject(header, cells) as unknown as AccountRow);
 }
 
+/**
+ * ACCOUNT_PERMISSION.csv を取得し、権限行の配列に変換して返す。
+ * @param noCache - true のときキャッシュを使わない
+ * @returns Promise。権限行の配列
+ */
 async function fetchAccountPermissionList(noCache = false): Promise<AccountPermissionRow[]> {
   const init = noCache ? CSV_NO_CACHE : undefined;
   const { header, rows } = await fetchCsv("/data/ACCOUNT_PERMISSION.csv", init);
@@ -59,6 +80,11 @@ async function fetchAccountPermissionList(noCache = false): Promise<AccountPermi
   return list;
 }
 
+/**
+ * TRANSACTION.csv を取得し、取引行の配列と次に使う ID を返す。
+ * @param noCache - true のときキャッシュを使わない
+ * @returns Promise。nextId と取引行の配列
+ */
 async function fetchTransactionRows(noCache = false): Promise<{ nextId: number; rows: TransactionRow[] }> {
   const init = noCache ? CSV_NO_CACHE : undefined;
   const { header, rows } = await fetchCsv("/data/TRANSACTION.csv", init);
@@ -73,6 +99,11 @@ async function fetchTransactionRows(noCache = false): Promise<{ nextId: number; 
   return { nextId: maxId + 1, rows: list };
 }
 
+/**
+ * TAG.csv を取得し、タグ行の配列に変換して返す。
+ * @param noCache - true のときキャッシュを使わない
+ * @returns Promise。タグ行の配列
+ */
 async function fetchTagList(noCache = false): Promise<TagRow[]> {
   const init = noCache ? CSV_NO_CACHE : undefined;
   const { header, rows } = await fetchCsv("/data/TAG.csv", init);
@@ -85,6 +116,11 @@ async function fetchTagList(noCache = false): Promise<TagRow[]> {
   return list;
 }
 
+/**
+ * TAG_MANAGEMENT.csv を取得し、タグ管理行の配列と次に使う ID を返す。
+ * @param noCache - true のときキャッシュを使わない
+ * @returns Promise。nextId とタグ管理行の配列
+ */
 async function fetchTagManagementRows(noCache = false): Promise<{ nextId: number; rows: TagManagementRow[] }> {
   const init = noCache ? CSV_NO_CACHE : undefined;
   const { header, rows } = await fetchCsv("/data/TAG_MANAGEMENT.csv", init);
@@ -100,10 +136,21 @@ async function fetchTagManagementRows(noCache = false): Promise<{ nextId: number
   return { nextId: maxId + 1, rows: list };
 }
 
+/**
+ * 収支記録フォームのカテゴリー入力（hidden）要素を返す。
+ * @returns 要素または null
+ */
 function getCategoryValueEl(): HTMLInputElement | null {
   return document.getElementById("transaction-entry-category") as HTMLInputElement | null;
 }
 
+/**
+ * カテゴリー・勘定の色・アイコンを表示するラッパー要素を生成する。
+ * @param color - 背景色
+ * @param iconPath - アイコン画像パス（省略可）
+ * @param tag - 要素タグ名（div または span）
+ * @returns ラッパー要素
+ */
 function renderCategoryIconWrap(color: string, iconPath: string | undefined, tag: "div" | "span" = "div"): HTMLDivElement | HTMLSpanElement {
   const wrap = document.createElement(tag);
   wrap.className = "category-icon-wrap";
@@ -117,18 +164,37 @@ function renderCategoryIconWrap(color: string, iconPath: string | undefined, tag
   return wrap as HTMLDivElement | HTMLSpanElement;
 }
 
+/**
+ * 収入側勘定の hidden 入力要素を返す。
+ * @returns 要素または null
+ */
 function getAccountInValueEl(): HTMLInputElement | null {
   return document.getElementById("transaction-entry-account-in") as HTMLInputElement | null;
 }
 
+/**
+ * 支出側勘定の hidden 入力要素を返す。
+ * @returns 要素または null
+ */
 function getAccountOutValueEl(): HTMLInputElement | null {
   return document.getElementById("transaction-entry-account-out") as HTMLInputElement | null;
 }
 
+/**
+ * ID で勘定行を検索する。
+ * @param id - 勘定 ID
+ * @returns 該当行または undefined
+ */
 function getAccountById(id: string): AccountRow | undefined {
   return accountRows.find((a) => a.ID === id);
 }
 
+/**
+ * 勘定トリガー（支出/収入のどちらか）の表示を指定勘定で更新する。
+ * @param which - "out"（支出）または "in"（収入）
+ * @param accountId - 勘定 ID
+ * @returns なし
+ */
 function updateAccountTriggerDisplay(which: "out" | "in", accountId: string): void {
   const prefix = which === "out" ? "transaction-entry-account-out" : "transaction-entry-account-in";
   const triggerIcon = document.querySelector(`#${prefix}-trigger .transaction-entry-account-trigger-icon`);
@@ -153,6 +219,11 @@ function updateAccountTriggerDisplay(which: "out" | "in", accountId: string): vo
   triggerText.textContent = (acc.ACCOUNT_NAME || "").trim() || "—";
 }
 
+/**
+ * 勘定選択リスト（支出/収入のどちらか）を閉じる。
+ * @param which - "out" | "in"
+ * @returns なし
+ */
 function closeAccountList(which: "out" | "in"): void {
   const prefix = which === "out" ? "transaction-entry-account-out" : "transaction-entry-account-in";
   const list = document.getElementById(`${prefix}-list`);
@@ -164,6 +235,11 @@ function closeAccountList(which: "out" | "in"): void {
   if (trigger) trigger.setAttribute("aria-expanded", "false");
 }
 
+/**
+ * 収支種別に応じてカテゴリーを絞り込む。
+ * @param type - 種別（income / expense / transfer）
+ * @returns カテゴリー行の配列
+ */
 function filterCategoriesByType(type: string): CategoryRow[] {
   const t = (type || "").toLowerCase();
   if (t === "income") return categoryRows.filter((c) => (c.TYPE || "").toLowerCase() === "income");
@@ -172,10 +248,20 @@ function filterCategoriesByType(type: string): CategoryRow[] {
   return categoryRows;
 }
 
+/**
+ * ID でカテゴリー行を検索する。
+ * @param id - カテゴリー ID
+ * @returns 該当行または undefined
+ */
 function getCategoryById(id: string): CategoryRow | undefined {
   return categoryRows.find((c) => c.ID === id);
 }
 
+/**
+ * カテゴリートリガーの表示を指定カテゴリーで更新する。
+ * @param categoryId - カテゴリー ID
+ * @returns なし
+ */
 function updateCategoryTriggerDisplay(categoryId: string): void {
   const triggerIcon = document.querySelector(".transaction-entry-category-trigger-icon");
   const triggerText = document.querySelector(".transaction-entry-category-trigger-text");
@@ -199,6 +285,10 @@ function updateCategoryTriggerDisplay(categoryId: string): void {
   triggerText.textContent = (cat.CATEGORY_NAME || "").trim() || "—";
 }
 
+/**
+ * カテゴリー選択リストを閉じる。
+ * @returns なし
+ */
 function closeCategoryList(): void {
   const list = document.getElementById("transaction-entry-category-list");
   const trigger = document.getElementById("transaction-entry-category-trigger");
@@ -209,6 +299,15 @@ function closeCategoryList(): void {
   if (trigger) trigger.setAttribute("aria-expanded", "false");
 }
 
+/**
+ * タグ選択モーダル内の1行（チェック・アイコン・名前）を生成する。
+ * @param id - タグ ID
+ * @param name - 表示名
+ * @param color - アイコン背景色
+ * @param iconPath - アイコン画像パス
+ * @param isSelected - 初期選択状態
+ * @returns 行要素
+ */
 function createTagSelectItemRow(id: string, name: string, color: string, iconPath: string, isSelected: boolean): HTMLElement {
   const row = document.createElement("div");
   row.className = "transaction-history-select-item";

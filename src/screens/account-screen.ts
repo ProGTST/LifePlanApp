@@ -48,10 +48,18 @@ const ICON_DELETE = "/icon/circle-minus-solid-full.svg";
 // データ取得
 // ---------------------------------------------------------------------------
 
+/**
+ * 勘定参照権限の全件リスト（state）を返す。
+ * @returns 権限行の配列
+ */
 function getAccountPermissionRows(): AccountPermissionRow[] {
   return accountPermissionListFull;
 }
 
+/**
+ * ACCOUNT.csv を取得し、勘定行の配列に変換して返す。
+ * @returns Promise。勘定行の配列
+ */
 async function fetchAccountList(): Promise<AccountRow[]> {
   const { header, rows } = await fetchCsv("/data/ACCOUNT.csv");
   if (header.length === 0) return [];
@@ -66,6 +74,10 @@ async function fetchAccountList(): Promise<AccountRow[]> {
   return list;
 }
 
+/**
+ * USER.csv を取得し、ユーザー行の配列に変換して返す。
+ * @returns Promise。ユーザー行の配列
+ */
 async function fetchUserList(): Promise<UserRow[]> {
   const { header, rows } = await fetchCsv("/data/USER.csv");
   if (header.length === 0) return [];
@@ -76,6 +88,10 @@ async function fetchUserList(): Promise<UserRow[]> {
   return list;
 }
 
+/**
+ * ACCOUNT_PERMISSION.csv を取得し、権限行の配列に変換する。state の accountPermissionListFull も更新する。
+ * @returns Promise。権限行の配列
+ */
 async function fetchAccountPermissionList(): Promise<AccountPermissionRow[]> {
   const { header, rows } = await fetchCsv("/data/ACCOUNT_PERMISSION.csv", { cache: "reload" });
   if (header.length === 0) return [];
@@ -88,11 +104,21 @@ async function fetchAccountPermissionList(): Promise<AccountPermissionRow[]> {
   return list;
 }
 
+/**
+ * 勘定の変更を dirty にし、ACCOUNT / ACCOUNT_PERMISSION の保存を非同期で実行する。
+ * @returns なし
+ */
 function persistAccount(): void {
   setAccountDirty();
   saveAccountCsvOnly().catch((e) => console.error("saveAccountCsvOnly", e));
 }
 
+/**
+ * 一覧セルで編集した勘定名を保存する。空の場合は削除。バージョンチェック後に永続化・再描画。
+ * @param accountId - 対象勘定 ID
+ * @param newName - 新しい勘定名
+ * @returns Promise
+ */
 async function saveAccountNameFromCell(accountId: string, newName: string): Promise<void> {
   const trimmed = newName.trim();
   if (!trimmed) {
@@ -116,7 +142,12 @@ async function saveAccountNameFromCell(accountId: string, newName: string): Prom
   persistAccount();
 }
 
-/** 画面上のスロットを元に表示順を並び替え、SORT_ORDER と accountListFull を更新して永続化・再描画 */
+/**
+ * 画面上のスロットを元に表示順を並び替え、SORT_ORDER と accountListFull を更新して永続化・再描画する。
+ * @param fromIndex - ドラッグ元の行インデックス
+ * @param toSlot - ドロップ先スロット（0=先頭の前 ～ n=末尾の後）
+ * @returns Promise
+ */
 async function moveAccountOrder(fromIndex: number, toSlot: number): Promise<void> {
   const sorted = accountList.slice();
   const originalLength = sorted.length;
@@ -157,17 +188,31 @@ let accountPermissionAddTargetId: string | null = null;
 /** 権限ユーザーモーダルで編集中の勘定ID。null のときはモーダル非表示 */
 let accountPermissionEditTargetId: string | null = null;
 
+/**
+ * 指定勘定に紐づく権限の件数を返す。
+ * @param accountId - 勘定 ID
+ * @returns 権限件数
+ */
 function getPermissionCountForAccount(accountId: string): number {
   return getAccountPermissionRows().filter((p) => p.ACCOUNT_ID === accountId).length;
 }
 
-/** ACCOUNT_PERMISSION で USER_ID がログインユーザーと一致する勘定（他ユーザー所有）を取得 */
+/**
+ * ACCOUNT_PERMISSION で USER_ID がログインユーザーと一致する勘定 ID 一覧（他ユーザー所有で参照可能）を返す。
+ * @returns 勘定 ID の配列
+ */
 function getSharedWithMeAccountIds(): string[] {
   const me = currentUserId;
   if (!me) return [];
   return [...new Set(getAccountPermissionRows().filter((p) => p.USER_ID === me).map((p) => p.ACCOUNT_ID))];
 }
 
+/**
+ * 勘定の色・アイコンを表示する div ラッパーを生成する。
+ * @param color - 背景色（#rrggbb）
+ * @param iconPath - アイコン画像パス（空の場合は色のみ）
+ * @returns ラッパー要素
+ */
 function createAccountIconWrap(color: string, iconPath: string): HTMLDivElement {
   const wrap = document.createElement("div");
   wrap.className = "category-icon-wrap";
@@ -181,6 +226,10 @@ function createAccountIconWrap(color: string, iconPath: string): HTMLDivElement 
   return wrap;
 }
 
+/**
+ * 「参照可能な勘定」タブのテーブルを描画する。権限付与された他ユーザー所有勘定を一覧表示する。
+ * @returns Promise
+ */
 async function renderSharedWithMeAccountTable(): Promise<void> {
   const tbody = document.getElementById("account-shared-tbody");
   if (!tbody) return;
@@ -239,6 +288,10 @@ async function renderSharedWithMeAccountTable(): Promise<void> {
 // 一覧テーブル描画
 // ---------------------------------------------------------------------------
 
+/**
+ * 自分の勘定一覧テーブル（account-tbody）を描画する。ドラッグ並び替え・名前編集・権限追加・削除に対応。
+ * @returns なし
+ */
 function renderAccountTable(): void {
   const tbody = document.getElementById("account-tbody");
   if (!tbody) return;
@@ -340,6 +393,11 @@ function renderAccountTable(): void {
   });
 }
 
+/**
+ * 指定勘定を一覧と state から削除し、ACCOUNT / ACCOUNT_PERMISSION を永続化する。
+ * @param accountId - 削除する勘定 ID
+ * @returns Promise
+ */
 async function deleteAccountRow(accountId: string): Promise<void> {
   const row = accountListFull.find((r) => r.ID === accountId);
   if (!row || row.USER_ID !== currentUserId) return;
@@ -370,6 +428,11 @@ async function deleteAccountRow(accountId: string): Promise<void> {
 // 画面読み込み・モーダル
 // ---------------------------------------------------------------------------
 
+/**
+ * 表示対象の勘定 ID 一覧を返す（自分の勘定＋権限付与された共有勘定）。
+ * @param accountListForView - 表示用勘定リスト（ID を持つオブジェクトの配列）
+ * @returns 勘定 ID の配列
+ */
 function getDisplayedAccountIds(accountListForView: { ID: string }[]): string[] {
   const ownIds = accountListForView.map((a) => a.ID);
   const sharedIds = getAccountPermissionRows()
@@ -397,6 +460,10 @@ export async function loadAndRenderAccountList(): Promise<void> {
   await renderSharedWithMeAccountTable();
 }
 
+/**
+ * 勘定追加モーダルを開く。フォームを初期化し、オーバーレイを表示する。
+ * @returns なし
+ */
 function openAccountModal(): void {
   const formName = document.getElementById("account-form-name") as HTMLInputElement;
   const formColor = document.getElementById("account-form-color") as HTMLInputElement;
@@ -414,6 +481,10 @@ function openAccountModal(): void {
   }
 }
 
+/**
+ * 勘定追加モーダルを閉じる。
+ * @returns なし
+ */
 function closeAccountModal(): void {
   const overlay = document.getElementById("account-modal-overlay");
   if (overlay) {
@@ -423,6 +494,10 @@ function closeAccountModal(): void {
   }
 }
 
+/**
+ * 勘定フォームの色・アイコンフィールドの値をプレビュー要素に反映する。
+ * @returns なし
+ */
 function updateAccountFormColorIconPreview(): void {
   const color = (document.getElementById("account-form-color") as HTMLInputElement)?.value || ICON_DEFAULT_COLOR;
   const path = (document.getElementById("account-form-icon-path") as HTMLInputElement)?.value || "";
@@ -438,6 +513,11 @@ function updateAccountFormColorIconPreview(): void {
 // フォーム：権限リスト描画・ユーザー選択
 // ---------------------------------------------------------------------------
 
+/**
+ * 勘定フォーム内の権限ユーザー一覧を描画する。参照/編集トグル・削除ボタン付き。
+ * @param rows - 権限フォーム行の配列
+ * @returns なし
+ */
 function renderAccountFormPermissionList(rows: PermissionFormRow[]): void {
   const listEl = document.getElementById("account-form-permission-list");
   if (!listEl) return;
@@ -487,6 +567,11 @@ function renderAccountFormPermissionList(rows: PermissionFormRow[]): void {
   });
 }
 
+/**
+ * 権限ユーザー選択モーダルを開く。既存勘定の権限追加時は forAccountId を渡す。
+ * @param forAccountId - 権限を追加する勘定 ID（省略時は新規勘定フォーム用）
+ * @returns なし
+ */
 function openAccountFormUserPicker(forAccountId?: string): void {
   accountPermissionAddTargetId = forAccountId ?? null;
   const permissionList = getAccountPermissionRows();
@@ -546,6 +631,10 @@ function openAccountFormUserPicker(forAccountId?: string): void {
   });
 }
 
+/**
+ * 権限ユーザー選択モーダルで選択されたユーザーをフォーム権限リストまたは既存勘定の権限に反映し、モーダルを閉じる。
+ * @returns なし
+ */
 function applyAccountFormUserPicker(): void {
   const listEl = document.getElementById("account-form-user-picker-list");
   if (!listEl) return;
@@ -591,6 +680,10 @@ function applyAccountFormUserPicker(): void {
   closeAccountFormUserPicker();
 }
 
+/**
+ * 権限ユーザー選択モーダルを閉じる。
+ * @returns なし
+ */
 function closeAccountFormUserPicker(): void {
   const overlay = document.getElementById("account-form-user-picker-overlay");
   if (overlay) {
@@ -600,6 +693,12 @@ function closeAccountFormUserPicker(): void {
   }
 }
 
+/**
+ * 指定勘定の権限ユーザー管理モーダルを開く。一覧の「権限追加」から呼ばれる。
+ * @param accountId - 対象勘定 ID
+ * @param accountName - 勘定名（モーダルタイトル表示用）
+ * @returns なし
+ */
 function openAccountPermissionUsersModal(accountId: string, accountName: string): void {
   accountPermissionEditTargetId = accountId;
   const titleEl = document.getElementById("account-permission-users-title");
@@ -612,6 +711,10 @@ function openAccountPermissionUsersModal(accountId: string, accountName: string)
   }
 }
 
+/**
+ * 権限ユーザー管理モーダルを閉じ、一覧を再描画する。
+ * @returns なし
+ */
 function closeAccountPermissionUsersModal(): void {
   const overlay = document.getElementById("account-permission-users-overlay");
   if (overlay) {
@@ -624,6 +727,10 @@ function closeAccountPermissionUsersModal(): void {
   renderSharedWithMeAccountTable();
 }
 
+/**
+ * 権限ユーザー管理モーダル内の一覧を描画する。編集中の勘定の権限ユーザーを表示し、編集/参照切替・削除が可能。
+ * @returns なし
+ */
 function renderAccountPermissionUsersModal(): void {
   if (!accountPermissionEditTargetId) return;
   const listEl = document.getElementById("account-permission-users-list");
@@ -714,12 +821,20 @@ function renderAccountPermissionUsersModal(): void {
   }
 }
 
+/**
+ * 勘定フォームの権限リストを送信用の形式（userId, permissionType）の配列で返す。
+ * @returns 権限行の配列
+ */
 function getAccountFormPermissionRowsForSubmit(): { userId: string; permissionType: string }[] {
   return accountFormPermissionRows
     .filter((r) => r.userId.trim() !== "")
     .map((r) => ({ userId: r.userId.trim(), permissionType: r.permissionType || "view" }));
 }
 
+/**
+ * 勘定モーダルのフォーム内容を検証し、新規追加または更新して永続化する。完了後にモーダルを閉じ一覧を再描画する。
+ * @returns なし
+ */
 function saveAccountFormFromModal(): void {
   const formName = document.getElementById("account-form-name") as HTMLInputElement;
   if (!formName) return;
@@ -786,6 +901,10 @@ function saveAccountFormFromModal(): void {
   renderAccountTable();
 }
 
+/**
+ * 勘定画面の削除モードをトグルし、削除ボタンの表示とヘッダーボタンの状態を更新する。
+ * @returns なし
+ */
 function handleToggleDeleteMode(): void {
   toggleAccountDeleteMode();
   document.getElementById("header-delete-btn")?.classList.toggle("is-active", accountDeleteMode);

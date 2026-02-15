@@ -18,6 +18,10 @@ const PROFILE_NAME_LENGTH = 4;
 
 let userList: UserRow[] = [];
 
+/**
+ * USER.csv を取得し、ユーザー行の配列に変換して返す。
+ * @returns Promise。ユーザー行の配列
+ */
 async function fetchUserList(): Promise<UserRow[]> {
   const { header, rows } = await fetchCsv("/data/USER.csv");
   if (header.length === 0) return [];
@@ -29,17 +33,29 @@ async function fetchUserList(): Promise<UserRow[]> {
   return list;
 }
 
+/**
+ * ログインユーザーに該当するユーザー行を返す。
+ * @returns 該当行または undefined
+ */
 function getCurrentUser(): UserRow | undefined {
   return userList.find((r) => r.ID === currentUserId);
 }
 
-/** 表示名の先頭4文字（デフォルトアイコン用） */
+/**
+ * 表示名の先頭4文字を返す（デフォルトアイコン用略称）。
+ * @param name - 表示名
+ * @returns 先頭 PROFILE_NAME_LENGTH 文字
+ */
 function getDisplayNameAbbr(name: string): string {
   const t = (name ?? "").trim();
   if (!t) return "";
   return t.slice(0, PROFILE_NAME_LENGTH);
 }
 
+/**
+ * プロフィールフォームのアイコン背景色入力の値を返す。無効な場合はデフォルト色。
+ * @returns 色の文字列（#rrggbb）
+ */
 function getProfileIconBgColor(): string {
   const colorEl = document.getElementById("profile-form-icon-bg-color") as HTMLInputElement;
   const v = colorEl?.value?.trim();
@@ -47,7 +63,10 @@ function getProfileIconBgColor(): string {
   return PROFILE_ICON_DEFAULT_COLOR;
 }
 
-/** プロフィールアイコン表示を更新。画像が設定されていれば画像を優先、なければ背景色＋表示名4文字。 */
+/**
+ * プロフィールフォームのアイコン表示を更新する。画像が設定されていれば画像を優先、なければ背景色＋表示名4文字。
+ * @returns Promise
+ */
 async function updateProfileIconDisplay(): Promise<void> {
   const container = document.getElementById("profile-form-icon-display");
   const nameEl = document.getElementById("profile-form-name") as HTMLInputElement;
@@ -89,6 +108,10 @@ async function updateProfileIconDisplay(): Promise<void> {
   }
 }
 
+/**
+ * プロフィールフォームに現在ユーザーの名前・色・アイコンパスを描画する。
+ * @returns なし
+ */
 function renderProfileForm(): void {
   const user = getCurrentUser();
   const nameEl = document.getElementById("profile-form-name") as HTMLInputElement;
@@ -113,6 +136,10 @@ function renderProfileForm(): void {
   updateProfileIconDisplay();
 }
 
+/**
+ * プロフィールフォームの内容を検証し、USER.csv に保存する。バージョンチェック後に clearUserDirty。
+ * @returns Promise
+ */
 async function saveProfileForm(): Promise<void> {
   const user = getCurrentUser();
   if (!user) return;
@@ -144,6 +171,11 @@ async function saveProfileForm(): Promise<void> {
   clearUserDirty();
 }
 
+/**
+ * プロフィールアイコンのファイル選択時に呼ばれる。Tauri 時は save_profile_icon で保存し、ブラウザ時は Data URL をセットする。
+ * @param e - イベント（input[type=file] の change）
+ * @returns Promise
+ */
 async function handleProfileIconFileSelect(e: Event): Promise<void> {
   const input = e.target as HTMLInputElement;
   const file = input.files?.[0];

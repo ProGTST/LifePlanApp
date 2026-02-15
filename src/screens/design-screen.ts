@@ -16,13 +16,21 @@ import { setDisplayedKeys } from "../utils/csvWatch.ts";
 const HEX_COLOR_6 = /^#[0-9A-Fa-f]{6}$/;
 const HEX_COLOR_3 = /^#[0-9A-Fa-f]{3}$/;
 
-/** 白色かどうか（枠線表示用） */
+/**
+ * 色が白色（#ffffff）かどうかを返す（枠線表示用）。
+ * @param hex - 色の文字列
+ * @returns 白色なら true
+ */
 function isWhiteHex(hex: string): boolean {
   const h = toSixDigitHex(hex.trim());
   return h.toUpperCase() === "#FFFFFF";
 }
 
-/** 3桁 (#fff) を 6桁 (#ffffff) に展開。input type="color" は #rrggbb のみ有効なため必須 */
+/**
+ * 3桁 (#fff) を 6桁 (#ffffff) に展開する。input type="color" は #rrggbb のみ有効なため必須。
+ * @param hex - 色の文字列
+ * @returns 6桁の hex 文字列
+ */
 function toSixDigitHex(hex: string): string {
   const h = hex.trim();
   if (HEX_COLOR_6.test(h)) return h;
@@ -35,6 +43,12 @@ function toSixDigitHex(hex: string): string {
   return hex;
 }
 
+/**
+ * 色文字列を 6 桁 hex に正規化する。無効な場合はデフォルト色を返す。
+ * @param v - 色の文字列
+ * @param key - パレットキー（デフォルト取得用）
+ * @returns 有効な #rrggbb または DEFAULT_PALETTE[key]
+ */
 function toValidHex(v: string | undefined, key: (typeof PALETTE_KEYS)[number]): string {
   const t = (v ?? "").trim();
   const normalized = t.startsWith("#") ? t : `#${t}`;
@@ -77,10 +91,18 @@ async function fetchPaletteList(): Promise<PaletteRow[]> {
   return list;
 }
 
+/**
+ * 現在ユーザーに紐づくパレット行を返す。
+ * @returns 該当行または undefined
+ */
 function getCurrentUserPalette(): PaletteRow | undefined {
   return paletteList.find((r) => r.USER_ID === currentUserId);
 }
 
+/**
+ * 現在ユーザーのパレット行を返す。存在しなければ新規作成して paletteList に追加する。
+ * @returns パレット行
+ */
 function getOrCreateCurrentPalette(): PaletteRow {
   let row = getCurrentUserPalette();
   if (row) return row;
@@ -113,7 +135,10 @@ function getOrCreateCurrentPalette(): PaletteRow {
   return row;
 }
 
-/** フォームの色をプレビュー用ラッパーに反映する。子要素は var(--color-*) で参照（継承）。色は常に6桁で設定する */
+/**
+ * フォームの色をプレビュー用ラッパーに反映する。子要素は var(--color-*) で参照。色は常に6桁で設定する。
+ * @returns なし
+ */
 function applyPaletteToPreview(): void {
   const wrap = document.getElementById("design-preview-wrap");
   const container = document.getElementById("design-form-fields");
@@ -125,6 +150,10 @@ function applyPaletteToPreview(): void {
   });
 }
 
+/**
+ * デザインフォームのパレット入力欄を描画する。各キーごとに color/hex 入力とスウォッチを生成する。
+ * @returns なし
+ */
 function renderDesignForm(): void {
   const container = document.getElementById("design-form-fields");
   if (!container) return;
