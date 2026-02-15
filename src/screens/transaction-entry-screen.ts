@@ -5,6 +5,7 @@ import { fetchCsv, rowToObject } from "../utils/csv";
 import { transactionListToCsv, tagManagementListToCsv } from "../utils/csvExport";
 import { saveCsvViaApi } from "../utils/dataApi";
 import { registerViewHandler, showMainView } from "../app/screen";
+import { setNewRowAudit, setUpdateAudit } from "../utils/auditFields";
 
 const CSV_NO_CACHE: RequestInit = { cache: "reload" };
 
@@ -18,10 +19,6 @@ let editingTransactionId: string | null = null;
 
 /** 連続モード（新規登録時のみ有効。ONだと保存後に画面遷移せず連続登録） */
 let continuousMode = false;
-
-function nowStr(): string {
-  return new Date().toISOString().slice(0, 19).replace("T", " ");
-}
 
 function getVisibleAccountIds(accounts: AccountRow[], permissions: AccountPermissionRow[]): Set<string> {
   const ids = new Set<string>();
@@ -653,14 +650,13 @@ function buildNewRow(form: HTMLFormElement, nextId: number): Record<string, stri
   const memo = ((form.querySelector("#transaction-entry-memo") as HTMLTextAreaElement)?.value ?? "").trim();
   const accountIn = (form.querySelector("#transaction-entry-account-in") as HTMLInputElement)?.value ?? "";
   const accountOut = (form.querySelector("#transaction-entry-account-out") as HTMLInputElement)?.value ?? "";
-  const now = nowStr();
-  const userId = currentUserId;
-  return {
+  const userId = currentUserId ?? "";
+  const row: Record<string, string> = {
     ID: String(nextId),
-    REGIST_DATETIME: now,
-    REGIST_USER: userId,
-    UPDATE_DATETIME: now,
-    UPDATE_USER: userId,
+    REGIST_DATETIME: "",
+    REGIST_USER: "",
+    UPDATE_DATETIME: "",
+    UPDATE_USER: "",
     TYPE: type,
     STATUS: status,
     CATEGORY_ID: categoryId,
@@ -673,6 +669,8 @@ function buildNewRow(form: HTMLFormElement, nextId: number): Record<string, stri
     ACCOUNT_ID_IN: type === "income" || type === "transfer" ? accountIn : "",
     ACCOUNT_ID_OUT: type === "expense" || type === "transfer" ? accountOut : "",
   };
+  setNewRowAudit(row, userId, String(nextId));
+  return row;
 }
 
 function buildUpdatedRow(form: HTMLFormElement, existing: TransactionRow): Record<string, string> {
@@ -687,14 +685,13 @@ function buildUpdatedRow(form: HTMLFormElement, existing: TransactionRow): Recor
   const memo = ((form.querySelector("#transaction-entry-memo") as HTMLTextAreaElement)?.value ?? "").trim();
   const accountIn = (form.querySelector("#transaction-entry-account-in") as HTMLInputElement)?.value ?? "";
   const accountOut = (form.querySelector("#transaction-entry-account-out") as HTMLInputElement)?.value ?? "";
-  const now = nowStr();
-  const userId = currentUserId;
-  return {
+  const userId = currentUserId ?? "";
+  const row: Record<string, string> = {
     ID: existing.ID,
     REGIST_DATETIME: existing.REGIST_DATETIME ?? "",
     REGIST_USER: existing.REGIST_USER ?? "",
-    UPDATE_DATETIME: now,
-    UPDATE_USER: userId,
+    UPDATE_DATETIME: "",
+    UPDATE_USER: "",
     TYPE: type,
     STATUS: status,
     CATEGORY_ID: categoryId,
@@ -707,6 +704,8 @@ function buildUpdatedRow(form: HTMLFormElement, existing: TransactionRow): Recor
     ACCOUNT_ID_IN: type === "income" || type === "transfer" ? accountIn : "",
     ACCOUNT_ID_OUT: type === "expense" || type === "transfer" ? accountOut : "",
   };
+  setUpdateAudit(row, userId);
+  return row;
 }
 
 async function saveTransactionCsv(csv: string): Promise<void> {
@@ -776,21 +775,17 @@ export function initTransactionEntryView(): void {
         const csv = transactionListToCsv(allRows);
         await saveTransactionCsv(csv);
         const { nextId: nextMgmtId, rows: mgmtRows } = await fetchTagManagementRows(true);
-        const now = nowStr();
-        const userId = currentUserId;
+        const userId = currentUserId ?? "";
         const others = mgmtRows.filter((r) => r.TRANSACTION_ID !== editingTransactionId);
         const newMgmtRows = others.map((r) => ({ ...r } as Record<string, string>));
         let id = nextMgmtId;
         for (const tagId of selectedTagIds) {
-          newMgmtRows.push({
-            ID: String(id),
-            REGIST_DATETIME: now,
-            REGIST_USER: userId,
-            UPDATE_DATETIME: now,
-            UPDATE_USER: userId,
+          const row: Record<string, string> = {
             TRANSACTION_ID: editingTransactionId,
             TAG_ID: tagId,
-          });
+          };
+          setNewRowAudit(row, userId, String(id));
+          newMgmtRows.push(row);
           id += 1;
         }
         const mgmtCsv = tagManagementListToCsv(newMgmtRows);
@@ -808,20 +803,16 @@ export function initTransactionEntryView(): void {
         const newTransactionId = String(nextId);
         if (selectedTagIds.size > 0) {
           const { nextId: nextMgmtId, rows: mgmtRows } = await fetchTagManagementRows(true);
-          const now = nowStr();
-          const userId = currentUserId;
+          const userId = currentUserId ?? "";
           const newMgmtRows = [...mgmtRows.map((r) => ({ ...r } as Record<string, string>))];
           let id = nextMgmtId;
           for (const tagId of selectedTagIds) {
-            newMgmtRows.push({
-              ID: String(id),
-              REGIST_DATETIME: now,
-              REGIST_USER: userId,
-              UPDATE_DATETIME: now,
-              UPDATE_USER: userId,
+            const row: Record<string, string> = {
               TRANSACTION_ID: newTransactionId,
               TAG_ID: tagId,
-            });
+            };
+            setNewRowAudit(row, userId, String(id));
+            newMgmtRows.push(row);
             id += 1;
           }
           const mgmtCsv = tagManagementListToCsv(newMgmtRows);
@@ -893,20 +884,16 @@ export function initTransactionEntryView(): void {
       const newTransactionId = String(nextId);
       if (selectedTagIds.size > 0) {
         const { nextId: nextMgmtId, rows: mgmtRows } = await fetchTagManagementRows(true);
-        const now = nowStr();
-        const userId = currentUserId;
+        const userId = currentUserId ?? "";
         const newMgmtRows = [...mgmtRows.map((r) => ({ ...r } as Record<string, string>))];
         let id = nextMgmtId;
         for (const tagId of selectedTagIds) {
-          newMgmtRows.push({
-            ID: String(id),
-            REGIST_DATETIME: now,
-            REGIST_USER: userId,
-            UPDATE_DATETIME: now,
-            UPDATE_USER: userId,
+          const row: Record<string, string> = {
             TRANSACTION_ID: newTransactionId,
             TAG_ID: tagId,
-          });
+          };
+          setNewRowAudit(row, userId, String(id));
+          newMgmtRows.push(row);
           id += 1;
         }
         const mgmtCsv = tagManagementListToCsv(newMgmtRows);

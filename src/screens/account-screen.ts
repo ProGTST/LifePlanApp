@@ -26,6 +26,7 @@ import {
 } from "../utils/tableCells.ts";
 import { setAccountDirty } from "../utils/csvDirty.ts";
 import { saveAccountCsvOnly } from "../utils/saveMasterCsv.ts";
+import { setNewRowAudit, setUpdateAudit } from "../utils/auditFields.ts";
 import { registerViewHandler } from "../app/screen";
 import { openColorIconPicker } from "../utils/colorIconPicker.ts";
 import { ICON_DEFAULT_COLOR } from "../constants/colorPresets.ts";
@@ -44,10 +45,6 @@ const ICON_DELETE = "/icon/circle-minus-solid-full.svg";
 
 function getAccountPermissionRows(): AccountPermissionRow[] {
   return accountPermissionListFull;
-}
-
-function nowStr(): string {
-  return new Date().toISOString().slice(0, 19).replace("T", " ");
 }
 
 async function fetchAccountList(): Promise<AccountRow[]> {
@@ -100,8 +97,7 @@ function saveAccountNameFromCell(accountId: string, newName: string): void {
   const row = accountListFull.find((r) => r.ID === accountId);
   if (row && row.USER_ID === currentUserId) {
     row.ACCOUNT_NAME = trimmed;
-    row.UPDATE_DATETIME = nowStr();
-    row.UPDATE_USER = currentUserId;
+    setUpdateAudit(row, currentUserId ?? "");
     persistAccount();
   }
 }
@@ -116,6 +112,7 @@ function moveAccountOrder(fromIndex: number, toSlot: number): void {
   sorted.splice(insertAt, 0, removed);
   sorted.forEach((r, i) => {
     r.SORT_ORDER = String(i);
+    setUpdateAudit(r as Record<string, string>, currentUserId ?? "");
   });
   // 画面遷移後に loadAndRenderAccountList が accountListFull から再フィルタ・ソートするため、
   // 当該ユーザーの行を newFull 内で新しい並びに差し替える
@@ -511,18 +508,16 @@ function applyAccountFormUserPicker(): void {
     const keepRows = existingForAccount.filter((p) => selectedUserIds.includes(p.USER_ID));
     const toAddIds = selectedUserIds.filter((id) => !existingForAccount.some((p) => p.USER_ID === id));
     let nextId = existing.reduce((m, r) => Math.max(m, parseInt(r.ID, 10) || 0), 0) + 1;
-    const now = nowStr();
     const userId = currentUserId ?? "";
-    const newRows: AccountPermissionRow[] = toAddIds.map((targetUserId) => ({
-      ID: String(nextId++),
-      REGIST_DATETIME: now,
-      REGIST_USER: userId,
-      UPDATE_DATETIME: now,
-      UPDATE_USER: userId,
-      ACCOUNT_ID: targetAccountId,
-      USER_ID: targetUserId,
-      PERMISSION_TYPE: "view",
-    }));
+    const newRows: AccountPermissionRow[] = toAddIds.map((targetUserId) => {
+      const row: Record<string, string> = {
+        ACCOUNT_ID: targetAccountId,
+        USER_ID: targetUserId,
+        PERMISSION_TYPE: "view",
+      };
+      setNewRowAudit(row, userId, String(nextId++));
+      return row as unknown as AccountPermissionRow;
+    });
     const merged = existing.filter((p) => p.ACCOUNT_ID !== targetAccountId).concat(keepRows).concat(newRows);
     setAccountPermissionListFull(merged);
     setAccountDirty();
@@ -606,11 +601,12 @@ function renderAccountPermissionUsersModal(): void {
         permBtn.textContent = isEdit ? "編集" : "参照";
         permBtn.setAttribute("aria-label", isEdit ? "編集（クリックで参照に切り替え）" : "参照（クリックで編集に切り替え）");
         permBtn.addEventListener("click", () => {
-          const next = getAccountPermissionRows().map((p) =>
-            p.ACCOUNT_ID === accountId && p.USER_ID === perm.USER_ID
-              ? { ...p, PERMISSION_TYPE: p.PERMISSION_TYPE === "edit" ? "view" : "edit" }
-              : p
-          );
+          const next = getAccountPermissionRows().map((p) => {
+            if (p.ACCOUNT_ID !== accountId || p.USER_ID !== perm.USER_ID) return p;
+            const updated = { ...p, PERMISSION_TYPE: p.PERMISSION_TYPE === "edit" ? "view" : "edit" };
+            setUpdateAudit(updated as Record<string, string>, currentUserId ?? "");
+            return updated;
+          });
           setAccountPermissionListFull(next);
           setAccountDirty();
           saveAccountCsvOnly().catch((e) => console.error("saveAccountCsvOnly", e));
@@ -658,8 +654,7 @@ function saveAccountFormFromModal(): void {
     formName.focus();
     return;
   }
-  const now = nowStr();
-  const userId = currentUserId || "1";
+  const userId = currentUserId ?? "";
   const maxId = accountListFull.reduce(
     (m, r) => Math.max(m, parseInt(r.ID, 10) || 0),
     0
@@ -672,18 +667,20 @@ function saveAccountFormFromModal(): void {
   );
   const formColor = (document.getElementById("account-form-color") as HTMLInputElement)?.value?.trim() || "";
   const formIconPath = (document.getElementById("account-form-icon-path") as HTMLInputElement)?.value?.trim() || "";
-  accountListFull.push({
+  const newAccount: AccountRow = {
     ID: newAccountId,
-    REGIST_DATETIME: now,
-    REGIST_USER: userId,
-    UPDATE_DATETIME: now,
-    UPDATE_USER: userId,
-    USER_ID: currentUserId,
+    REGIST_DATETIME: "",
+    REGIST_USER: "",
+    UPDATE_DATETIME: "",
+    UPDATE_USER: "",
+    USER_ID: currentUserId ?? "",
     ACCOUNT_NAME: name,
     COLOR: formColor || "",
     ICON_PATH: formIconPath || "",
     SORT_ORDER: String(maxOrder + 1),
-  });
+  };
+  setNewRowAudit(newAccount, userId, newAccountId);
+  accountListFull.push(newAccount);
   const permissionRows = getAccountFormPermissionRowsForSubmit();
   if (permissionRows.length > 0) {
     const existing = getAccountPermissionRows();
@@ -691,16 +688,15 @@ function saveAccountFormFromModal(): void {
       (m, r) => Math.max(m, parseInt(r.ID, 10) || 0),
       0
     );
-    const newPermissions: AccountPermissionRow[] = permissionRows.map((row, i) => ({
-      ID: String(maxPermId + 1 + i),
-      REGIST_DATETIME: now,
-      REGIST_USER: userId,
-      UPDATE_DATETIME: now,
-      UPDATE_USER: userId,
-      ACCOUNT_ID: newAccountId,
-      USER_ID: row.userId,
-      PERMISSION_TYPE: row.permissionType || "view",
-    }));
+    const newPermissions: AccountPermissionRow[] = permissionRows.map((row, i) => {
+      const perm: Record<string, string> = {
+        ACCOUNT_ID: newAccountId,
+        USER_ID: row.userId,
+        PERMISSION_TYPE: row.permissionType || "view",
+      };
+      setNewRowAudit(perm, userId, String(maxPermId + 1 + i));
+      return perm as unknown as AccountPermissionRow;
+    });
     const merged = [...existing, ...newPermissions];
     setAccountPermissionListFull(merged);
   }

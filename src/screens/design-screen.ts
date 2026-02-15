@@ -6,6 +6,7 @@ import { PALETTE_KEYS, CSS_VAR_MAP, DEFAULT_PALETTE } from "../constants/index";
 import { setColorPaletteDirty, clearColorPaletteDirty } from "../utils/csvDirty.ts";
 import { openColorIconPicker } from "../utils/colorIconPicker.ts";
 import { getColorPalette, setColorPalette } from "../utils/storage.ts";
+import { setNewRowAuditWithoutId, setUpdateAudit } from "../utils/auditFields.ts";
 
 const HEX_COLOR_6 = /^#[0-9A-Fa-f]{6}$/;
 const HEX_COLOR_3 = /^#[0-9A-Fa-f]{3}$/;
@@ -81,6 +82,10 @@ function getOrCreateCurrentPalette(): PaletteRow {
   row = {
     USER_ID: currentUserId ?? "",
     SEQ_NO: "1",
+    REGIST_DATETIME: "",
+    REGIST_USER: "",
+    UPDATE_DATETIME: "",
+    UPDATE_USER: "",
     MENUBAR_BG: "#2c2c2e",
     MENUBAR_FG: "#ffffff",
     HEADER_BG: "#ffffff",
@@ -98,6 +103,7 @@ function getOrCreateCurrentPalette(): PaletteRow {
     ACCENT_BG: "#646cff",
     ACCENT_FG: "#ffffff",
   };
+  setNewRowAuditWithoutId(row, currentUserId ?? "");
   paletteList.push(row);
   return row;
 }
@@ -206,6 +212,8 @@ async function saveDesignForm(): Promise<void> {
     if (colorEl) palette[key] = colorEl.value;
   });
 
+  setUpdateAudit(palette, currentUserId ?? "");
+
   // localStorage に保存
   if (currentUserId) {
     const toStore: Record<string, string> = {};
@@ -240,6 +248,7 @@ export function saveColorPaletteCsvOnNavigate(): Promise<void> {
       if (colorEl) palette[key] = colorEl.value;
     });
   }
+  setUpdateAudit(palette, currentUserId ?? "");
   const csv = colorPaletteListToCsv(paletteList);
   return import("../utils/dataApi").then(({ saveCsvViaApi }) =>
     saveCsvViaApi("COLOR_PALETTE.csv", csv).then(() => clearColorPaletteDirty())

@@ -24,6 +24,7 @@ import {
 } from "../utils/tableCells.ts";
 import { setTagDirty } from "../utils/csvDirty.ts";
 import { saveTagCsvOnly } from "../utils/saveMasterCsv.ts";
+import { setNewRowAudit, setUpdateAudit } from "../utils/auditFields.ts";
 import { registerViewHandler } from "../app/screen";
 import { openColorIconPicker } from "../utils/colorIconPicker.ts";
 import { ICON_DEFAULT_COLOR } from "../constants/colorPresets.ts";
@@ -56,8 +57,7 @@ function saveTagNameFromCell(tagId: string, newName: string): void {
   const row = tagListFull.find((r) => r.ID === tagId);
   if (row) {
     row.TAG_NAME = trimmed;
-    row.UPDATE_DATETIME = new Date().toISOString().slice(0, 19).replace("T", " ");
-    row.UPDATE_USER = currentUserId;
+    setUpdateAudit(row, currentUserId ?? "");
     persistTag();
   }
 }
@@ -72,6 +72,7 @@ function moveTagOrder(fromIndex: number, toSlot: number): void {
   sorted.splice(insertAt, 0, removed);
   sorted.forEach((r, i) => {
     r.SORT_ORDER = String(i);
+    setUpdateAudit(r, currentUserId ?? "");
   });
   setTagList(sorted);
   persistTag();
@@ -107,6 +108,7 @@ function renderTagTable(): void {
       openColorIconPicker(row.COLOR ?? "", row.ICON_PATH ?? "", (color, iconPath) => {
         row.COLOR = color;
         row.ICON_PATH = iconPath;
+        setUpdateAudit(row, currentUserId ?? "");
         persistTag();
         renderTagTable();
       });
@@ -220,29 +222,31 @@ function saveTagFormFromModal(): void {
     formName.focus();
     return;
   }
-  const now = new Date().toISOString().slice(0, 19).replace("T", " ");
-  const userId = currentUserId || "1";
+  const userId = currentUserId ?? "";
   const maxId = tagListFull.reduce(
     (m, r) => Math.max(m, parseInt(r.ID, 10) || 0),
     0
   );
+  const newId = String(maxId + 1);
   const maxOrder = tagListFull.reduce(
     (m, r) => Math.max(m, Number(r.SORT_ORDER ?? 0) || 0),
     -1
   );
   const formColor = (document.getElementById("tag-form-color") as HTMLInputElement)?.value?.trim() || "";
   const formIconPath = (document.getElementById("tag-form-icon-path") as HTMLInputElement)?.value?.trim() || "";
-  tagListFull.push({
-    ID: String(maxId + 1),
-    REGIST_DATETIME: now,
-    REGIST_USER: userId,
-    UPDATE_DATETIME: now,
-    UPDATE_USER: userId,
+  const newRow: TagRow = {
+    ID: newId,
+    REGIST_DATETIME: "",
+    REGIST_USER: "",
+    UPDATE_DATETIME: "",
+    UPDATE_USER: "",
     TAG_NAME: name,
     COLOR: formColor || "",
     ICON_PATH: formIconPath || "",
     SORT_ORDER: String(maxOrder + 1),
-  });
+  };
+  setNewRowAudit(newRow, userId, newId);
+  tagListFull.push(newRow);
   const sorted = tagListFull.slice().sort((a, b) => sortOrderNum(a.SORT_ORDER, b.SORT_ORDER));
   setTagList(sorted);
   persistTag();

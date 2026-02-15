@@ -24,6 +24,7 @@ import {
 } from "../utils/tableCells.ts";
 import { setCategoryDirty } from "../utils/csvDirty.ts";
 import { saveCategoryCsvOnly } from "../utils/saveMasterCsv.ts";
+import { setNewRowAudit, setUpdateAudit } from "../utils/auditFields.ts";
 import { registerViewHandler } from "../app/screen";
 import { openColorIconPicker } from "../utils/colorIconPicker.ts";
 import { ICON_DEFAULT_COLOR } from "../constants/colorPresets.ts";
@@ -135,8 +136,7 @@ function saveCategoryNameFromCell(categoryId: string, newName: string): void {
   const row = categoryListFull.find((r) => r.ID === categoryId);
   if (row) {
     row.CATEGORY_NAME = trimmed;
-    row.UPDATE_DATETIME = new Date().toISOString().slice(0, 19).replace("T", " ");
-    row.UPDATE_USER = currentUserId;
+    setUpdateAudit(row, currentUserId ?? "");
     persistCategory();
   }
 }
@@ -145,8 +145,7 @@ function saveParentFromSelect(categoryId: string, parentId: string): void {
   const row = categoryListFull.find((r) => r.ID === categoryId);
   if (!row) return;
   row.PARENT_ID = parentId;
-  row.UPDATE_DATETIME = new Date().toISOString().slice(0, 19).replace("T", " ");
-  row.UPDATE_USER = currentUserId;
+  setUpdateAudit(row, currentUserId ?? "");
   persistCategory();
   setCategoryList([...categoryListFull]);
   renderCategoryTable();
@@ -164,6 +163,7 @@ function moveCategoryOrder(fromIndex: number, toSlot: number): void {
   sorted.splice(insertAt, 0, removed);
   sorted.forEach((r, i) => {
     r.SORT_ORDER = String(i);
+    setUpdateAudit(r, currentUserId ?? "");
   });
   const type = sorted[0].TYPE;
   // 表示順は配列順で決めるため、同種別を sorted の並びで差し替える
@@ -216,6 +216,7 @@ function renderCategoryTable(): void {
       openColorIconPicker(row.COLOR ?? "", row.ICON_PATH ?? "", (color, iconPath) => {
         row.COLOR = color;
         row.ICON_PATH = iconPath;
+        setUpdateAudit(row, currentUserId ?? "");
         persistCategory();
         renderCategoryTable();
       });
@@ -384,8 +385,7 @@ function saveCategoryFormFromModal(): void {
     formName.focus();
     return;
   }
-  const now = new Date().toISOString().slice(0, 19).replace("T", " ");
-  const userId = currentUserId || "1";
+  const userId = currentUserId ?? "";
   const typeRaw = formType?.value;
   const type: CategoryType =
     typeRaw === "income" ? "income" : typeRaw === "transfer" ? "transfer" : "expense";
@@ -394,6 +394,7 @@ function saveCategoryFormFromModal(): void {
     (m, r) => Math.max(m, parseInt(r.ID, 10) || 0),
     0
   );
+  const newId = String(maxId + 1);
   const sameType = categoryListFull.filter((r) => r.TYPE === type);
   const maxOrder = sameType.reduce(
     (m, r) => Math.max(m, Number(r.SORT_ORDER ?? 0) || 0),
@@ -401,19 +402,21 @@ function saveCategoryFormFromModal(): void {
   );
   const formColor = (document.getElementById("category-form-color") as HTMLInputElement)?.value?.trim() || "";
   const formIconPath = (document.getElementById("category-form-icon-path") as HTMLInputElement)?.value?.trim() || "";
-  categoryListFull.push({
-    ID: String(maxId + 1),
-    REGIST_DATETIME: now,
-    REGIST_USER: userId,
-    UPDATE_DATETIME: now,
-    UPDATE_USER: userId,
+  const newRow: CategoryRow = {
+    ID: newId,
+    REGIST_DATETIME: "",
+    REGIST_USER: "",
+    UPDATE_DATETIME: "",
+    UPDATE_USER: "",
     PARENT_ID: parentId,
     TYPE: type,
     CATEGORY_NAME: name,
     COLOR: formColor || "",
     ICON_PATH: formIconPath || "",
     SORT_ORDER: String(maxOrder + 1),
-  });
+  };
+  setNewRowAudit(newRow, userId, newId);
+  categoryListFull.push(newRow);
   setCategoryList([...categoryListFull]);
   persistCategory();
   closeCategoryModal();

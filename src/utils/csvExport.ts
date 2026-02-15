@@ -139,6 +139,10 @@ export function userListToCsv(rows: Record<string, string>[]): string {
 const COLOR_PALETTE_HEADER = [
   "USER_ID",
   "SEQ_NO",
+  "REGIST_DATETIME",
+  "REGIST_USER",
+  "UPDATE_DATETIME",
+  "UPDATE_USER",
   "MENUBAR_BG",
   "MENUBAR_FG",
   "HEADER_BG",
