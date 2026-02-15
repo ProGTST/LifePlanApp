@@ -6,13 +6,14 @@ import {
   accountList,
   accountListLoaded,
   accountDeleteMode,
+  accountPermissionListFull,
   setAccountListFull,
   setAccountList,
   setAccountListLoaded,
+  setAccountPermissionListFull,
   toggleAccountDeleteMode,
 } from "../state";
 import { fetchCsv, rowToObject } from "../utils/csv";
-import { getAccountPermissionList, setAccountPermissionList } from "../utils/storage.ts";
 import {
   sortOrderNum,
   slotToInsertAt,
@@ -24,8 +25,8 @@ import {
   createDragHandleCell,
   attachNameCellBehavior,
 } from "../utils/tableCells.ts";
-import { setAccountList as persistAccountList } from "../utils/storage.ts";
 import { setAccountDirty } from "../utils/csvDirty.ts";
+import { saveAccountCsvOnly } from "../utils/saveMasterCsv.ts";
 import { registerViewHandler } from "../app/screen";
 import { openColorIconPicker } from "../utils/colorIconPicker.ts";
 import { ICON_DEFAULT_COLOR } from "../constants/colorPresets.ts";
@@ -43,7 +44,7 @@ const ICON_DELETE = "/icon/circle-minus-solid-full.svg";
 // ---------------------------------------------------------------------------
 
 function getAccountPermissionRows(): AccountPermissionRow[] {
-  return (getAccountPermissionList() as AccountPermissionRow[] | null) ?? [];
+  return accountPermissionListFull;
 }
 
 function nowStr(): string {
@@ -61,7 +62,6 @@ async function fetchAccountList(): Promise<AccountRow[]> {
     if (row.ICON_PATH === undefined) row.ICON_PATH = "";
     list.push(row);
   }
-  persistAccountList(list);
   return list;
 }
 
@@ -83,13 +83,13 @@ async function fetchAccountPermissionList(): Promise<AccountPermissionRow[]> {
     if (cells.length === 0 || cells.every((c) => !c.trim())) continue;
     list.push(rowToObject(header, cells) as unknown as AccountPermissionRow);
   }
-  setAccountPermissionList(list);
+  setAccountPermissionListFull(list);
   return list;
 }
 
 function persistAccount(): void {
-  persistAccountList(accountListFull);
   setAccountDirty();
+  saveAccountCsvOnly().catch((e) => console.error("saveAccountCsvOnly", e));
 }
 
 function saveAccountNameFromCell(accountId: string, newName: string): void {
@@ -320,7 +320,8 @@ function deleteAccountRow(accountId: string): void {
   const permissionWithoutAccount = getAccountPermissionRows().filter(
     (p) => p.ACCOUNT_ID !== accountId
   );
-  setAccountPermissionList(permissionWithoutAccount);
+  setAccountPermissionListFull(permissionWithoutAccount);
+  saveAccountCsvOnly().catch((e) => console.error("saveAccountCsvOnly", e));
   let next = currentUserId
     ? accountListFull.filter((r) => r.USER_ID === currentUserId)
     : [...accountListFull];
@@ -339,7 +340,6 @@ export async function loadAndRenderAccountList(): Promise<void> {
     const [list] = await Promise.all([fetchAccountList(), fetchAccountPermissionList()]);
     setAccountListFull(list);
     setAccountListLoaded(true);
-    persistAccountList(list);
   }
   let next = currentUserId
     ? accountListFull.filter((r) => r.USER_ID === currentUserId)
@@ -527,8 +527,9 @@ function applyAccountFormUserPicker(): void {
       PERMISSION_TYPE: "view",
     }));
     const merged = existing.filter((p) => p.ACCOUNT_ID !== targetAccountId).concat(keepRows).concat(newRows);
-    setAccountPermissionList(merged);
+    setAccountPermissionListFull(merged);
     setAccountDirty();
+    saveAccountCsvOnly().catch((e) => console.error("saveAccountCsvOnly", e));
     accountPermissionAddTargetId = null;
     renderAccountTable();
     if (accountPermissionEditTargetId) renderAccountPermissionUsersModal();
@@ -613,8 +614,9 @@ function renderAccountPermissionUsersModal(): void {
               ? { ...p, PERMISSION_TYPE: p.PERMISSION_TYPE === "edit" ? "view" : "edit" }
               : p
           );
-          setAccountPermissionList(next);
+          setAccountPermissionListFull(next);
           setAccountDirty();
+          saveAccountCsvOnly().catch((e) => console.error("saveAccountCsvOnly", e));
           renderAccountPermissionUsersModal();
         });
         const removeBtn = document.createElement("button");
@@ -631,8 +633,9 @@ function renderAccountPermissionUsersModal(): void {
           const next = getAccountPermissionRows().filter(
             (p) => !(p.ACCOUNT_ID === accountId && p.USER_ID === perm.USER_ID)
           );
-          setAccountPermissionList(next);
+          setAccountPermissionListFull(next);
           setAccountDirty();
+          saveAccountCsvOnly().catch((e) => console.error("saveAccountCsvOnly", e));
           renderAccountPermissionUsersModal();
         });
         div.appendChild(nameSpan);
@@ -702,7 +705,7 @@ function saveAccountFormFromModal(): void {
       PERMISSION_TYPE: row.permissionType || "view",
     }));
     const merged = [...existing, ...newPermissions];
-    setAccountPermissionList(merged);
+    setAccountPermissionListFull(merged);
   }
   let next = currentUserId
     ? accountListFull.filter((r) => r.USER_ID === currentUserId)

@@ -1,7 +1,6 @@
 /**
- * ログアウト・終了時: localStorage にフラッシュし、CSV に未保存のマスタだけ CSV 保存する。
+ * ログアウト・終了時: 未保存のマスタだけ CSV 保存する。
  */
-import { flushMasterToStorage } from "./flushMasterStorage.ts";
 import {
   accountDirty,
   categoryDirty,
@@ -18,7 +17,6 @@ import { saveUserCsvOnNavigate } from "../screens/profile-screen.ts";
 import { saveColorPaletteCsvOnNavigate } from "../screens/design-screen.ts";
 
 export async function saveDirtyCsvsOnly(): Promise<void> {
-  flushMasterToStorage();
   const promises: Promise<void>[] = [];
   if (accountDirty) promises.push(saveAccountCsvOnly());
   if (categoryDirty) promises.push(saveCategoryCsvOnly());

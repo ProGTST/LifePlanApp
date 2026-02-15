@@ -23,8 +23,8 @@ import {
   createDragHandleCell,
   attachNameCellBehavior,
 } from "../utils/tableCells.ts";
-import { setTagList as persistTagList } from "../utils/storage.ts";
 import { setTagDirty } from "../utils/csvDirty.ts";
+import { saveTagCsvOnly } from "../utils/saveMasterCsv.ts";
 import { registerViewHandler } from "../app/screen";
 import { openColorIconPicker } from "../utils/colorIconPicker.ts";
 import { ICON_DEFAULT_COLOR } from "../constants/colorPresets.ts";
@@ -40,13 +40,12 @@ async function fetchTagList(): Promise<TagRow[]> {
     if (row.ICON_PATH === undefined) row.ICON_PATH = "";
     list.push(row);
   }
-  persistTagList(list);
   return list;
 }
 
 function persistTag(): void {
-  persistTagList(tagListFull);
   setTagDirty();
+  saveTagCsvOnly().catch((e) => console.error("saveTagCsvOnly", e));
 }
 
 function saveTagNameFromCell(tagId: string, newName: string): void {
@@ -175,7 +174,6 @@ export async function loadAndRenderTagList(): Promise<void> {
     const list = await fetchTagList();
     setTagListFull(list);
     setTagListLoaded(true);
-    persistTagList(list);
   }
   const sorted = tagListFull.slice().sort((a, b) => sortOrderNum(a.SORT_ORDER, b.SORT_ORDER));
   setTagList(sorted);

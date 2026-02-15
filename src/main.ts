@@ -23,7 +23,6 @@ import { initProfileView } from "./screens/profile-screen";
 import { initDesignView } from "./screens/design-screen";
 import { initTransactionHistoryView } from "./screens/transaction-history-screen";
 import { initTransactionEntryView } from "./screens/transaction-entry-screen";
-import { flushMasterToStorage } from "./utils/flushMasterStorage.ts";
 import { saveAccountCsvOnly, saveCategoryCsvOnly, saveTagCsvOnly } from "./utils/saveMasterCsv.ts";
 import { saveDirtyCsvsOnly } from "./utils/saveDirtyCsvs.ts";
 
@@ -92,14 +91,6 @@ window.addEventListener("DOMContentLoaded", () => {
   setAccountListLoaded(false);
   applyUserPalette(userId).then(() => {
     initAppScreen();
-  });
-
-  // タブ/ウィンドウを閉じる直前にメモリ上のマスタを localStorage に書き出す（CSV は Tauri 時のみ）
-  window.addEventListener("beforeunload", () => {
-    flushMasterToStorage();
-  });
-  window.addEventListener("pagehide", () => {
-    flushMasterToStorage();
   });
 
   // Tauri 環境: ウィンドウ×ボタンで閉じる前に保存してから閉じる。保存に失敗しても必ず destroy する

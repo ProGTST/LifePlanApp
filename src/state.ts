@@ -1,5 +1,5 @@
 import { DEFAULT_VIEW } from "./constants/index";
-import type { AccountRow, CategoryRow, TagRow, TransactionRow, TagManagementRow } from "./types.ts";
+import type { AccountRow, AccountPermissionRow, CategoryRow, TagRow, TransactionRow, TagManagementRow } from "./types.ts";
 
 /** ログイン中のユーザーID */
 export let currentUserId = "";
@@ -66,6 +66,12 @@ export let accountListLoaded = false;
 
 export function setAccountListLoaded(loaded: boolean): void {
   accountListLoaded = loaded;
+}
+
+/** 勘定参照権限一覧（ACCOUNT_PERMISSION） */
+export let accountPermissionListFull: AccountPermissionRow[] = [];
+export function setAccountPermissionListFull(list: AccountPermissionRow[]): void {
+  accountPermissionListFull = list;
 }
 
 /** 勘定項目：削除モードON/OFF */

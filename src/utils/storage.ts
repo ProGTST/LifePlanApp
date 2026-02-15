@@ -1,8 +1,4 @@
-/** localStorage のキー（マスタデータ永続化） */
-const KEY_ACCOUNT = "lifeplan_account";
-const KEY_ACCOUNT_PERMISSION = "lifeplan_account_permission";
-const KEY_CATEGORY = "lifeplan_category";
-const KEY_TAG = "lifeplan_tag";
+/** localStorage のキー（デザイン：ユーザー別カラーパレットのみ使用） */
 const KEY_COLOR_PALETTE = "lifeplan_color_palette";
 
 function get<T>(key: string): T | null {
@@ -21,38 +17,6 @@ function set(key: string, value: unknown): void {
   } catch {
     // quota exceeded or disabled
   }
-}
-
-export function getAccountList(): unknown[] | null {
-  return get<unknown[]>(KEY_ACCOUNT);
-}
-
-export function setAccountList(list: unknown[]): void {
-  set(KEY_ACCOUNT, list);
-}
-
-export function getAccountPermissionList(): unknown[] | null {
-  return get<unknown[]>(KEY_ACCOUNT_PERMISSION);
-}
-
-export function setAccountPermissionList(list: unknown[]): void {
-  set(KEY_ACCOUNT_PERMISSION, list);
-}
-
-export function getCategoryList(): unknown[] | null {
-  return get<unknown[]>(KEY_CATEGORY);
-}
-
-export function setCategoryList(list: unknown[]): void {
-  set(KEY_CATEGORY, list);
-}
-
-export function getTagList(): unknown[] | null {
-  return get<unknown[]>(KEY_TAG);
-}
-
-export function setTagList(list: unknown[]): void {
-  set(KEY_TAG, list);
 }
 
 /** ユーザー別カラーパレット（キー: パレットキー, 値: 6桁hex） */

@@ -23,8 +23,8 @@ import {
   createDragHandleCell,
   attachNameCellBehavior,
 } from "../utils/tableCells.ts";
-import { setCategoryList as persistCategoryList } from "../utils/storage.ts";
 import { setCategoryDirty } from "../utils/csvDirty.ts";
+import { saveCategoryCsvOnly } from "../utils/saveMasterCsv.ts";
 import { registerViewHandler } from "../app/screen";
 import { openColorIconPicker } from "../utils/colorIconPicker.ts";
 import { ICON_DEFAULT_COLOR } from "../constants/colorPresets.ts";
@@ -119,13 +119,12 @@ async function fetchCategoryList(): Promise<CategoryRow[]> {
     list.push(row);
   }
   sortCategoryListByTypeAndOrder(list);
-  persistCategoryList(list);
   return list;
 }
 
 function persistCategory(): void {
-  persistCategoryList(categoryListFull);
   setCategoryDirty();
+  saveCategoryCsvOnly().catch((e) => console.error("saveCategoryCsvOnly", e));
 }
 
 function saveCategoryNameFromCell(categoryId: string, newName: string): void {
@@ -312,7 +311,6 @@ export async function loadAndRenderCategoryList(): Promise<void> {
     const list = await fetchCategoryList();
     setCategoryListFull(list);
     setCategoryListLoaded(true);
-    persistCategoryList(list);
   }
   const sorted = categoryListFull.slice().sort((a, b) => sortOrderNum(a.SORT_ORDER, b.SORT_ORDER));
   setCategoryList(sorted);
