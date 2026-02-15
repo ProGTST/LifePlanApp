@@ -517,6 +517,43 @@ function updateTransactionEntryContinuousButtonVisibility(): void {
   btn.classList.toggle("is-on", continuousMode);
 }
 
+/** 参照モード時: テキスト・入力・プルダウン・ボタンを readonly / disabled にする */
+function setTransactionEntryReadonly(readonly: boolean): void {
+  const form = document.getElementById("transaction-entry-form");
+  form?.classList.toggle("is-readonly", readonly);
+
+  const notice = document.getElementById("transaction-entry-view-only-notice");
+  if (notice) {
+    notice.classList.toggle("is-visible", readonly);
+    notice.setAttribute("aria-hidden", String(!readonly));
+  }
+
+  const textInputIds = ["transaction-entry-name", "transaction-entry-amount", "transaction-entry-date", "transaction-entry-date-from", "transaction-entry-date-to"];
+  for (const id of textInputIds) {
+    const el = document.getElementById(id) as HTMLInputElement | null;
+    if (el) el.readOnly = readonly;
+  }
+  const memoEl = document.getElementById("transaction-entry-memo") as HTMLTextAreaElement | null;
+  if (memoEl) memoEl.readOnly = readonly;
+
+  const triggerIds = [
+    "transaction-entry-category-trigger",
+    "transaction-entry-account-out-trigger",
+    "transaction-entry-account-in-trigger",
+    "transaction-entry-tag-open-btn",
+    "transaction-entry-type-expense",
+    "transaction-entry-type-income",
+    "transaction-entry-type-transfer",
+    "transaction-entry-status-plan",
+    "transaction-entry-status-actual",
+    "header-transaction-entry-reset",
+  ];
+  for (const id of triggerIds) {
+    const el = document.getElementById(id) as HTMLButtonElement | null;
+    if (el) el.disabled = readonly;
+  }
+}
+
 async function loadFormForEdit(transactionId: string): Promise<void> {
   const { rows: txRows } = await fetchTransactionRows(true);
   const row = txRows.find((r) => r.ID === transactionId);
@@ -691,6 +728,7 @@ export function initTransactionEntryView(): void {
       updateTransactionEntryDeleteButtonVisibility();
       updateTransactionEntrySubmitButtonVisibility();
       updateTransactionEntryContinuousButtonVisibility();
+      setTransactionEntryReadonly(transactionEntryViewOnly);
     })();
   });
 

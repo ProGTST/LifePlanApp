@@ -621,6 +621,10 @@ function renderCalendarPanel(): void {
       cell.classList.add("transaction-history-calendar-day--empty");
     } else {
       const dateStr = `${year}-${pad(month)}-${pad(day)}`;
+      cell.classList.add("transaction-history-calendar-day--clickable");
+      cell.setAttribute("role", "button");
+      cell.setAttribute("tabindex", "0");
+      cell.setAttribute("aria-label", `${dateStr}の取引を一覧で表示`);
       if (dateStr === getTodayYMD()) {
         cell.classList.add("transaction-history-calendar-day--today");
       }
@@ -655,6 +659,29 @@ function renderCalendarPanel(): void {
         line.appendChild(amountSpan);
         cell.appendChild(line);
       }
+      const showListForDate = (): void => {
+        filterDateFrom = dateStr;
+        filterDateTo = dateStr;
+        const dateFromEl = document.getElementById("transaction-history-date-from") as HTMLInputElement | null;
+        const dateToEl = document.getElementById("transaction-history-date-to") as HTMLInputElement | null;
+        if (dateFromEl) {
+          dateFromEl.value = dateStr;
+          dateFromEl.classList.remove("is-empty");
+        }
+        if (dateToEl) {
+          dateToEl.value = dateStr;
+          dateToEl.classList.remove("is-empty");
+        }
+        switchTab("list");
+        renderList();
+      };
+      cell.addEventListener("click", showListForDate);
+      cell.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          showListForDate();
+        }
+      });
       day++;
     }
     grid.appendChild(cell);

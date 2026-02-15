@@ -440,6 +440,16 @@
   display: inline-flex;
 }
 
+.transaction-entry-view-only-notice {
+  display: none;
+  margin-right: 0.75rem;
+  font-size: 0.875rem;
+  color: #c00;
+}
+.transaction-entry-view-only-notice.is-visible {
+  display: inline;
+}
+
 #app #header-transaction-entry-continuous.btn-header-transaction-entry-continuous {
   background-color: var(--color-base-bg, #ffffff);
   color: var(--color-base-fg, #333333);
@@ -3043,6 +3053,14 @@
 .transaction-history-calendar-day--empty {
   border: none;
   background: transparent;
+}
+
+.transaction-history-calendar-day--clickable {
+  cursor: pointer;
+}
+
+.transaction-history-calendar-day--clickable:hover {
+  background: var(--gray-100);
 }
 
 .transaction-history-calendar-day--today {
