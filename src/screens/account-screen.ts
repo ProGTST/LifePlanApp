@@ -27,6 +27,10 @@ import {
 import { setAccountDirty } from "../utils/csvDirty.ts";
 import { saveAccountCsvOnly } from "../utils/saveMasterCsv.ts";
 import { setNewRowAudit, setUpdateAudit } from "../utils/auditFields.ts";
+import {
+  checkVersionBeforeUpdate,
+  getVersionConflictMessage,
+} from "../utils/csvVersionCheck.ts";
 import { registerViewHandler } from "../app/screen";
 import { openColorIconPicker } from "../utils/colorIconPicker.ts";
 import { ICON_DEFAULT_COLOR } from "../constants/colorPresets.ts";
@@ -88,34 +92,49 @@ function persistAccount(): void {
   saveAccountCsvOnly().catch((e) => console.error("saveAccountCsvOnly", e));
 }
 
-function saveAccountNameFromCell(accountId: string, newName: string): void {
+async function saveAccountNameFromCell(accountId: string, newName: string): Promise<void> {
   const trimmed = newName.trim();
   if (!trimmed) {
-    deleteAccountRow(accountId);
+    await deleteAccountRow(accountId);
     return;
   }
   const row = accountListFull.find((r) => r.ID === accountId);
-  if (row && row.USER_ID === currentUserId) {
-    row.ACCOUNT_NAME = trimmed;
-    setUpdateAudit(row, currentUserId ?? "");
-    persistAccount();
+  if (!row || row.USER_ID !== currentUserId) return;
+  const check = await checkVersionBeforeUpdate(
+    "/data/ACCOUNT.csv",
+    accountId,
+    row.VERSION ?? "0"
+  );
+  if (!check.allowed) {
+    alert(getVersionConflictMessage(check));
+    await loadAndRenderAccountList();
+    return;
   }
+  row.ACCOUNT_NAME = trimmed;
+  setUpdateAudit(row as Record<string, string>, currentUserId ?? "");
+  persistAccount();
 }
 
 /** 画面上のスロットを元に表示順を並び替え、SORT_ORDER と accountListFull を更新して永続化・再描画 */
-function moveAccountOrder(fromIndex: number, toSlot: number): void {
+async function moveAccountOrder(fromIndex: number, toSlot: number): Promise<void> {
   const sorted = accountList.slice();
   const originalLength = sorted.length;
   if (fromIndex < 0 || toSlot < 0 || fromIndex >= originalLength || toSlot > originalLength) return;
   const [removed] = sorted.splice(fromIndex, 1);
   const insertAt = slotToInsertAt(toSlot, fromIndex, originalLength);
   sorted.splice(insertAt, 0, removed);
+  for (const r of sorted) {
+    const check = await checkVersionBeforeUpdate("/data/ACCOUNT.csv", r.ID, r.VERSION ?? "0");
+    if (!check.allowed) {
+      alert(getVersionConflictMessage(check));
+      await loadAndRenderAccountList();
+      return;
+    }
+  }
   sorted.forEach((r, i) => {
     r.SORT_ORDER = String(i);
     setUpdateAudit(r as Record<string, string>, currentUserId ?? "");
   });
-  // 画面遷移後に loadAndRenderAccountList が accountListFull から再フィルタ・ソートするため、
-  // 当該ユーザーの行を newFull 内で新しい並びに差し替える
   let sortedIdx = 0;
   const newFull = accountListFull.map((r) =>
     r.USER_ID === currentUserId ? sorted[sortedIdx++] : r
@@ -234,9 +253,20 @@ function renderAccountTable(): void {
     iconWrap.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
-      openColorIconPicker(row.COLOR ?? "", row.ICON_PATH ?? "", (color, iconPath) => {
+      openColorIconPicker(row.COLOR ?? "", row.ICON_PATH ?? "", async (color, iconPath) => {
+        const check = await checkVersionBeforeUpdate(
+          "/data/ACCOUNT.csv",
+          row.ID,
+          row.VERSION ?? "0"
+        );
+        if (!check.allowed) {
+          alert(getVersionConflictMessage(check));
+          await loadAndRenderAccountList();
+          return;
+        }
         row.COLOR = color;
         row.ICON_PATH = iconPath;
+        setUpdateAudit(row as Record<string, string>, currentUserId ?? "");
         persistAccount();
         renderAccountTable();
       });
@@ -245,7 +275,9 @@ function renderAccountTable(): void {
     const tdName = document.createElement("td");
     tdName.contentEditable = "true";
     tdName.textContent = row.ACCOUNT_NAME;
-    attachNameCellBehavior(tdName, () => saveAccountNameFromCell(row.ID, tdName.textContent ?? ""));
+    attachNameCellBehavior(tdName, () => {
+      saveAccountNameFromCell(row.ID, tdName.textContent ?? "").catch((e) => console.error(e));
+    });
     const tdPermission = document.createElement("td");
     tdPermission.className = "account-table-permission-col";
     const permCount = getPermissionCountForAccount(row.ID);
@@ -265,7 +297,7 @@ function renderAccountTable(): void {
     tdPermission.appendChild(permAddBtn);
     const tdDel = createDeleteButtonCell({
       visible: accountDeleteMode,
-      onDelete: () => deleteAccountRow(row.ID),
+      onDelete: () => deleteAccountRow(row.ID).catch((e) => console.error(e)),
     });
     tdDrag.addEventListener("mousedown", (e) => {
       e.preventDefault();
@@ -293,7 +325,7 @@ function renderAccountTable(): void {
         indicator.remove();
         const insertAt = slotToInsertAt(currentSlot, fromIndex, rects.length);
         const noMove = insertAt === fromIndex;
-        if (!noMove) moveAccountOrder(fromIndex, currentSlot);
+        if (!noMove) moveAccountOrder(fromIndex, currentSlot).catch((e) => console.error(e));
       };
       document.addEventListener("mousemove", onMouseMove);
       document.addEventListener("mouseup", onMouseUp);
@@ -307,12 +339,17 @@ function renderAccountTable(): void {
   });
 }
 
-function deleteAccountRow(accountId: string): void {
+async function deleteAccountRow(accountId: string): Promise<void> {
   const row = accountListFull.find((r) => r.ID === accountId);
-  if (row && row.USER_ID === currentUserId) {
-    const idx = accountListFull.indexOf(row);
-    if (idx !== -1) accountListFull.splice(idx, 1);
+  if (!row || row.USER_ID !== currentUserId) return;
+  const check = await checkVersionBeforeUpdate("/data/ACCOUNT.csv", accountId, row.VERSION ?? "0");
+  if (!check.allowed) {
+    alert(getVersionConflictMessage(check));
+    await loadAndRenderAccountList();
+    return;
   }
+  const idx = accountListFull.indexOf(row);
+  if (idx !== -1) accountListFull.splice(idx, 1);
   const permissionWithoutAccount = getAccountPermissionRows().filter(
     (p) => p.ACCOUNT_ID !== accountId
   );
@@ -600,7 +637,18 @@ function renderAccountPermissionUsersModal(): void {
         permBtn.className = `account-permission-users-toggle account-permission-users-toggle--${isEdit ? "edit" : "view"}`;
         permBtn.textContent = isEdit ? "編集" : "参照";
         permBtn.setAttribute("aria-label", isEdit ? "編集（クリックで参照に切り替え）" : "参照（クリックで編集に切り替え）");
-        permBtn.addEventListener("click", () => {
+        permBtn.addEventListener("click", async () => {
+          const check = await checkVersionBeforeUpdate(
+            "/data/ACCOUNT_PERMISSION.csv",
+            perm.ID,
+            perm.VERSION ?? "0"
+          );
+          if (!check.allowed) {
+            alert(getVersionConflictMessage(check));
+            await loadAndRenderAccountList();
+            if (accountPermissionEditTargetId) renderAccountPermissionUsersModal();
+            return;
+          }
           const next = getAccountPermissionRows().map((p) => {
             if (p.ACCOUNT_ID !== accountId || p.USER_ID !== perm.USER_ID) return p;
             const updated = { ...p, PERMISSION_TYPE: p.PERMISSION_TYPE === "edit" ? "view" : "edit" };
@@ -622,7 +670,18 @@ function renderAccountPermissionUsersModal(): void {
         removeImg.width = 20;
         removeImg.height = 20;
         removeBtn.appendChild(removeImg);
-        removeBtn.addEventListener("click", () => {
+        removeBtn.addEventListener("click", async () => {
+          const check = await checkVersionBeforeUpdate(
+            "/data/ACCOUNT_PERMISSION.csv",
+            perm.ID,
+            perm.VERSION ?? "0"
+          );
+          if (!check.allowed) {
+            alert(getVersionConflictMessage(check));
+            await loadAndRenderAccountList();
+            if (accountPermissionEditTargetId) renderAccountPermissionUsersModal();
+            return;
+          }
           const next = getAccountPermissionRows().filter(
             (p) => !(p.ACCOUNT_ID === accountId && p.USER_ID === perm.USER_ID)
           );
@@ -669,6 +728,7 @@ function saveAccountFormFromModal(): void {
   const formIconPath = (document.getElementById("account-form-icon-path") as HTMLInputElement)?.value?.trim() || "";
   const newAccount: AccountRow = {
     ID: newAccountId,
+    VERSION: "0",
     REGIST_DATETIME: "",
     REGIST_USER: "",
     UPDATE_DATETIME: "",

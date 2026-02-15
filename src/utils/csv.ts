@@ -76,12 +76,16 @@ export async function fetchCsv(
 }
 
 /**
- * ヘッダーと1行のセル配列からオブジェクトを生成
+ * ヘッダーと1行のセル配列からオブジェクトを生成。
+ * VERSION 列がある場合は未設定時 "0" を設定する（後方互換）。
  */
 export function rowToObject(header: string[], cells: string[]): Record<string, string> {
   const obj: Record<string, string> = {};
   header.forEach((h, j) => {
     obj[h] = cells[j] ?? "";
   });
+  if ("VERSION" in obj && (obj.VERSION === undefined || obj.VERSION === "")) {
+    obj.VERSION = "0";
+  }
   return obj;
 }

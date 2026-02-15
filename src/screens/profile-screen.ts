@@ -8,6 +8,10 @@ import { openColorIconPicker } from "../utils/colorIconPicker.ts";
 import { setUserDirty, clearUserDirty } from "../utils/csvDirty.ts";
 import { saveCsvViaApi } from "../utils/dataApi";
 import { setUpdateAudit } from "../utils/auditFields.ts";
+import {
+  checkVersionBeforeUpdate,
+  getVersionConflictMessage,
+} from "../utils/csvVersionCheck.ts";
 
 const PROFILE_NAME_LENGTH = 4;
 
@@ -119,10 +123,20 @@ async function saveProfileForm(): Promise<void> {
     nameEl.focus();
     return;
   }
+  const check = await checkVersionBeforeUpdate(
+    "/data/USER.csv",
+    user.ID,
+    user.VERSION ?? "0"
+  );
+  if (!check.allowed) {
+    alert(getVersionConflictMessage(check));
+    await loadAndRenderProfile();
+    return;
+  }
   user.NAME = name;
   user.COLOR = (document.getElementById("profile-form-icon-bg-color") as HTMLInputElement)?.value?.trim() ?? "";
   user.ICON_PATH = iconPathEl?.value?.trim() ?? "";
-  setUpdateAudit(user, currentUserId ?? "");
+  setUpdateAudit(user as unknown as Record<string, string>, currentUserId ?? "");
 
   const csv = userListToCsv(userList as unknown as Record<string, string>[]);
   await saveCsvViaApi("USER.csv", csv);
@@ -198,7 +212,7 @@ export function saveUserCsvOnNavigate(): Promise<void> {
     if (nameEl) user.NAME = nameEl.value.trim();
     if (colorEl) user.COLOR = colorEl.value?.trim() ?? "";
     if (iconPathEl) user.ICON_PATH = iconPathEl.value?.trim() ?? "";
-    setUpdateAudit(user, currentUserId ?? "");
+    setUpdateAudit(user as unknown as Record<string, string>, currentUserId ?? "");
   }
   const csv = userListToCsv(userList as unknown as Record<string, string>[]);
   return saveCsvViaApi("USER.csv", csv).then(() => clearUserDirty());

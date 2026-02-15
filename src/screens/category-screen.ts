@@ -25,6 +25,10 @@ import {
 import { setCategoryDirty } from "../utils/csvDirty.ts";
 import { saveCategoryCsvOnly } from "../utils/saveMasterCsv.ts";
 import { setNewRowAudit, setUpdateAudit } from "../utils/auditFields.ts";
+import {
+  checkVersionBeforeUpdate,
+  getVersionConflictMessage,
+} from "../utils/csvVersionCheck.ts";
 import { registerViewHandler } from "../app/screen";
 import { openColorIconPicker } from "../utils/colorIconPicker.ts";
 import { ICON_DEFAULT_COLOR } from "../constants/colorPresets.ts";
@@ -127,25 +131,44 @@ function persistCategory(): void {
   saveCategoryCsvOnly().catch((e) => console.error("saveCategoryCsvOnly", e));
 }
 
-function saveCategoryNameFromCell(categoryId: string, newName: string): void {
+async function saveCategoryNameFromCell(categoryId: string, newName: string): Promise<void> {
   const trimmed = newName.trim();
   if (!trimmed) {
-    deleteCategoryRow(categoryId);
+    await deleteCategoryRow(categoryId);
     return;
   }
   const row = categoryListFull.find((r) => r.ID === categoryId);
-  if (row) {
-    row.CATEGORY_NAME = trimmed;
-    setUpdateAudit(row, currentUserId ?? "");
-    persistCategory();
+  if (!row) return;
+  const check = await checkVersionBeforeUpdate(
+    "/data/CATEGORY.csv",
+    categoryId,
+    row.VERSION ?? "0"
+  );
+  if (!check.allowed) {
+    alert(getVersionConflictMessage(check));
+    await loadAndRenderCategoryList();
+    return;
   }
+  row.CATEGORY_NAME = trimmed;
+  setUpdateAudit(row as unknown as Record<string, string>, currentUserId ?? "");
+  persistCategory();
 }
 
-function saveParentFromSelect(categoryId: string, parentId: string): void {
+async function saveParentFromSelect(categoryId: string, parentId: string): Promise<void> {
   const row = categoryListFull.find((r) => r.ID === categoryId);
   if (!row) return;
+  const check = await checkVersionBeforeUpdate(
+    "/data/CATEGORY.csv",
+    categoryId,
+    row.VERSION ?? "0"
+  );
+  if (!check.allowed) {
+    alert(getVersionConflictMessage(check));
+    await loadAndRenderCategoryList();
+    return;
+  }
   row.PARENT_ID = parentId;
-  setUpdateAudit(row, currentUserId ?? "");
+  setUpdateAudit(row as unknown as Record<string, string>, currentUserId ?? "");
   persistCategory();
   setCategoryList([...categoryListFull]);
   renderCategoryTable();
@@ -153,7 +176,7 @@ function saveParentFromSelect(categoryId: string, parentId: string): void {
 
 /** toSlot: 0=先頭の前, 1=1行目と2行目の間, ..., n=末尾の後 */
 /** 表示順を splice で並び替え。同種別の位置を sorted の並びで差し替え（表示順＝配列順） */
-function moveCategoryOrder(fromIndex: number, toSlot: number): void {
+async function moveCategoryOrder(fromIndex: number, toSlot: number): Promise<void> {
   const orderedRows = getSameTypeFiltered();
   const sorted = orderedRows.slice();
   const originalLength = sorted.length;
@@ -161,12 +184,19 @@ function moveCategoryOrder(fromIndex: number, toSlot: number): void {
   const [removed] = sorted.splice(fromIndex, 1);
   const insertAt = slotToInsertAt(toSlot, fromIndex, originalLength);
   sorted.splice(insertAt, 0, removed);
+  for (const r of sorted) {
+    const check = await checkVersionBeforeUpdate("/data/CATEGORY.csv", r.ID, r.VERSION ?? "0");
+    if (!check.allowed) {
+      alert(getVersionConflictMessage(check));
+      await loadAndRenderCategoryList();
+      return;
+    }
+  }
   sorted.forEach((r, i) => {
     r.SORT_ORDER = String(i);
-    setUpdateAudit(r, currentUserId ?? "");
+    setUpdateAudit(r as unknown as Record<string, string>, currentUserId ?? "");
   });
   const type = sorted[0].TYPE;
-  // 表示順は配列順で決めるため、同種別を sorted の並びで差し替える
   let sameTypeIdx = 0;
   const newFull = categoryListFull.map((r) => {
     if (r.TYPE !== type) return r;
@@ -213,10 +243,20 @@ function renderCategoryTable(): void {
     iconWrap.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
-      openColorIconPicker(row.COLOR ?? "", row.ICON_PATH ?? "", (color, iconPath) => {
+      openColorIconPicker(row.COLOR ?? "", row.ICON_PATH ?? "", async (color, iconPath) => {
+        const check = await checkVersionBeforeUpdate(
+          "/data/CATEGORY.csv",
+          row.ID,
+          row.VERSION ?? "0"
+        );
+        if (!check.allowed) {
+          alert(getVersionConflictMessage(check));
+          await loadAndRenderCategoryList();
+          return;
+        }
         row.COLOR = color;
         row.ICON_PATH = iconPath;
-        setUpdateAudit(row, currentUserId ?? "");
+        setUpdateAudit(row as unknown as Record<string, string>, currentUserId ?? "");
         persistCategory();
         renderCategoryTable();
       });
@@ -227,7 +267,9 @@ function renderCategoryTable(): void {
     tdName.contentEditable = "true";
     tdName.textContent = row.CATEGORY_NAME;
     tdName.style.paddingLeft = depth > 0 ? `${0.75 + depth * 1.5}rem` : "";
-    attachNameCellBehavior(tdName, () => saveCategoryNameFromCell(row.ID, tdName.textContent ?? ""));
+    attachNameCellBehavior(tdName, () => {
+      saveCategoryNameFromCell(row.ID, tdName.textContent ?? "").catch((e) => console.error(e));
+    });
     const tdParent = document.createElement("td");
     const select = document.createElement("select");
     select.className = "category-parent-select";
@@ -246,13 +288,13 @@ function renderCategoryTable(): void {
     const hasParentOption = row.PARENT_ID && parentCandidates.some((p) => p.ID === row.PARENT_ID);
     select.value = hasParentOption ? row.PARENT_ID : "";
     select.addEventListener("change", () => {
-      saveParentFromSelect(row.ID, select.value);
+      saveParentFromSelect(row.ID, select.value).catch((e) => console.error(e));
     });
     tdParent.classList.add("category-parent-col");
     tdParent.appendChild(select);
     const tdDel = createDeleteButtonCell({
       visible: categoryDeleteMode,
-      onDelete: () => deleteCategoryRow(row.ID),
+      onDelete: () => deleteCategoryRow(row.ID).catch((e) => console.error(e)),
     });
     if (!isTreeView) {
       const tdDrag = createDragHandleCell();
@@ -282,7 +324,7 @@ function renderCategoryTable(): void {
           indicator.remove();
           const insertAt = slotToInsertAt(currentSlot, fromIndex, rects.length);
           const noMove = insertAt === fromIndex;
-          if (!noMove) moveCategoryOrder(fromIndex, currentSlot);
+          if (!noMove) moveCategoryOrder(fromIndex, currentSlot).catch((e) => console.error(e));
         };
         document.addEventListener("mousemove", onMouseMove);
         document.addEventListener("mouseup", onMouseUp);
@@ -297,7 +339,19 @@ function renderCategoryTable(): void {
   });
 }
 
-function deleteCategoryRow(categoryId: string): void {
+async function deleteCategoryRow(categoryId: string): Promise<void> {
+  const row = categoryListFull.find((r) => r.ID === categoryId);
+  if (!row) return;
+  const check = await checkVersionBeforeUpdate(
+    "/data/CATEGORY.csv",
+    categoryId,
+    row.VERSION ?? "0"
+  );
+  if (!check.allowed) {
+    alert(getVersionConflictMessage(check));
+    await loadAndRenderCategoryList();
+    return;
+  }
   const idx = categoryListFull.findIndex((r) => r.ID === categoryId);
   if (idx !== -1) categoryListFull.splice(idx, 1);
   const sorted = categoryListFull.slice().sort((a, b) => sortOrderNum(a.SORT_ORDER, b.SORT_ORDER));
@@ -404,6 +458,7 @@ function saveCategoryFormFromModal(): void {
   const formIconPath = (document.getElementById("category-form-icon-path") as HTMLInputElement)?.value?.trim() || "";
   const newRow: CategoryRow = {
     ID: newId,
+    VERSION: "0",
     REGIST_DATETIME: "",
     REGIST_USER: "",
     UPDATE_DATETIME: "",
@@ -415,7 +470,7 @@ function saveCategoryFormFromModal(): void {
     ICON_PATH: formIconPath || "",
     SORT_ORDER: String(maxOrder + 1),
   };
-  setNewRowAudit(newRow, userId, newId);
+  setNewRowAudit(newRow as unknown as Record<string, string>, userId, newId);
   categoryListFull.push(newRow);
   setCategoryList([...categoryListFull]);
   persistCategory();

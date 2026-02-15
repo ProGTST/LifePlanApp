@@ -20,6 +20,7 @@ export function toCsvString(header: string[], rows: Record<string, string>[]): s
 
 const ACCOUNT_HEADER = [
   "ID",
+  "VERSION",
   "REGIST_DATETIME",
   "REGIST_USER",
   "UPDATE_DATETIME",
@@ -33,6 +34,7 @@ const ACCOUNT_HEADER = [
 
 const CATEGORY_HEADER = [
   "ID",
+  "VERSION",
   "REGIST_DATETIME",
   "REGIST_USER",
   "UPDATE_DATETIME",
@@ -47,6 +49,7 @@ const CATEGORY_HEADER = [
 
 const TAG_HEADER = [
   "ID",
+  "VERSION",
   "REGIST_DATETIME",
   "REGIST_USER",
   "UPDATE_DATETIME",
@@ -59,6 +62,7 @@ const TAG_HEADER = [
 
 const ACCOUNT_PERMISSION_HEADER = [
   "ID",
+  "VERSION",
   "REGIST_DATETIME",
   "REGIST_USER",
   "UPDATE_DATETIME",
@@ -86,6 +90,7 @@ export function accountPermissionListToCsv(rows: Record<string, string>[]): stri
 
 const TRANSACTION_HEADER = [
   "ID",
+  "VERSION",
   "REGIST_DATETIME",
   "REGIST_USER",
   "UPDATE_DATETIME",
@@ -109,6 +114,7 @@ export function transactionListToCsv(rows: Record<string, string>[]): string {
 
 const TAG_MANAGEMENT_HEADER = [
   "ID",
+  "VERSION",
   "REGIST_DATETIME",
   "REGIST_USER",
   "UPDATE_DATETIME",
@@ -123,6 +129,7 @@ export function tagManagementListToCsv(rows: Record<string, string>[]): string {
 
 const USER_HEADER = [
   "ID",
+  "VERSION",
   "REGIST_DATETIME",
   "REGIST_USER",
   "UPDATE_DATETIME",
@@ -139,6 +146,7 @@ export function userListToCsv(rows: Record<string, string>[]): string {
 const COLOR_PALETTE_HEADER = [
   "USER_ID",
   "SEQ_NO",
+  "VERSION",
   "REGIST_DATETIME",
   "REGIST_USER",
   "UPDATE_DATETIME",

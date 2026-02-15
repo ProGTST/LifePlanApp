@@ -1,12 +1,12 @@
-ID,REGIST_DATETIME,REGIST_USER,UPDATE_DATETIME,UPDATE_USER,TAG_NAME,COLOR,ICON_PATH,SORT_ORDER
-1,2025-02-01 00:00:00,1,2026-02-12 06:06:56,coara,結婚,#ED83C3,/icon/custom/99-others/gem-solid-full.svg,1
-2,2025-02-01 00:00:00,1,2026-02-12 06:07:07,coara,結婚するまで,#F09A9F,/icon/custom/99-others/gem-solid-full.svg,2
-3,2025-02-01 00:00:00,1,2026-02-12 06:07:16,coara,結婚してから,#F2A8D5,/icon/custom/03-life/seedling-solid-full.svg,6
-4,2026-02-12 06:07:22,coara,2026-02-12 06:07:22,coara,必要に応じて,#79AFED,/icon/custom/99-others/circle-exclamation-solid-full.svg,0
-5,2026-02-12 06:07:28,coara,2026-02-12 06:07:28,coara,子供,#ECB567,/icon/custom/02-person/baby-solid-full.svg,8
-6,2026-02-12 06:07:42,coara,2026-02-12 06:07:42,coara,出産するまで,#F0D22E,/icon/custom/02-person/baby-solid-full.svg,9
-7,2026-02-12 06:07:51,coara,2026-02-12 06:07:51,coara,出産してから,#F5DF6D,/icon/custom/02-person/baby-solid-full.svg,10
-8,2026-02-12 06:07:59,coara,2026-02-15 01:21:13,coara,同棲する,#646CFF,/icon/custom/99-others/gem-solid-full.svg,3
-9,2026-02-12 06:08:04,coara,2026-02-15 01:21:24,coara,プロポーズする,#646CFF,/icon/custom/99-others/gem-solid-full.svg,4
-10,2026-02-15 01:21:32,coara,2026-02-15 01:21:32,coara,入籍する,#646CFF,/icon/custom/99-others/gem-solid-full.svg,5
-11,2026-02-15 01:22:11,coara,2026-02-15 01:22:29,coara,家具・家電の購入,#646CFF,/icon/custom/03-life/couch-solid-full.svg,7
+ID,VERSION,REGIST_DATETIME,REGIST_USER,UPDATE_DATETIME,UPDATE_USER,TAG_NAME,COLOR,ICON_PATH,SORT_ORDER
+1,0,2025-02-01 00:00:00,1,2026-02-12 06:06:56,coara,結婚,#ED83C3,/icon/custom/99-others/gem-solid-full.svg,1
+2,0,2025-02-01 00:00:00,1,2026-02-12 06:07:07,coara,結婚するまで,#F09A9F,/icon/custom/99-others/gem-solid-full.svg,2
+3,0,2025-02-01 00:00:00,1,2026-02-12 06:07:16,coara,結婚してから,#F2A8D5,/icon/custom/03-life/seedling-solid-full.svg,6
+4,0,2026-02-12 06:07:22,coara,2026-02-12 06:07:22,coara,必要に応じて,#79AFED,/icon/custom/99-others/circle-exclamation-solid-full.svg,0
+5,0,2026-02-12 06:07:28,coara,2026-02-12 06:07:28,coara,子供,#ECB567,/icon/custom/02-person/baby-solid-full.svg,8
+6,0,2026-02-12 06:07:42,coara,2026-02-12 06:07:42,coara,出産するまで,#F0D22E,/icon/custom/02-person/baby-solid-full.svg,9
+7,0,2026-02-12 06:07:51,coara,2026-02-12 06:07:51,coara,出産してから,#F5DF6D,/icon/custom/02-person/baby-solid-full.svg,10
+8,0,2026-02-12 06:07:59,coara,2026-02-15 01:21:13,coara,同棲する,#646CFF,/icon/custom/99-others/gem-solid-full.svg,3
+9,0,2026-02-12 06:08:04,coara,2026-02-15 01:21:24,coara,プロポーズする,#646CFF,/icon/custom/99-others/gem-solid-full.svg,4
+10,0,2026-02-15 01:21:32,coara,2026-02-15 01:21:32,coara,入籍する,#646CFF,/icon/custom/99-others/gem-solid-full.svg,5
+11,0,2026-02-15 01:22:11,coara,2026-02-15 01:22:29,coara,家具・家電の購入,#646CFF,/icon/custom/03-life/couch-solid-full.svg,7

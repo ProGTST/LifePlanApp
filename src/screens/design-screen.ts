@@ -7,6 +7,10 @@ import { setColorPaletteDirty, clearColorPaletteDirty } from "../utils/csvDirty.
 import { openColorIconPicker } from "../utils/colorIconPicker.ts";
 import { getColorPalette, setColorPalette } from "../utils/storage.ts";
 import { setNewRowAuditWithoutId, setUpdateAudit } from "../utils/auditFields.ts";
+import {
+  checkVersionBeforeUpdate,
+  getVersionConflictMessage,
+} from "../utils/csvVersionCheck.ts";
 
 const HEX_COLOR_6 = /^#[0-9A-Fa-f]{6}$/;
 const HEX_COLOR_3 = /^#[0-9A-Fa-f]{3}$/;
@@ -212,6 +216,17 @@ async function saveDesignForm(): Promise<void> {
     if (colorEl) palette[key] = colorEl.value;
   });
 
+  const check = await checkVersionBeforeUpdate(
+    "/data/COLOR_PALETTE.csv",
+    currentUserId ?? "",
+    palette.VERSION ?? "0",
+    true
+  );
+  if (!check.allowed) {
+    alert(getVersionConflictMessage(check));
+    await loadAndRenderDesign();
+    return;
+  }
   setUpdateAudit(palette, currentUserId ?? "");
 
   // localStorage に保存

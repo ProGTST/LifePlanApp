@@ -25,6 +25,10 @@ import {
 import { setTagDirty } from "../utils/csvDirty.ts";
 import { saveTagCsvOnly } from "../utils/saveMasterCsv.ts";
 import { setNewRowAudit, setUpdateAudit } from "../utils/auditFields.ts";
+import {
+  checkVersionBeforeUpdate,
+  getVersionConflictMessage,
+} from "../utils/csvVersionCheck.ts";
 import { registerViewHandler } from "../app/screen";
 import { openColorIconPicker } from "../utils/colorIconPicker.ts";
 import { ICON_DEFAULT_COLOR } from "../constants/colorPresets.ts";
@@ -48,31 +52,44 @@ function persistTag(): void {
   saveTagCsvOnly().catch((e) => console.error("saveTagCsvOnly", e));
 }
 
-function saveTagNameFromCell(tagId: string, newName: string): void {
+async function saveTagNameFromCell(tagId: string, newName: string): Promise<void> {
   const trimmed = newName.trim();
   if (!trimmed) {
-    deleteTagRow(tagId);
+    await deleteTagRow(tagId);
     return;
   }
   const row = tagListFull.find((r) => r.ID === tagId);
-  if (row) {
-    row.TAG_NAME = trimmed;
-    setUpdateAudit(row, currentUserId ?? "");
-    persistTag();
+  if (!row) return;
+  const check = await checkVersionBeforeUpdate("/data/TAG.csv", tagId, row.VERSION ?? "0");
+  if (!check.allowed) {
+    alert(getVersionConflictMessage(check));
+    await loadAndRenderTagList();
+    return;
   }
+  row.TAG_NAME = trimmed;
+  setUpdateAudit(row as Record<string, string>, currentUserId ?? "");
+  persistTag();
 }
 
 /** 画面上のスロットを元に表示順を並び替え、永続化・再描画 */
-function moveTagOrder(fromIndex: number, toSlot: number): void {
+async function moveTagOrder(fromIndex: number, toSlot: number): Promise<void> {
   const sorted = tagList.slice();
   const originalLength = sorted.length;
   if (fromIndex < 0 || toSlot < 0 || fromIndex >= originalLength || toSlot > originalLength) return;
   const [removed] = sorted.splice(fromIndex, 1);
   const insertAt = slotToInsertAt(toSlot, fromIndex, originalLength);
   sorted.splice(insertAt, 0, removed);
+  for (const r of sorted) {
+    const check = await checkVersionBeforeUpdate("/data/TAG.csv", r.ID, r.VERSION ?? "0");
+    if (!check.allowed) {
+      alert(getVersionConflictMessage(check));
+      await loadAndRenderTagList();
+      return;
+    }
+  }
   sorted.forEach((r, i) => {
     r.SORT_ORDER = String(i);
-    setUpdateAudit(r, currentUserId ?? "");
+    setUpdateAudit(r as Record<string, string>, currentUserId ?? "");
   });
   setTagList(sorted);
   persistTag();
@@ -105,10 +122,20 @@ function renderTagTable(): void {
     iconWrap.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
-      openColorIconPicker(row.COLOR ?? "", row.ICON_PATH ?? "", (color, iconPath) => {
+      openColorIconPicker(row.COLOR ?? "", row.ICON_PATH ?? "", async (color, iconPath) => {
+        const check = await checkVersionBeforeUpdate(
+          "/data/TAG.csv",
+          row.ID,
+          row.VERSION ?? "0"
+        );
+        if (!check.allowed) {
+          alert(getVersionConflictMessage(check));
+          await loadAndRenderTagList();
+          return;
+        }
         row.COLOR = color;
         row.ICON_PATH = iconPath;
-        setUpdateAudit(row, currentUserId ?? "");
+        setUpdateAudit(row as Record<string, string>, currentUserId ?? "");
         persistTag();
         renderTagTable();
       });
@@ -117,10 +144,12 @@ function renderTagTable(): void {
     const tdName = document.createElement("td");
     tdName.contentEditable = "true";
     tdName.textContent = row.TAG_NAME;
-    attachNameCellBehavior(tdName, () => saveTagNameFromCell(row.ID, tdName.textContent ?? ""));
+    attachNameCellBehavior(tdName, () => {
+      saveTagNameFromCell(row.ID, tdName.textContent ?? "").catch((e) => console.error(e));
+    });
     const tdDel = createDeleteButtonCell({
       visible: tagDeleteMode,
-      onDelete: () => deleteTagRow(row.ID),
+      onDelete: () => deleteTagRow(row.ID).catch((e) => console.error(e)),
     });
     tdDrag.addEventListener("mousedown", (e) => {
       e.preventDefault();
@@ -148,7 +177,7 @@ function renderTagTable(): void {
         indicator.remove();
         const insertAt = slotToInsertAt(currentSlot, fromIndex, rects.length);
         const noMove = insertAt === fromIndex;
-        if (!noMove) moveTagOrder(fromIndex, currentSlot);
+        if (!noMove) moveTagOrder(fromIndex, currentSlot).catch((e) => console.error(e));
       };
       document.addEventListener("mousemove", onMouseMove);
       document.addEventListener("mouseup", onMouseUp);
@@ -161,7 +190,15 @@ function renderTagTable(): void {
   });
 }
 
-function deleteTagRow(tagId: string): void {
+async function deleteTagRow(tagId: string): Promise<void> {
+  const row = tagListFull.find((r) => r.ID === tagId);
+  if (!row) return;
+  const check = await checkVersionBeforeUpdate("/data/TAG.csv", tagId, row.VERSION ?? "0");
+  if (!check.allowed) {
+    alert(getVersionConflictMessage(check));
+    await loadAndRenderTagList();
+    return;
+  }
   const idx = tagListFull.findIndex((r) => r.ID === tagId);
   if (idx !== -1) tagListFull.splice(idx, 1);
   const sorted = tagListFull.slice().sort((a, b) => sortOrderNum(a.SORT_ORDER, b.SORT_ORDER));
@@ -236,6 +273,7 @@ function saveTagFormFromModal(): void {
   const formIconPath = (document.getElementById("tag-form-icon-path") as HTMLInputElement)?.value?.trim() || "";
   const newRow: TagRow = {
     ID: newId,
+    VERSION: "0",
     REGIST_DATETIME: "",
     REGIST_USER: "",
     UPDATE_DATETIME: "",

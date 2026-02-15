@@ -3,11 +3,18 @@
 LifePlanGant で扱う収支・タグ・勘定項目のデータは、`data/` フォルダ内の CSV ファイルで管理します。  
 いずれも **1行目はヘッダー**、2行目以降がデータです。文字コードは **UTF-8** を想定しています。
 
-**全テーブル共通の監査項目**（ID の直後に配置）  
-- **REGIST_DATETIME** … 登録日時（YYYY-MM-DD HH:MM:SS 推奨）  
-- **REGIST_USER** … 登録ユーザーID（USER.ID への参照）  
-- **UPDATE_DATETIME** … 更新日時  
-- **UPDATE_USER** … 更新ユーザーID（USER.ID への参照）
+**全テーブル共通**  
+- **VERSION** … 楽観的ロック用。初期値は `0`。データ更新のたびに 1 増やす。取得時に CSV から読み取り、更新・削除前に CSV の対象行の最新 VERSION と比較する。  
+- **監査項目**（VERSION の次に配置。COLOR_PALETTE のみ VERSION の次に以下 4 列を追加）  
+  - **REGIST_DATETIME** … 登録日時（YYYY-MM-DD HH:MM:SS 推奨）  
+  - **REGIST_USER** … 登録ユーザーID（USER.ID への参照）  
+  - **UPDATE_DATETIME** … 更新日時  
+  - **UPDATE_USER** … 更新ユーザーID（USER.ID への参照）
+
+**更新・削除時のバージョンチェック**  
+- 更新または削除実行前に、対象データだけ CSV から最新を取得し、編集中の VERSION と比較する。  
+- 最新の VERSION と異なる場合: 「他のユーザーが更新しました。最新のデータを取得するので、確認してください。」と表示し、最新データを取得して画面に再表示する。  
+- 対象データが CSV に存在しない場合: 「他のユーザーが更新しました。該当のデータはありません。」と表示し、最新データを取得して画面に再表示する。
 
 ---
 
@@ -20,6 +27,7 @@ LifePlanGant で扱う収支・タグ・勘定項目のデータは、`data/` �
 | 列名 | 説明 | 備考 |
 |------|------|------|
 | ID | ユーザーの一意識別子 | ログイン等に使う一意の文字列（例: coara） |
+| VERSION | 楽観的ロック用 | 初期値 0。更新時に 1 増やす |
 | REGIST_DATETIME | 登録日時 | 全テーブル共通 |
 | REGIST_USER | 登録ユーザーID | USER.ID への参照 |
 | UPDATE_DATETIME | 更新日時 | 全テーブル共通 |
@@ -39,6 +47,7 @@ LifePlanGant で扱う収支・タグ・勘定項目のデータは、`data/` �
 | 列名 | 説明 | 備考 |
 |------|------|------|
 | ID | タグの一意識別子 | 数値。他テーブルから参照される |
+| VERSION | 楽観的ロック用 | 初期値 0。更新時に 1 増やす |
 | REGIST_DATETIME | 登録日時 | 共通 |
 | REGIST_USER | 登録ユーザーID | USER.ID への参照 |
 | UPDATE_DATETIME | 更新日時 | 共通 |
@@ -60,6 +69,7 @@ LifePlanGant で扱う収支・タグ・勘定項目のデータは、`data/` �
 | 列名 | 説明 | 備考 |
 |------|------|------|
 | ID | 一意識別子 | 数値 |
+| VERSION | 楽観的ロック用 | 初期値 0。更新時に 1 増やす |
 | REGIST_DATETIME | 登録日時 | 共通 |
 | REGIST_USER | 登録ユーザーID | USER.ID への参照 |
 | UPDATE_DATETIME | 更新日時 | 共通 |
@@ -78,6 +88,7 @@ LifePlanGant で扱う収支・タグ・勘定項目のデータは、`data/` �
 | 列名 | 説明 | 備考 |
 |------|------|------|
 | ID | カテゴリの一意識別子 | 数値。TRANSACTION.CATEGORY_ID から参照 |
+| VERSION | 楽観的ロック用 | 初期値 0。更新時に 1 増やす |
 | REGIST_DATETIME | 登録日時 | 共通 |
 | REGIST_USER | 登録ユーザーID | USER.ID への参照 |
 | UPDATE_DATETIME | 更新日時 | 共通 |
@@ -100,6 +111,7 @@ LifePlanGant で扱う収支・タグ・勘定項目のデータは、`data/` �
 | 列名 | 説明 | 備考 |
 |------|------|------|
 | ID | 収支の一意識別子 | 数値 |
+| VERSION | 楽観的ロック用 | 初期値 0。更新時に 1 増やす |
 | REGIST_DATETIME | 登録日時 | 共通 |
 | REGIST_USER | 登録ユーザーID | USER.ID への参照 |
 | UPDATE_DATETIME | 更新日時 | 共通 |
@@ -127,6 +139,7 @@ LifePlanGant で扱う収支・タグ・勘定項目のデータは、`data/` �
 | 列名 | 説明 | 備考 |
 |------|------|------|
 | ID | 勘定項目の一意識別子 | 数値。TRANSACTION.ACCOUNT_ID_IN / ACCOUNT_ID_OUT から参照 |
+| VERSION | 楽観的ロック用 | 初期値 0。更新時に 1 増やす |
 | REGIST_DATETIME | 登録日時 | 共通 |
 | REGIST_USER | 登録ユーザーID | USER.ID への参照 |
 | UPDATE_DATETIME | 更新日時 | 共通 |
@@ -148,6 +161,7 @@ LifePlanGant で扱う収支・タグ・勘定項目のデータは、`data/` �
 | 列名 | 説明 | 備考 |
 |------|------|------|
 | ID | 一意識別子 | 数値 |
+| VERSION | 楽観的ロック用 | 初期値 0。更新時に 1 増やす |
 | REGIST_DATETIME | 登録日時 | 共通 |
 | REGIST_USER | 登録ユーザーID | USER.ID |
 | UPDATE_DATETIME | 更新日時 | 共通 |
@@ -205,6 +219,11 @@ TAG (1) ----< TAG_MANAGEMENT >---- (N) TRANSACTION
 |------|------|------|
 | USER_ID | ユーザーID | USER.ID への参照 |
 | SEQ_NO | 連番 | ユーザーごとに 1 から採番。同一ユーザー内で一意 |
+| VERSION | 楽観的ロック用 | 初期値 0。更新時に 1 増やす |
+| REGIST_DATETIME | 登録日時 | 共通 |
+| REGIST_USER | 登録ユーザーID | USER.ID への参照 |
+| UPDATE_DATETIME | 更新日時 | 共通 |
+| UPDATE_USER | 更新ユーザーID | USER.ID への参照 |
 | MENUBAR_BG | メニューバーの背景色 | 例: #2c2c2e |
 | MENUBAR_FG | メニューバーの文字色 | 例: #fff |
 | HEADER_BG | ヘッダー領域の背景色 | 例: #fff |

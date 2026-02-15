@@ -1,6 +1,7 @@
 /** ユーザー（USER）の1行 */
 export interface UserRow {
   ID: string;
+  VERSION: string;
   REGIST_DATETIME: string;
   REGIST_USER: string;
   UPDATE_DATETIME: string;
@@ -14,6 +15,7 @@ export interface UserRow {
 /** 勘定項目（ACCOUNT）の1行 */
 export interface AccountRow {
   ID: string;
+  VERSION: string;
   REGIST_DATETIME: string;
   REGIST_USER: string;
   UPDATE_DATETIME: string;
@@ -30,6 +32,7 @@ export interface AccountRow {
 /** 勘定項目参照権限（ACCOUNT_PERMISSION）の1行 */
 export interface AccountPermissionRow {
   ID: string;
+  VERSION: string;
   REGIST_DATETIME: string;
   REGIST_USER: string;
   UPDATE_DATETIME: string;
@@ -42,6 +45,7 @@ export interface AccountPermissionRow {
 /** カテゴリー（CATEGORY）の1行 */
 export interface CategoryRow {
   ID: string;
+  VERSION: string;
   REGIST_DATETIME: string;
   REGIST_USER: string;
   UPDATE_DATETIME: string;
@@ -59,6 +63,7 @@ export interface CategoryRow {
 /** タグ（TAG）の1行 */
 export interface TagRow {
   ID: string;
+  VERSION: string;
   REGIST_DATETIME: string;
   REGIST_USER: string;
   UPDATE_DATETIME: string;
@@ -74,6 +79,7 @@ export interface TagRow {
 /** 収支（TRANSACTION）の1行 */
 export interface TransactionRow {
   ID: string;
+  VERSION: string;
   REGIST_DATETIME: string;
   REGIST_USER: string;
   UPDATE_DATETIME: string;
@@ -94,6 +100,7 @@ export interface TransactionRow {
 /** タグ管理（TAG_MANAGEMENT）の1行 */
 export interface TagManagementRow {
   ID: string;
+  VERSION: string;
   REGIST_DATETIME: string;
   REGIST_USER: string;
   UPDATE_DATETIME: string;

@@ -6,6 +6,10 @@ import { transactionListToCsv, tagManagementListToCsv } from "../utils/csvExport
 import { saveCsvViaApi } from "../utils/dataApi";
 import { registerViewHandler, showMainView } from "../app/screen";
 import { setNewRowAudit, setUpdateAudit } from "../utils/auditFields";
+import {
+  checkVersionBeforeUpdate,
+  getVersionConflictMessage,
+} from "../utils/csvVersionCheck.ts";
 
 const CSV_NO_CACHE: RequestInit = { cache: "reload" };
 
@@ -688,6 +692,7 @@ function buildUpdatedRow(form: HTMLFormElement, existing: TransactionRow): Recor
   const userId = currentUserId ?? "";
   const row: Record<string, string> = {
     ID: existing.ID,
+    VERSION: existing.VERSION ?? "0",
     REGIST_DATETIME: existing.REGIST_DATETIME ?? "",
     REGIST_USER: existing.REGIST_USER ?? "",
     UPDATE_DATETIME: "",
@@ -765,7 +770,21 @@ export function initTransactionEntryView(): void {
         const { rows } = await fetchTransactionRows(true);
         const existing = rows.find((r) => r.ID === editingTransactionId);
         if (!existing) {
-          alert("対象の取引が見つかりません。");
+          alert(getVersionConflictMessage({ allowed: false, notFound: true }));
+          editingTransactionId = null;
+          resetForm();
+          pushNavigation("transaction-history");
+          showMainView("transaction-history");
+          return;
+        }
+        const check = await checkVersionBeforeUpdate(
+          "/data/TRANSACTION.csv",
+          editingTransactionId,
+          existing.VERSION ?? "0"
+        );
+        if (!check.allowed) {
+          alert(getVersionConflictMessage(check));
+          await loadFormForEdit(editingTransactionId);
           return;
         }
         const updatedRow = buildUpdatedRow(form, existing);
@@ -850,6 +869,25 @@ export function initTransactionEntryView(): void {
     if (!confirm("この取引を削除しますか？")) return;
     try {
       const { rows: txRows } = await fetchTransactionRows(true);
+      const row = txRows.find((r) => r.ID === editingTransactionId);
+      if (!row) {
+        alert(getVersionConflictMessage({ allowed: false, notFound: true }));
+        editingTransactionId = null;
+        resetForm();
+        pushNavigation("transaction-history");
+        showMainView("transaction-history");
+        return;
+      }
+      const check = await checkVersionBeforeUpdate(
+        "/data/TRANSACTION.csv",
+        editingTransactionId,
+        row.VERSION ?? "0"
+      );
+      if (!check.allowed) {
+        alert(getVersionConflictMessage(check));
+        await loadFormForEdit(editingTransactionId);
+        return;
+      }
       const newTxRows = txRows.filter((r) => r.ID !== editingTransactionId);
       const csv = transactionListToCsv(newTxRows.map((r) => ({ ...r } as Record<string, string>)));
       await saveTransactionCsv(csv);
