@@ -2,12 +2,16 @@
  * public/data の CSV をポーリングで監視し、
  * 更新者以外のユーザーが対応する画面を表示しているときに
  * 「データが更新されました。最新のデータを取得しますか？」と通知する。
+ *
+ * 通知条件: 更新された行の「表示キー」が、その画面で検索・表示した際に
+ * localStorage に保存した表示データのキー一覧に含まれる場合のみ通知する。
  */
 
 import { fetchCsvFromApi } from "./dataApi";
-import { parseCsvLine } from "./csv";
+import { parseCsvLine, rowToObject } from "./csv";
 
 const POLL_INTERVAL_MS = 15_000;
+const STORAGE_KEY_DISPLAYED = "lifeplan_csvwatch_displayed";
 
 /** 監視するCSVファイル名（APIで使う名前） */
 const WATCHED_FILES = [
@@ -21,7 +25,7 @@ const WATCHED_FILES = [
   "TAG_MANAGEMENT.csv",
 ] as const;
 
-/** ファイル → 画面ID。複数ファイルが同一画面に対応する場合あり */
+/** ファイル → 画面ID */
 const FILE_TO_VIEW: Record<string, string> = {
   "USER.csv": "profile",
   "COLOR_PALETTE.csv": "design",
@@ -33,17 +37,30 @@ const FILE_TO_VIEW: Record<string, string> = {
   "TAG_MANAGEMENT.csv": "transaction-history",
 };
 
-/** ファイル → 更新行の「表示キー」列名。複数列の場合は "COL1,COL2" とし、値は "val1:val2" に結合する */
-const FILE_TO_KEY_COLUMN: Record<string, string> = {
-  "USER.csv": "ID",
-  "COLOR_PALETTE.csv": "USER_ID,SEQ_NO",
-  "ACCOUNT.csv": "ID",
-  "ACCOUNT_PERMISSION.csv": "ID",
-  "CATEGORY.csv": "ID",
-  "TAG.csv": "ID",
-  "TRANSACTION.csv": "ID",
-  "TAG_MANAGEMENT.csv": "ID",
-};
+/**
+ * 検索や画面表示でデータ取得した際に、表示しているデータのキー一覧を localStorage に保存する。
+ * 各画面の loadAndRender や検索条件適用後に呼ぶこと。
+ */
+export function setDisplayedKeys(viewId: string, keys: string[]): void {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_DISPLAYED);
+    const data: Record<string, string[]> = raw ? JSON.parse(raw) : {};
+    data[viewId] = keys;
+    localStorage.setItem(STORAGE_KEY_DISPLAYED, JSON.stringify(data));
+  } catch {
+    // ignore
+  }
+}
+
+function getDisplayedKeys(viewId: string): string[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_DISPLAYED);
+    const data: Record<string, string[]> = raw ? JSON.parse(raw) : {};
+    return data[viewId] ?? [];
+  } catch {
+    return [];
+  }
+}
 
 /** 論理行に分割（ダブルクォート内の改行は無視） */
 function splitCsvLogicalRows(text: string): string[] {
@@ -70,38 +87,59 @@ function splitCsvLogicalRows(text: string): string[] {
 }
 
 /**
- * CSV本文から「最も最近更新した行」の UPDATE_USER と表示キー列の値を返す。
- * keyColumn が "COL1,COL2" の場合は複数列を "val1:val2" に結合する。
+ * CSV本文から「最も最近更新した行」をヘッダー名をキーとしたオブジェクトで返す。
  */
-function getLastUpdateInfoFromCsvText(
-  text: string,
-  keyColumn: string
-): { updateUser: string; updatedRowKey: string } {
+function getLastUpdateRowFromCsvText(text: string): Record<string, string> | null {
   const rows = splitCsvLogicalRows(text);
-  const empty = { updateUser: "", updatedRowKey: "" };
-  if (rows.length < 2) return empty;
+  if (rows.length < 2) return null;
   const header = parseCsvLine(rows[0]);
   const dateIdx = header.findIndex((h) => h === "UPDATE_DATETIME");
   const userIdx = header.findIndex((h) => h === "UPDATE_USER");
-  const keyColumns = keyColumn.split(",").map((c) => c.trim());
-  const keyIndices = keyColumns.map((col) => header.findIndex((h) => h === col));
-  if (dateIdx === -1 || userIdx === -1) return empty;
+  if (dateIdx === -1 || userIdx === -1) return null;
   let maxDate = "";
-  let lastUser = "";
-  let lastKeyParts: string[] = [];
+  let lastRowCells: string[] = [];
   for (let i = 1; i < rows.length; i++) {
     const cells = parseCsvLine(rows[i]);
     const d = cells[dateIdx] ?? "";
-    const u = cells[userIdx] ?? "";
-    const parts = keyIndices.map((idx) => (idx >= 0 ? (cells[idx] ?? "") : ""));
     if (d && d >= maxDate) {
       maxDate = d;
-      lastUser = u;
-      lastKeyParts = parts;
+      lastRowCells = cells;
     }
   }
-  const lastKey = lastKeyParts.length > 0 ? lastKeyParts.join(":") : "";
-  return { updateUser: lastUser, updatedRowKey: lastKey };
+  if (lastRowCells.length === 0) return null;
+  return rowToObject(header, lastRowCells);
+}
+
+/**
+ * 更新行から、その画面で「表示データのキー」として照合する値を返す。
+ * localStorage に保存した表示キー一覧にこの値が含まれていれば通知する。
+ */
+function getDisplayKeyForUpdate(
+  viewId: string,
+  fileName: string,
+  row: Record<string, string>
+): string {
+  const id = (v: string | undefined) => String(v ?? "").trim();
+  switch (viewId) {
+    case "profile":
+      return fileName === "USER.csv" ? id(row.ID) : "";
+    case "design":
+      return fileName === "COLOR_PALETTE.csv" ? `${id(row.USER_ID)}:${id(row.SEQ_NO)}` : "";
+    case "account":
+      if (fileName === "ACCOUNT.csv") return id(row.ID);
+      if (fileName === "ACCOUNT_PERMISSION.csv") return id(row.ACCOUNT_ID);
+      return "";
+    case "category":
+      return fileName === "CATEGORY.csv" ? id(row.ID) : "";
+    case "tag":
+      return fileName === "TAG.csv" ? id(row.ID) : "";
+    case "transaction-history":
+      if (fileName === "TRANSACTION.csv") return id(row.ID);
+      if (fileName === "TAG_MANAGEMENT.csv") return id(row.TRANSACTION_ID);
+      return "";
+    default:
+      return "";
+  }
 }
 
 /** 簡易ハッシュ（変更検知用） */
@@ -110,8 +148,6 @@ function contentHash(text: string): string {
 }
 
 type GetCurrentState = () => { view: string; userId: string };
-/** 指定画面で現在表示しているデータのキー（ID 等）の一覧。空の場合は「表示中のデータなし」とみなす */
-type GetViewingKeys = (viewId: string) => string[];
 
 /** 画面ごとの「最新データを取得」処理 */
 async function refreshView(viewId: string): Promise<void> {
@@ -158,15 +194,13 @@ function showUpdateNotifyDialog(viewId: string): void {
   refreshView(viewId);
 }
 
-/** 1ファイルを取得して変更・更新者・更新行キーを判定し、表示中データと一致するときのみ通知対象にする */
+/** 1ファイルを取得し、変更・更新者を判定。更新データのキーが localStorage の表示キーに含まれるときのみ通知 */
 async function checkFile(
   name: string,
   getState: GetCurrentState,
-  getViewingKeys: GetViewingKeys,
-  lastState: { hash: string; updateUser: string; updatedRowKey: string }
+  lastState: { hash: string; updateUser: string }
 ): Promise<{ viewId: string; shouldNotify: boolean } | null> {
   const viewId = FILE_TO_VIEW[name];
-  const keyColumn = FILE_TO_KEY_COLUMN[name];
   if (!viewId) return null;
 
   let text: string;
@@ -181,29 +215,34 @@ async function checkFile(
 
   const isFirstPoll = lastState.hash === "";
   lastState.hash = newHash;
-  const info = getLastUpdateInfoFromCsvText(text, keyColumn ?? "");
-  lastState.updateUser = info.updateUser;
-  lastState.updatedRowKey = info.updatedRowKey;
+
+  const row = getLastUpdateRowFromCsvText(text);
+  if (!row) return null;
+
+  const updateUser = String(row.UPDATE_USER ?? "").trim();
   if (isFirstPoll) return null;
 
   const { view, userId } = getState();
   if (view !== viewId) return null;
-  if (userId && lastState.updateUser === userId) return null;
+  if (userId && updateUser === userId) return null;
 
-  const viewingKeys = getViewingKeys(viewId);
-  if (viewingKeys.length > 0 && !viewingKeys.includes(lastState.updatedRowKey)) return null;
+  const displayKey = getDisplayKeyForUpdate(viewId, name, row);
+  if (!displayKey) return null;
+
+  const displayedKeys = getDisplayedKeys(viewId);
+  if (displayedKeys.length === 0 || !displayedKeys.includes(displayKey)) return null;
 
   return { viewId, shouldNotify: true };
 }
 
 let pollTimer: ReturnType<typeof setInterval> | null = null;
-const lastKnown = new Map<string, { hash: string; updateUser: string; updatedRowKey: string }>();
+const lastKnown = new Map<string, { hash: string; updateUser: string }>();
 
 /**
  * CSV 監視を開始する。ログイン後（currentUserId が設定済み）に呼ぶ。
- * getViewingKeys: 各画面で現在表示しているデータのキー（ID 等）の一覧。更新された行のキーがこの一覧に含まれるときのみ通知する。
+ * 各画面ではデータ取得・検索後に setDisplayedKeys(viewId, keys) で表示中のキーを保存すること。
  */
-export function startCsvWatch(getState: GetCurrentState, getViewingKeys: GetViewingKeys): void {
+export function startCsvWatch(getState: GetCurrentState): void {
   if (pollTimer != null) return;
 
   function poll(): void {
@@ -214,10 +253,10 @@ export function startCsvWatch(getState: GetCurrentState, getViewingKeys: GetView
       WATCHED_FILES.map(async (name) => {
         let state = lastKnown.get(name);
         if (!state) {
-          state = { hash: "", updateUser: "", updatedRowKey: "" };
+          state = { hash: "", updateUser: "" };
           lastKnown.set(name, state);
         }
-        return checkFile(name, getState, getViewingKeys, state);
+        return checkFile(name, getState, state);
       })
     ).then((results) => {
       const viewIds = [...new Set(results.filter((r): r is { viewId: string; shouldNotify: true } => r?.shouldNotify === true).map((r) => r.viewId))];

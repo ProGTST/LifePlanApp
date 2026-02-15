@@ -33,12 +33,27 @@ export function findRowById(
   return rows.find((r) => String(r.ID ?? "") === String(id)) ?? null;
 }
 
-/** COLOR_PALETTE 用: USER_ID で行を検索する。 */
+/** COLOR_PALETTE 用: USER_ID で行を検索する（複数ある場合は先頭）。 */
 export function findPaletteRowByUserId(
   rows: Record<string, string>[],
   userId: string
 ): Record<string, string> | null {
   return rows.find((r) => String(r.USER_ID ?? "") === String(userId)) ?? null;
+}
+
+/** COLOR_PALETTE 用: USER_ID と SEQ_NO の複合キーで行を検索する。 */
+export function findPaletteRowByUserAndSeq(
+  rows: Record<string, string>[],
+  userId: string,
+  seqNo: string
+): Record<string, string> | null {
+  return (
+    rows.find(
+      (r) =>
+        String(r.USER_ID ?? "") === String(userId) &&
+        String(r.SEQ_NO ?? "") === String(seqNo)
+    ) ?? null
+  );
 }
 
 export type VersionCheckResult =
@@ -49,20 +64,25 @@ export type VersionCheckResult =
 /**
  * 更新・削除前にバージョンを照合する。
  * @param csvPath 例: "/data/ACCOUNT.csv"
- * @param id 対象行の ID（COLOR_PALETTE の場合は userId を渡し、findByUserId を使う）
+ * @param id 対象行の ID（COLOR_PALETTE の場合は userId を渡す）
  * @param currentVersion クライアントが持っているバージョン
  * @param findByUserId true のとき id を USER_ID として COLOR_PALETTE 行を検索
+ * @param paletteSeqNo COLOR_PALETTE 時のみ。指定時は (USER_ID, SEQ_NO) で行を検索する
  */
 export async function checkVersionBeforeUpdate(
   csvPath: string,
   id: string,
   currentVersion: string,
-  findByUserId = false
+  findByUserId = false,
+  paletteSeqNo?: string
 ): Promise<VersionCheckResult> {
   const rows = await fetchCsvRows(csvPath);
-  const row = findByUserId
-    ? findPaletteRowByUserId(rows, id)
-    : findRowById(rows, id);
+  const row =
+    findByUserId && csvPath.includes("COLOR_PALETTE") && paletteSeqNo !== undefined
+      ? findPaletteRowByUserAndSeq(rows, id, paletteSeqNo)
+      : findByUserId
+        ? findPaletteRowByUserId(rows, id)
+        : findRowById(rows, id);
   if (!row) return { allowed: false, notFound: true };
   const serverVersion = String(row.VERSION ?? "0");
   if (serverVersion !== String(currentVersion ?? "0")) {

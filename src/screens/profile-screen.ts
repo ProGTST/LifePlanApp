@@ -12,6 +12,7 @@ import {
   checkVersionBeforeUpdate,
   getVersionConflictMessage,
 } from "../utils/csvVersionCheck.ts";
+import { setDisplayedKeys } from "../utils/csvWatch.ts";
 
 const PROFILE_NAME_LENGTH = 4;
 
@@ -220,6 +221,7 @@ export function saveUserCsvOnNavigate(): Promise<void> {
 
 export async function loadAndRenderProfile(): Promise<void> {
   userList = await fetchUserList();
+  setDisplayedKeys("profile", currentUserId ? [currentUserId] : []);
   renderProfileForm();
 }
 

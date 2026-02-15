@@ -29,6 +29,7 @@ import {
   checkVersionBeforeUpdate,
   getVersionConflictMessage,
 } from "../utils/csvVersionCheck.ts";
+import { setDisplayedKeys } from "../utils/csvWatch.ts";
 import { registerViewHandler } from "../app/screen";
 import { openColorIconPicker } from "../utils/colorIconPicker.ts";
 import { ICON_DEFAULT_COLOR } from "../constants/colorPresets.ts";
@@ -171,6 +172,7 @@ async function saveParentFromSelect(categoryId: string, parentId: string): Promi
   setUpdateAudit(row as unknown as Record<string, string>, currentUserId ?? "");
   persistCategory();
   setCategoryList([...categoryListFull]);
+  setDisplayedKeys("category", categoryListFull.map((c) => c.ID));
   renderCategoryTable();
 }
 
@@ -204,6 +206,7 @@ async function moveCategoryOrder(fromIndex: number, toSlot: number): Promise<voi
   });
   setCategoryListFull(newFull);
   setCategoryList([...newFull]);
+  setDisplayedKeys("category", newFull.map((c) => c.ID));
   persistCategory();
   renderCategoryTable();
 }
@@ -356,6 +359,7 @@ async function deleteCategoryRow(categoryId: string): Promise<void> {
   if (idx !== -1) categoryListFull.splice(idx, 1);
   const sorted = categoryListFull.slice().sort((a, b) => sortOrderNum(a.SORT_ORDER, b.SORT_ORDER));
   setCategoryList(sorted);
+  setDisplayedKeys("category", sorted.map((c) => c.ID));
   persistCategory();
   renderCategoryTable();
 }
@@ -366,6 +370,7 @@ export async function loadAndRenderCategoryList(): Promise<void> {
   setCategoryListLoaded(true);
   const sorted = categoryListFull.slice().sort((a, b) => sortOrderNum(a.SORT_ORDER, b.SORT_ORDER));
   setCategoryList(sorted);
+  setDisplayedKeys("category", sorted.map((c) => c.ID));
   updateCategoryTabsActive();
   updateCategoryViewButton();
   document.getElementById("header-delete-btn")?.classList.toggle("is-active", categoryDeleteMode);
@@ -473,6 +478,7 @@ function saveCategoryFormFromModal(): void {
   setNewRowAudit(newRow as unknown as Record<string, string>, userId, newId);
   categoryListFull.push(newRow);
   setCategoryList([...categoryListFull]);
+  setDisplayedKeys("category", categoryListFull.map((c) => c.ID));
   persistCategory();
   closeCategoryModal();
   renderCategoryTable();

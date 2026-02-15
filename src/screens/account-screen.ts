@@ -31,6 +31,7 @@ import {
   checkVersionBeforeUpdate,
   getVersionConflictMessage,
 } from "../utils/csvVersionCheck.ts";
+import { setDisplayedKeys } from "../utils/csvWatch.ts";
 import { registerViewHandler } from "../app/screen";
 import { openColorIconPicker } from "../utils/colorIconPicker.ts";
 import { ICON_DEFAULT_COLOR } from "../constants/colorPresets.ts";
@@ -360,6 +361,7 @@ async function deleteAccountRow(accountId: string): Promise<void> {
     : [...accountListFull];
   next = next.slice().sort((a, b) => sortOrderNum(a.SORT_ORDER, b.SORT_ORDER));
   setAccountList(next);
+  setDisplayedKeys("account", getDisplayedAccountIds(next));
   persistAccount();
   renderAccountTable();
 }
@@ -367,6 +369,14 @@ async function deleteAccountRow(accountId: string): Promise<void> {
 // ---------------------------------------------------------------------------
 // 画面読み込み・モーダル
 // ---------------------------------------------------------------------------
+
+function getDisplayedAccountIds(accountListForView: { ID: string }[]): string[] {
+  const ownIds = accountListForView.map((a) => a.ID);
+  const sharedIds = getAccountPermissionRows()
+    .filter((p) => p.USER_ID === currentUserId)
+    .map((p) => p.ACCOUNT_ID);
+  return [...new Set([...ownIds, ...sharedIds])];
+}
 
 export async function loadAndRenderAccountList(): Promise<void> {
   const [list] = await Promise.all([fetchAccountList(), fetchAccountPermissionList()]);
@@ -377,6 +387,7 @@ export async function loadAndRenderAccountList(): Promise<void> {
     : [...accountListFull];
   next = next.slice().sort((a, b) => sortOrderNum(a.SORT_ORDER, b.SORT_ORDER));
   setAccountList(next);
+  setDisplayedKeys("account", getDisplayedAccountIds(next));
   document.getElementById("header-delete-btn")?.classList.toggle("is-active", accountDeleteMode);
   renderAccountTable();
   await renderSharedWithMeAccountTable();
@@ -765,6 +776,7 @@ function saveAccountFormFromModal(): void {
     : [...accountListFull];
   next = next.slice().sort((a, b) => sortOrderNum(a.SORT_ORDER, b.SORT_ORDER));
   setAccountList(next);
+  setDisplayedKeys("account", getDisplayedAccountIds(next));
   persistAccount();
   closeAccountModal();
   renderAccountTable();

@@ -8,3 +8,5 @@ ID,VERSION,REGIST_DATETIME,REGIST_USER,UPDATE_DATETIME,UPDATE_USER,USER_ID,ACCOU
 7,0,2025-02-01 00:00:00,panda,2026-02-15 11:56:18,panda,panda,銀行口座,#408CE5,,2
 8,0,2026-02-12 06:06:02,panda,2026-02-14 13:06:18,panda,panda,paypay,#EA6F76,,0
 9,0,2026-02-12 06:06:07,panda,2026-02-12 06:06:07,panda,panda,その他,#C6D6DE,,4
+10,2,2026-02-15 16:51:39,testuser001,2026-02-15 17:22:43,testuser001,testuser001,財布,#a56846,/icon/custom/01-money/wallet-solid-full.svg,0
+11,5,2026-02-15 16:52:01,testuser001,2026-02-15 17:23:41,testuser001,testuser001,銀行口座,#408ce5,/icon/custom/01-money/credit-card-solid-full.svg,1

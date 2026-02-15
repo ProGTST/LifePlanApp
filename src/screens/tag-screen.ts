@@ -29,6 +29,7 @@ import {
   checkVersionBeforeUpdate,
   getVersionConflictMessage,
 } from "../utils/csvVersionCheck.ts";
+import { setDisplayedKeys } from "../utils/csvWatch.ts";
 import { registerViewHandler } from "../app/screen";
 import { openColorIconPicker } from "../utils/colorIconPicker.ts";
 import { ICON_DEFAULT_COLOR } from "../constants/colorPresets.ts";
@@ -92,6 +93,7 @@ async function moveTagOrder(fromIndex: number, toSlot: number): Promise<void> {
     setUpdateAudit(r as Record<string, string>, currentUserId ?? "");
   });
   setTagList(sorted);
+  setDisplayedKeys("tag", sorted.map((t) => t.ID));
   persistTag();
   renderTagTable();
 }
@@ -203,6 +205,7 @@ async function deleteTagRow(tagId: string): Promise<void> {
   if (idx !== -1) tagListFull.splice(idx, 1);
   const sorted = tagListFull.slice().sort((a, b) => sortOrderNum(a.SORT_ORDER, b.SORT_ORDER));
   setTagList(sorted);
+  setDisplayedKeys("tag", sorted.map((t) => t.ID));
   persistTag();
   renderTagTable();
 }
@@ -213,6 +216,7 @@ export async function loadAndRenderTagList(): Promise<void> {
   setTagListLoaded(true);
   const sorted = tagListFull.slice().sort((a, b) => sortOrderNum(a.SORT_ORDER, b.SORT_ORDER));
   setTagList(sorted);
+  setDisplayedKeys("tag", sorted.map((t) => t.ID));
   document.getElementById("header-delete-btn")?.classList.toggle("is-active", tagDeleteMode);
   renderTagTable();
 }
@@ -287,6 +291,7 @@ function saveTagFormFromModal(): void {
   tagListFull.push(newRow);
   const sorted = tagListFull.slice().sort((a, b) => sortOrderNum(a.SORT_ORDER, b.SORT_ORDER));
   setTagList(sorted);
+  setDisplayedKeys("tag", sorted.map((t) => t.ID));
   persistTag();
   closeTagModal();
   renderTagTable();

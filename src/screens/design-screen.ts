@@ -11,6 +11,7 @@ import {
   checkVersionBeforeUpdate,
   getVersionConflictMessage,
 } from "../utils/csvVersionCheck.ts";
+import { setDisplayedKeys } from "../utils/csvWatch.ts";
 
 const HEX_COLOR_6 = /^#[0-9A-Fa-f]{6}$/;
 const HEX_COLOR_3 = /^#[0-9A-Fa-f]{3}$/;
@@ -220,7 +221,8 @@ async function saveDesignForm(): Promise<void> {
     "/data/COLOR_PALETTE.csv",
     currentUserId ?? "",
     palette.VERSION ?? "0",
-    true
+    true,
+    palette.SEQ_NO
   );
   if (!check.allowed) {
     alert(getVersionConflictMessage(check));
@@ -263,11 +265,25 @@ export function saveColorPaletteCsvOnNavigate(): Promise<void> {
       if (colorEl) palette[key] = colorEl.value;
     });
   }
-  setUpdateAudit(palette, currentUserId ?? "");
-  const csv = colorPaletteListToCsv(paletteList);
-  return import("../utils/dataApi").then(({ saveCsvViaApi }) =>
-    saveCsvViaApi("COLOR_PALETTE.csv", csv).then(() => clearColorPaletteDirty())
-  );
+  return (async () => {
+    const check = await checkVersionBeforeUpdate(
+      "/data/COLOR_PALETTE.csv",
+      currentUserId ?? "",
+      palette.VERSION ?? "0",
+      true,
+      palette.SEQ_NO
+    );
+    if (!check.allowed) {
+      alert(getVersionConflictMessage(check));
+      await loadAndRenderDesign();
+      return;
+    }
+    setUpdateAudit(palette, currentUserId ?? "");
+    const csv = colorPaletteListToCsv(paletteList);
+    const { saveCsvViaApi } = await import("../utils/dataApi");
+    await saveCsvViaApi("COLOR_PALETTE.csv", csv);
+    clearColorPaletteDirty();
+  })();
 }
 
 export async function loadAndRenderDesign(): Promise<void> {
@@ -279,6 +295,7 @@ export async function loadAndRenderDesign(): Promise<void> {
       if (stored[key]) row[key] = toValidHex(stored[key], key);
     });
   }
+  setDisplayedKeys("design", getCurrentDesignPaletteKeys());
   renderDesignForm();
 }
 

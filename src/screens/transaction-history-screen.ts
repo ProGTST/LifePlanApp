@@ -16,6 +16,7 @@ import {
   setTransactionEntryViewOnly,
   pushNavigation,
 } from "../state";
+import { setDisplayedKeys } from "../utils/csvWatch.ts";
 import { fetchCsv, rowToObject } from "../utils/csv";
 import { registerViewHandler, showMainView } from "../app/screen";
 import { updateCurrentMenuItem } from "../app/sidebar";
@@ -328,6 +329,7 @@ function renderList(): void {
   if (!tbody) return;
   tbody.innerHTML = "";
   const filtered = applyFilters(transactionList);
+  setDisplayedKeys("transaction-history", filtered.map((row) => row.ID));
   filtered.forEach((row) => {
     const tr = document.createElement("tr");
     if (isPlanDateToPast(row)) tr.classList.add("transaction-history-row--past-plan");
