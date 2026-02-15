@@ -135,3 +135,9 @@ export let tagManagementList: TagManagementRow[] = [];
 export function setTagManagementList(list: TagManagementRow[]): void {
   tagManagementList = list;
 }
+
+/** 収支記録画面で編集する取引ID（null のときは新規登録） */
+export let transactionEntryEditId: string | null = null;
+export function setTransactionEntryEditId(id: string | null): void {
+  transactionEntryEditId = id;
+}

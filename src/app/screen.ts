@@ -76,6 +76,13 @@ export function showMainView(viewId: string): void {
   const headerRefreshBtn = document.getElementById("transaction-history-refresh-btn");
   if (headerRefreshBtn) headerRefreshBtn.classList.toggle("is-visible", viewId === "transaction-history");
 
+  const headerTransactionEntrySubmit = document.getElementById("header-transaction-entry-submit");
+  if (headerTransactionEntrySubmit) headerTransactionEntrySubmit.classList.toggle("is-visible", viewId === "transaction-entry");
+  const headerTransactionEntryReset = document.getElementById("header-transaction-entry-reset");
+  if (headerTransactionEntryReset) headerTransactionEntryReset.classList.toggle("is-visible", viewId === "transaction-entry");
+  const headerTransactionEntryDelete = document.getElementById("header-transaction-entry-delete");
+  if (headerTransactionEntryDelete) headerTransactionEntryDelete.classList.remove("is-visible");
+
   const menubarProfileArea = document.getElementById("menubar-profile-area");
   if (menubarProfileArea) {
     const showProfile = viewId !== "profile";

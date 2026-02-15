@@ -37,6 +37,9 @@
               <button type="button" class="btn-secondary btn-header-default" id="header-default-btn">デフォルトに戻す</button>
               <button type="button" class="btn-secondary btn-header-refresh" id="transaction-history-reset-conditions-btn" aria-label="条件初期化">条件初期化</button>
               <button type="button" class="btn-secondary btn-header-refresh" id="transaction-history-refresh-btn" aria-label="データ最新化">データ最新化</button>
+              <button type="button" class="btn-primary" id="header-transaction-entry-submit">保存</button>
+              <button type="button" class="btn-secondary" id="header-transaction-entry-reset">初期化</button>
+              <button type="button" class="btn-header-transaction-entry-delete" id="header-transaction-entry-delete">削除</button>
             </div>
           </header>
 
@@ -239,58 +242,95 @@
             <div id="view-transaction-entry" class="main-view main-view--hidden" data-view="transaction-entry">
               <div class="view-body view-body--form">
                 <form id="transaction-entry-form" class="data-form">
-                  <div class="form-row">
-                    <label for="transaction-entry-type">収支種別</label>
-                    <select id="transaction-entry-type" required aria-label="収支種別">
-                      <option value="expense">支出</option>
-                      <option value="income">収入</option>
-                      <option value="transfer">振替</option>
-                    </select>
+                  <input type="hidden" id="transaction-entry-type" name="type" value="expense" />
+                  <input type="hidden" id="transaction-entry-status" name="status" value="actual" />
+                  <div class="form-row transaction-entry-buttons-row">
+                    <label class="transaction-entry-buttons-label">収支種別</label>
+                    <div id="transaction-entry-type-buttons" class="transaction-entry-buttons" role="group" aria-label="収支種別">
+                      <button type="button" class="btn-secondary transaction-history-filter-btn is-active" data-type="expense" id="transaction-entry-type-expense">支出</button>
+                      <button type="button" class="btn-secondary transaction-history-filter-btn" data-type="income" id="transaction-entry-type-income">収入</button>
+                      <button type="button" class="btn-secondary transaction-history-filter-btn" data-type="transfer" id="transaction-entry-type-transfer">振替</button>
+                    </div>
                   </div>
-                  <div class="form-row">
-                    <label for="transaction-entry-status">計画／実績</label>
-                    <select id="transaction-entry-status" required aria-label="計画または実績">
-                      <option value="actual">実績</option>
-                      <option value="plan">予定</option>
-                    </select>
+                  <div class="form-row transaction-entry-buttons-row">
+                    <label class="transaction-entry-buttons-label">計画</label>
+                    <div id="transaction-entry-status-buttons" class="transaction-entry-buttons" role="group" aria-label="計画">
+                      <button type="button" class="btn-secondary transaction-history-filter-btn" data-status="plan" id="transaction-entry-status-plan">予定</button>
+                      <button type="button" class="btn-secondary transaction-history-filter-btn is-active" data-status="actual" id="transaction-entry-status-actual">実績</button>
+                    </div>
                   </div>
-                  <div class="form-row">
-                    <label for="transaction-entry-category">カテゴリー</label>
-                    <select id="transaction-entry-category" required aria-label="カテゴリー">
-                      <option value="">選択してください</option>
-                    </select>
+                  <div class="form-row transaction-entry-category-row">
+                    <label for="transaction-entry-category-trigger" class="transaction-entry-category-label">カテゴリー</label>
+                    <div class="transaction-entry-category-dropdown">
+                      <input type="hidden" id="transaction-entry-category" name="category" value="" required />
+                      <button type="button" id="transaction-entry-category-trigger" class="transaction-entry-category-trigger" aria-haspopup="listbox" aria-expanded="false" aria-label="カテゴリーを選択">
+                        <span class="transaction-entry-category-trigger-icon" aria-hidden="true"></span>
+                        <span class="transaction-entry-category-trigger-text">—</span>
+                      </button>
+                      <div id="transaction-entry-category-list" class="transaction-entry-category-list" role="listbox" aria-hidden="true"></div>
+                    </div>
                   </div>
-                  <div class="form-row">
-                    <label for="transaction-entry-name">項目名</label>
-                    <input id="transaction-entry-name" type="text" required maxlength="200" placeholder="項目名を入力" aria-label="項目名" />
+                  <div class="form-row transaction-entry-inline-row transaction-entry-name-row">
+                    <label for="transaction-entry-name" class="transaction-entry-inline-label">取引名</label>
+                    <input id="transaction-entry-name" type="text" required maxlength="200" placeholder="取引名を入力" aria-label="取引名" class="transaction-entry-inline-input" />
                   </div>
-                  <div class="form-row" id="transaction-entry-date-row">
-                    <label for="transaction-entry-date">日付</label>
-                    <input id="transaction-entry-date" type="date" required aria-label="日付" />
+                  <div class="form-row transaction-entry-inline-row" id="transaction-entry-date-row">
+                    <label class="transaction-entry-inline-label">取引日</label>
+                    <div id="transaction-entry-date-actual-wrap" class="transaction-entry-date-wrap">
+                      <input id="transaction-entry-date" type="date" required aria-label="取引日" class="transaction-entry-inline-input" />
+                    </div>
+                    <div id="transaction-entry-date-plan-wrap" class="transaction-entry-date-wrap transaction-entry-date-plan-wrap" hidden>
+                      <input id="transaction-entry-date-from" type="date" aria-label="取引日FROM" class="transaction-entry-inline-input" />
+                      <span class="transaction-entry-date-sep">～</span>
+                      <input id="transaction-entry-date-to" type="date" aria-label="取引日TO" class="transaction-entry-inline-input" />
+                    </div>
                   </div>
-                  <div class="form-row">
-                    <label for="transaction-entry-amount">金額</label>
-                    <input id="transaction-entry-amount" type="number" required min="0" step="1" placeholder="0" aria-label="金額" />
+                  <div class="form-row transaction-entry-inline-row transaction-entry-amount-row">
+                    <label for="transaction-entry-amount" class="transaction-entry-inline-label">金額</label>
+                    <input id="transaction-entry-amount" type="number" required min="0" step="1" placeholder="0" aria-label="金額" class="transaction-entry-amount-input" />
                   </div>
-                  <div class="form-row">
-                    <label for="transaction-entry-memo">メモ</label>
-                    <input id="transaction-entry-memo" type="text" maxlength="500" placeholder="メモ（任意）" aria-label="メモ" />
+                  <div class="form-row transaction-entry-inline-row transaction-entry-memo-row">
+                    <label for="transaction-entry-memo" class="transaction-entry-inline-label">メモ</label>
+                    <textarea id="transaction-entry-memo" maxlength="500" placeholder="メモ（任意）" aria-label="メモ" class="transaction-entry-memo-textarea" rows="3"></textarea>
                   </div>
-                  <div class="form-row transaction-entry-account-row" id="transaction-entry-account-out-row">
-                    <label for="transaction-entry-account-out">勘定（支出元・振替元）</label>
-                    <select id="transaction-entry-account-out" aria-label="勘定（支出元・振替元）">
-                      <option value="">選択してください</option>
-                    </select>
+                  <div class="form-row transaction-entry-account-row transaction-entry-account-row--out" id="transaction-entry-account-out-row">
+                    <label for="transaction-entry-account-out-trigger" class="transaction-entry-buttons-label">出金元</label>
+                    <div id="transaction-entry-account-out-dropdown" class="transaction-entry-account-dropdown">
+                      <input type="hidden" id="transaction-entry-account-out" name="account-out" value="" />
+                      <button type="button" id="transaction-entry-account-out-trigger" class="transaction-entry-account-trigger" aria-haspopup="listbox" aria-expanded="false" aria-label="出金元を選択">
+                        <span class="transaction-entry-account-trigger-icon" aria-hidden="true"></span>
+                        <span class="transaction-entry-account-trigger-text">—</span>
+                      </button>
+                      <div id="transaction-entry-account-out-list" class="transaction-entry-account-list" role="listbox" aria-hidden="true"></div>
+                    </div>
                   </div>
-                  <div class="form-row transaction-entry-account-row" id="transaction-entry-account-in-row">
-                    <label for="transaction-entry-account-in">勘定（入金先・振替先）</label>
-                    <select id="transaction-entry-account-in" aria-label="勘定（入金先・振替先）">
-                      <option value="">選択してください</option>
-                    </select>
+                  <div class="form-row transaction-entry-account-row transaction-entry-account-row--in" id="transaction-entry-account-in-row">
+                    <label for="transaction-entry-account-in-trigger" class="transaction-entry-buttons-label">入金先</label>
+                    <div id="transaction-entry-account-in-dropdown" class="transaction-entry-account-dropdown">
+                      <input type="hidden" id="transaction-entry-account-in" name="account-in" value="" />
+                      <button type="button" id="transaction-entry-account-in-trigger" class="transaction-entry-account-trigger" aria-haspopup="listbox" aria-expanded="false" aria-label="入金先を選択">
+                        <span class="transaction-entry-account-trigger-icon" aria-hidden="true"></span>
+                        <span class="transaction-entry-account-trigger-text">—</span>
+                      </button>
+                      <div id="transaction-entry-account-in-list" class="transaction-entry-account-list" role="listbox" aria-hidden="true"></div>
+                    </div>
                   </div>
-                  <div class="form-actions">
-                    <button type="submit" class="btn-primary" id="transaction-entry-submit">登録</button>
-                    <button type="button" class="btn-secondary" id="transaction-entry-reset">クリア</button>
+                  <div class="form-row transaction-entry-tag-row">
+                    <label class="transaction-entry-buttons-label">タグ</label>
+                    <div class="transaction-entry-tag-area">
+                      <button type="button" class="btn-secondary transaction-entry-tag-open-btn" id="transaction-entry-tag-open-btn">タグを選択</button>
+                      <div id="transaction-entry-tag-chosen" class="transaction-entry-tag-chosen" aria-live="polite"></div>
+                    </div>
+                  </div>
+                  <div id="transaction-entry-tag-select-overlay" class="modal-overlay" aria-hidden="true">
+                    <div class="modal-content transaction-history-select-modal" role="dialog" aria-labelledby="transaction-entry-tag-select-title" aria-modal="true" style="--icon-check: url(/icon/circle-check-solid-full.svg);">
+                      <h2 id="transaction-entry-tag-select-title" class="transaction-history-select-title">タグを選択</h2>
+                      <div id="transaction-entry-tag-select-list" class="transaction-history-select-list"></div>
+                      <div class="transaction-history-select-actions">
+                        <button type="button" class="btn-secondary" id="transaction-entry-tag-select-clear">全解除</button>
+                        <button type="button" class="btn-primary" id="transaction-entry-tag-select-apply">設定</button>
+                      </div>
+                    </div>
                   </div>
                 </form>
               </div>

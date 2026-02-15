@@ -12,9 +12,11 @@ import {
   setTransactionList,
   tagManagementList,
   setTagManagementList,
+  setTransactionEntryEditId,
+  pushNavigation,
 } from "../state";
 import { fetchCsv, rowToObject } from "../utils/csv";
-import { registerViewHandler } from "../app/screen";
+import { registerViewHandler, showMainView } from "../app/screen";
 import { ICON_DEFAULT_COLOR } from "../constants/colorPresets";
 
 // ---------------------------------------------------------------------------
@@ -388,14 +390,14 @@ function renderList(): void {
     } else if (type === "transfer" && (row.ACCOUNT_ID_IN || row.ACCOUNT_ID_OUT)) {
       const span = document.createElement("span");
       span.className = "transaction-history-transfer-icons";
-      const accIn = row.ACCOUNT_ID_IN ? getAccountById(row.ACCOUNT_ID_IN) : null;
       const accOut = row.ACCOUNT_ID_OUT ? getAccountById(row.ACCOUNT_ID_OUT) : null;
-      if (accIn) appendAccountWrap(span, accIn, "span");
+      const accIn = row.ACCOUNT_ID_IN ? getAccountById(row.ACCOUNT_ID_IN) : null;
+      if (accOut) appendAccountWrap(span, accOut, "span");
       const arrow = document.createElement("span");
       arrow.className = "transaction-history-transfer-arrow";
       arrow.textContent = "▶";
       span.appendChild(arrow);
-      if (accOut) appendAccountWrap(span, accOut, "span");
+      if (accIn) appendAccountWrap(span, accIn, "span");
       tdAccount.appendChild(span);
     }
     const tdPlanDateTo = document.createElement("td");
@@ -409,6 +411,13 @@ function renderList(): void {
     tr.appendChild(tdTags);
     tr.appendChild(tdAccount);
     tr.appendChild(tdPlanDateTo);
+    tr.dataset.transactionId = row.ID;
+    tr.classList.add("transaction-history-row--clickable");
+    tr.addEventListener("click", () => {
+      setTransactionEntryEditId(row.ID);
+      pushNavigation("transaction-entry");
+      showMainView("transaction-entry");
+    });
     tbody.appendChild(tr);
   });
 }
@@ -519,6 +528,10 @@ function renderWeeklyPanel(): void {
       for (const row of byDate.get(dateStr)!) {
         const item = document.createElement("div");
         item.className = "transaction-history-week-block-item";
+        item.dataset.transactionId = row.ID;
+        item.setAttribute("role", "button");
+        item.setAttribute("tabindex", "0");
+        item.setAttribute("aria-label", `${row.NAME || "取引"}を編集`);
         const typeIcon = document.createElement("span");
         typeIcon.className = "transaction-history-type-icon";
         const txType = (row.TYPE || "expense") as "income" | "expense" | "transfer";
@@ -541,6 +554,18 @@ function renderWeeklyPanel(): void {
         amountSpan.className = "transaction-history-week-block-amount";
         amountSpan.textContent = row.AMOUNT ? Number(row.AMOUNT).toLocaleString() : "—";
         item.appendChild(amountSpan);
+        const openEntry = (): void => {
+          setTransactionEntryEditId(row.ID);
+          pushNavigation("transaction-entry");
+          showMainView("transaction-entry");
+        };
+        item.addEventListener("click", openEntry);
+        item.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            openEntry();
+          }
+        });
         dayItems.appendChild(item);
       }
       dayGroup.appendChild(dayItems);
@@ -655,13 +680,15 @@ function switchTab(tabId: string): void {
   }
 }
 
-/** 計画・収支種別のフィルターボタンの表示を現在の選択状態に同期する */
+/** 計画・収支種別のフィルターボタンの表示を現在の選択状態に同期する（収支履歴画面内のボタンのみ） */
 function syncFilterButtons(): void {
-  document.querySelectorAll(".transaction-history-filter-btn[data-status]").forEach((b) => {
+  const view = document.getElementById("view-transaction-history");
+  if (!view) return;
+  view.querySelectorAll(".transaction-history-filter-btn[data-status]").forEach((b) => {
     const s = (b as HTMLButtonElement).dataset.status as "plan" | "actual";
     b.classList.toggle("is-active", filterStatus.includes(s));
   });
-  document.querySelectorAll(".transaction-history-filter-btn[data-type]").forEach((b) => {
+  view.querySelectorAll(".transaction-history-filter-btn[data-type]").forEach((b) => {
     const t = (b as HTMLButtonElement).dataset.type as "income" | "expense" | "transfer";
     b.classList.toggle("is-active", filterType.includes(t));
   });
@@ -1117,7 +1144,8 @@ export function initTransactionHistoryView(): void {
     renderList();
   });
 
-  document.querySelectorAll(".transaction-history-filter-btn[data-status]").forEach((btn) => {
+  const historyView = document.getElementById("view-transaction-history");
+  historyView?.querySelectorAll(".transaction-history-filter-btn[data-status]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const status = (btn as HTMLButtonElement).dataset.status as "plan" | "actual";
       if (filterStatus.includes(status)) {
@@ -1125,13 +1153,12 @@ export function initTransactionHistoryView(): void {
       } else {
         filterStatus = [...filterStatus, status];
       }
-      if (filterStatus.length === 0) filterStatus = ["plan", "actual"];
       syncFilterButtons();
       renderList();
     });
   });
 
-  document.querySelectorAll(".transaction-history-filter-btn[data-type]").forEach((btn) => {
+  historyView?.querySelectorAll(".transaction-history-filter-btn[data-type]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const type = (btn as HTMLButtonElement).dataset.type as "income" | "expense" | "transfer";
       if (filterType.includes(type)) {
@@ -1139,7 +1166,6 @@ export function initTransactionHistoryView(): void {
       } else {
         filterType = [...filterType, type];
       }
-      if (filterType.length === 0) filterType = ["income", "expense", "transfer"];
       syncFilterButtons();
       renderList();
     });

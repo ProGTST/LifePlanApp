@@ -6,7 +6,7 @@ import {
   SIDEBAR_PANEL_MENU,
   SIDEBAR_PANEL_SETTINGS,
 } from "./constants/index";
-import { setCurrentUserId, setAccountListLoaded, currentView, popNavigation, pushNavigation } from "./state";
+import { setCurrentUserId, setAccountListLoaded, currentView, popNavigation, pushNavigation, setTransactionEntryEditId } from "./state";
 import { applyUserPalette } from "./app/palette";
 import {
   initSidebarToggle,
@@ -53,7 +53,10 @@ function initAppScreen(): void {
   document.getElementById("footer-home-btn")?.addEventListener("click", () => navigateTo("home"));
   document.getElementById("footer-schedule-btn")?.addEventListener("click", () => navigateTo("schedule"));
   document.getElementById("footer-history-btn")?.addEventListener("click", () => navigateTo("transaction-history"));
-  document.getElementById("footer-entry-btn")?.addEventListener("click", () => navigateTo("transaction-entry"));
+  document.getElementById("footer-entry-btn")?.addEventListener("click", () => {
+    setTransactionEntryEditId(null);
+    navigateTo("transaction-entry");
+  });
   document.getElementById("footer-analysis-btn")?.addEventListener("click", () => navigateTo("transaction-analysis"));
   document.getElementById("footer-menu-btn")?.addEventListener("click", () => openSidebarPanel(SIDEBAR_PANEL_MENU));
   document.getElementById("footer-settings-btn")?.addEventListener("click", () => openSidebarPanel(SIDEBAR_PANEL_SETTINGS));

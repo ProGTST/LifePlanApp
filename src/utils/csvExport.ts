@@ -107,6 +107,20 @@ export function transactionListToCsv(rows: Record<string, string>[]): string {
   return toCsvString([...TRANSACTION_HEADER], rows);
 }
 
+const TAG_MANAGEMENT_HEADER = [
+  "ID",
+  "REGIST_DATETIME",
+  "REGIST_USER",
+  "UPDATE_DATETIME",
+  "UPDATE_USER",
+  "TRANSACTION_ID",
+  "TAG_ID",
+] as const;
+
+export function tagManagementListToCsv(rows: Record<string, string>[]): string {
+  return toCsvString([...TAG_MANAGEMENT_HEADER], rows);
+}
+
 const USER_HEADER = [
   "ID",
   "REGIST_DATETIME",

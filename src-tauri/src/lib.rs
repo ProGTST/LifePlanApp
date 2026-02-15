@@ -95,6 +95,16 @@ fn save_csv_to_public_if_has_data(filename: &str, contents: &str) {
     }
 }
 
+/// public/data/ に常に CSV を保存（開発時のみ。削除で0件になっても public を更新する用）。
+fn save_csv_to_public_always(filename: &str, contents: &str) {
+    if cfg!(debug_assertions) {
+        if let Some(ref dir) = project_public_data_dir() {
+            let _ = fs::create_dir_all(dir);
+            let _ = write_csv(&dir.join(filename), contents);
+        }
+    }
+}
+
 /// app_data_dir/data/ に CSV を保存する。
 fn save_csv_to_app_data(app: &tauri::AppHandle, filename: &str, contents: &str) -> Result<(), String> {
     let dir = app_data_data_dir(app)?;
@@ -194,8 +204,14 @@ fn save_tag_csv(app: tauri::AppHandle, tag: String) -> Result<(), String> {
 
 #[tauri::command]
 fn save_transaction_csv(app: tauri::AppHandle, transaction: String) -> Result<(), String> {
-    save_csv_to_public_if_has_data("TRANSACTION.csv", &transaction);
+    save_csv_to_public_always("TRANSACTION.csv", &transaction);
     save_csv_to_app_data(&app, "TRANSACTION.csv", &transaction)
+}
+
+#[tauri::command]
+fn save_tag_management_csv(app: tauri::AppHandle, tag_management: String) -> Result<(), String> {
+    save_csv_to_public_always("TAG_MANAGEMENT.csv", &tag_management);
+    save_csv_to_app_data(&app, "TAG_MANAGEMENT.csv", &tag_management)
 }
 
 #[tauri::command]
@@ -298,6 +314,7 @@ pub fn run() {
             save_category_csv,
             save_tag_csv,
             save_transaction_csv,
+            save_tag_management_csv,
             save_user_csv,
             save_color_palette_csv,
             save_profile_icon,
