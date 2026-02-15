@@ -255,7 +255,10 @@ async function saveDesignForm(): Promise<void> {
   }
 }
 
-/** 画面遷移時に呼ぶ。フォーム内容を paletteList に反映し COLOR_PALETTE.csv を保存する（Tauri 時）。保存完了後に clearColorPaletteDirty。 */
+/**
+ * 画面遷移時に呼ぶ。フォーム内容を paletteList に反映し COLOR_PALETTE.csv を API 経由で保存する。保存完了後に clearColorPaletteDirty を呼ぶ。
+ * @returns Promise（保存とクリア完了で resolve）
+ */
 export function saveColorPaletteCsvOnNavigate(): Promise<void> {
   const palette = getOrCreateCurrentPalette();
   const container = document.getElementById("design-form-fields");
@@ -286,6 +289,10 @@ export function saveColorPaletteCsvOnNavigate(): Promise<void> {
   })();
 }
 
+/**
+ * COLOR_PALETTE.csv と localStorage からパレットを取得し、デザインフォームを描画する。表示キーを setDisplayedKeys に登録する。
+ * @returns Promise
+ */
 export async function loadAndRenderDesign(): Promise<void> {
   paletteList = await fetchPaletteList();
   const stored = currentUserId ? getColorPalette(currentUserId) : null;
@@ -299,7 +306,10 @@ export async function loadAndRenderDesign(): Promise<void> {
   renderDesignForm();
 }
 
-/** CSV監視用：現在ユーザーがデザイン画面で表示しているパレットのキー（USER_ID:SEQ_NO）一覧 */
+/**
+ * CSV 監視用。現在ユーザーがデザイン画面で表示しているパレットのキー（USER_ID:SEQ_NO）一覧を返す。
+ * @returns "USER_ID:SEQ_NO" 形式の文字列の配列
+ */
 export function getCurrentDesignPaletteKeys(): string[] {
   if (!currentUserId) return [];
   return paletteList
@@ -324,6 +334,10 @@ async function resetDesignToDefault(): Promise<void> {
   await saveDesignForm();
 }
 
+/**
+ * デザイン（カラーパレット）画面の初期化を行う。「design」ビュー表示ハンドラと保存・デフォルト復元のイベントを登録する。
+ * @returns なし
+ */
 export function initDesignView(): void {
   registerViewHandler("design", loadAndRenderDesign);
 

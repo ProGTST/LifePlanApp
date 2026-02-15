@@ -2,10 +2,18 @@ import "./styles/login.css";
 import { USER_ID_STORAGE_KEY, APP_PAGE_PATH } from "./constants/index";
 import { fetchUserIds } from "./screens/login-screen";
 
+/**
+ * 現在の実行環境が Tauri かどうかを判定する。
+ * @returns Tauri の場合は true
+ */
 function isTauri(): boolean {
   return typeof (window as unknown as { __TAURI_INTERNALS__?: { invoke?: unknown } }).__TAURI_INTERNALS__?.invoke === "function";
 }
 
+/**
+ * ログインページの初期化を行う。フォーム送信でユーザーID検証・sessionStorage 保存・アプリページへ遷移。Tauri 時はウィンドウ閉じ処理を登録する。
+ * @returns なし
+ */
 function initLoginPage(): void {
   if (isTauri()) {
     import("@tauri-apps/api/window").then(async ({ getCurrentWindow }) => {

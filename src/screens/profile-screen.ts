@@ -203,7 +203,10 @@ async function handleProfileIconFileSelect(e: Event): Promise<void> {
   input.value = "";
 }
 
-/** 画面遷移時に呼ぶ。フォーム内容を userList に反映し USER.csv を保存する（Tauri 時）。保存完了後に clearUserDirty。 */
+/**
+ * 画面遷移時に呼ぶ。フォーム内容を userList に反映し USER.csv を API 経由で保存する。保存完了後に clearUserDirty を呼ぶ。
+ * @returns Promise（保存とクリア完了で resolve）
+ */
 export function saveUserCsvOnNavigate(): Promise<void> {
   const user = getCurrentUser();
   if (user) {
@@ -219,12 +222,20 @@ export function saveUserCsvOnNavigate(): Promise<void> {
   return saveCsvViaApi("USER.csv", csv).then(() => clearUserDirty());
 }
 
+/**
+ * USER.csv からユーザー一覧を取得し、プロフィールフォームを描画する。表示キーを setDisplayedKeys に登録する。
+ * @returns Promise
+ */
 export async function loadAndRenderProfile(): Promise<void> {
   userList = await fetchUserList();
   setDisplayedKeys("profile", currentUserId ? [currentUserId] : []);
   renderProfileForm();
 }
 
+/**
+ * プロフィール画面の初期化を行う。「profile」ビュー表示ハンドラと保存・色ピッカー・ファイル選択のイベントを登録する。
+ * @returns なし
+ */
 export function initProfileView(): void {
   registerViewHandler("profile", loadAndRenderProfile);
 

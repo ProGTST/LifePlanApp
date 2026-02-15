@@ -721,6 +721,10 @@ async function saveTagManagementCsv(csv: string): Promise<void> {
   await saveCsvViaApi("TAG_MANAGEMENT.csv", csv);
 }
 
+/**
+ * 収支記録画面の初期化を行う。「transaction-entry」ビュー表示ハンドラとフォーム送信・削除・連続入力等のイベントを登録する。
+ * @returns なし
+ */
 export function initTransactionEntryView(): void {
   registerViewHandler("transaction-entry", () => {
     (async () => {

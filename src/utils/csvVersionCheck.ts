@@ -9,7 +9,12 @@ const MSG_UPDATED =
 const MSG_NOT_FOUND =
   "他のユーザーが更新しました。\n該当のデータはありません。";
 
-/** CSV を取得し、パースした行の配列を返す。VERSION 未設定は "0" に正規化する。 */
+/**
+ * CSV を取得し、パースした行の配列を返す。VERSION 未設定は "0" に正規化する。
+ * @param path - 例: "/data/ACCOUNT.csv"
+ * @param init - 省略可。fetch の RequestInit
+ * @returns 行オブジェクトの配列
+ */
 export async function fetchCsvRows(
   path: string,
   init?: RequestInit
@@ -25,7 +30,12 @@ export async function fetchCsvRows(
   return result;
 }
 
-/** ID で行を検索する。 */
+/**
+ * 行配列から ID が一致する行を1件返す。
+ * @param rows - 行オブジェクトの配列
+ * @param id - 検索する ID
+ * @returns 見つかった行、なければ null
+ */
 export function findRowById(
   rows: Record<string, string>[],
   id: string
@@ -33,7 +43,12 @@ export function findRowById(
   return rows.find((r) => String(r.ID ?? "") === String(id)) ?? null;
 }
 
-/** COLOR_PALETTE 用: USER_ID で行を検索する（複数ある場合は先頭）。 */
+/**
+ * COLOR_PALETTE 用。USER_ID が一致する行を1件返す（複数ある場合は先頭）。
+ * @param rows - 行オブジェクトの配列
+ * @param userId - 検索する USER_ID
+ * @returns 見つかった行、なければ null
+ */
 export function findPaletteRowByUserId(
   rows: Record<string, string>[],
   userId: string
@@ -41,7 +56,13 @@ export function findPaletteRowByUserId(
   return rows.find((r) => String(r.USER_ID ?? "") === String(userId)) ?? null;
 }
 
-/** COLOR_PALETTE 用: USER_ID と SEQ_NO の複合キーで行を検索する。 */
+/**
+ * COLOR_PALETTE 用。USER_ID と SEQ_NO の両方が一致する行を1件返す。
+ * @param rows - 行オブジェクトの配列
+ * @param userId - 検索する USER_ID
+ * @param seqNo - 検索する SEQ_NO
+ * @returns 見つかった行、なければ null
+ */
 export function findPaletteRowByUserAndSeq(
   rows: Record<string, string>[],
   userId: string,
@@ -62,12 +83,13 @@ export type VersionCheckResult =
   | { allowed: false; notFound: false };
 
 /**
- * 更新・削除前にバージョンを照合する。
- * @param csvPath 例: "/data/ACCOUNT.csv"
- * @param id 対象行の ID（COLOR_PALETTE の場合は userId を渡す）
- * @param currentVersion クライアントが持っているバージョン
- * @param findByUserId true のとき id を USER_ID として COLOR_PALETTE 行を検索
- * @param paletteSeqNo COLOR_PALETTE 時のみ。指定時は (USER_ID, SEQ_NO) で行を検索する
+ * 更新・削除前に CSV から対象行を取得し、VERSION を照合する。
+ * @param csvPath - 例: "/data/ACCOUNT.csv"
+ * @param id - 対象行の ID（COLOR_PALETTE の場合は userId を渡す）
+ * @param currentVersion - クライアントが持っているバージョン
+ * @param findByUserId - true のとき id を USER_ID として COLOR_PALETTE 行を検索
+ * @param paletteSeqNo - COLOR_PALETTE 時のみ。指定時は (USER_ID, SEQ_NO) で行を検索
+ * @returns 許可時 { allowed: true }、該当なし { allowed: false, notFound: true }、競合時 { allowed: false, notFound: false }
  */
 export async function checkVersionBeforeUpdate(
   csvPath: string,
@@ -91,6 +113,11 @@ export async function checkVersionBeforeUpdate(
   return { allowed: true };
 }
 
+/**
+ * バージョン照合結果に対応するエラーメッセージを返す。
+ * @param result - checkVersionBeforeUpdate の戻り値
+ * @returns 許可時は空文字、該当なし・競合時は対応するメッセージ文字列
+ */
 export function getVersionConflictMessage(result: VersionCheckResult): string {
   if (result.allowed) return "";
   return result.notFound ? MSG_NOT_FOUND : MSG_UPDATED;

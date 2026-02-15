@@ -8,7 +8,11 @@ import {
 import { clearAccountDirty, clearCategoryDirty, clearTagDirty } from "./csvDirty.ts";
 import { saveCsvViaApi } from "./dataApi.ts";
 
-/** CSV 保存用：ID 昇順でソートした配列を返す */
+/**
+ * 行配列を ID 列で昇順にソートする（数値として解釈、無効は末尾）。CSV 保存時の出力順に利用する。
+ * @param rows - キーに ID を持つオブジェクトの配列
+ * @returns ソート済みの新規配列
+ */
 function sortRowsById(rows: Record<string, string>[]): Record<string, string>[] {
   return [...rows].sort((a, b) => {
     const idA = Number(a.ID);
@@ -19,8 +23,8 @@ function sortRowsById(rows: Record<string, string>[]): Record<string, string>[] 
 }
 
 /**
- * メモリ上の勘定・カテゴリー・タグを CSV に変換し、API 経由で保存する。
- * 保存時は常に ID 昇順で出力する。
+ * メモリ上の勘定・カテゴリー・タグを CSV に変換し、API 経由で ACCOUNT / CATEGORY / TAG に保存する。保存時は ID 昇順で出力する。
+ * @returns Promise（全保存完了で resolve）
  */
 export async function saveMasterToCsv(): Promise<void> {
   const account =
@@ -41,7 +45,10 @@ export async function saveMasterToCsv(): Promise<void> {
   if (tag) await saveCsvViaApi("TAG.csv", tag);
 }
 
-/** 勘定と勘定参照権限を ACCOUNT.csv / ACCOUNT_PERMISSION.csv に保存する（画面遷移時用）。保存完了後に clearAccountDirty。 */
+/**
+ * 勘定と勘定参照権限を ACCOUNT.csv / ACCOUNT_PERMISSION.csv に保存する（画面遷移時用）。保存完了後に clearAccountDirty を呼ぶ。
+ * @returns Promise（保存とクリア完了で resolve）
+ */
 export function saveAccountCsvOnly(): Promise<void> {
   const account =
     accountListFull.length > 0
@@ -57,7 +64,10 @@ export function saveAccountCsvOnly(): Promise<void> {
   ]).then(() => clearAccountDirty());
 }
 
-/** カテゴリーのみ CATEGORY.csv に保存する（画面遷移時用）。保存完了後に clearCategoryDirty。 */
+/**
+ * カテゴリーのみ CATEGORY.csv に保存する（画面遷移時用）。保存完了後に clearCategoryDirty を呼ぶ。
+ * @returns Promise（保存とクリア完了で resolve）
+ */
 export function saveCategoryCsvOnly(): Promise<void> {
   const category =
     categoryListFull.length > 0
@@ -68,7 +78,10 @@ export function saveCategoryCsvOnly(): Promise<void> {
   );
 }
 
-/** タグのみ TAG.csv に保存する（画面遷移時用）。保存完了後に clearTagDirty。 */
+/**
+ * タグのみ TAG.csv に保存する（画面遷移時用）。保存完了後に clearTagDirty を呼ぶ。
+ * @returns Promise（保存とクリア完了で resolve）
+ */
 export function saveTagCsvOnly(): Promise<void> {
   const tag =
     tagListFull.length > 0

@@ -112,7 +112,7 @@ async function saveAccountNameFromCell(accountId: string, newName: string): Prom
     return;
   }
   row.ACCOUNT_NAME = trimmed;
-  setUpdateAudit(row as Record<string, string>, currentUserId ?? "");
+  setUpdateAudit(row as unknown as Record<string, string>, currentUserId ?? "");
   persistAccount();
 }
 
@@ -134,7 +134,7 @@ async function moveAccountOrder(fromIndex: number, toSlot: number): Promise<void
   }
   sorted.forEach((r, i) => {
     r.SORT_ORDER = String(i);
-    setUpdateAudit(r as Record<string, string>, currentUserId ?? "");
+    setUpdateAudit(r as unknown as Record<string, string>, currentUserId ?? "");
   });
   let sortedIdx = 0;
   const newFull = accountListFull.map((r) =>
@@ -267,7 +267,7 @@ function renderAccountTable(): void {
         }
         row.COLOR = color;
         row.ICON_PATH = iconPath;
-        setUpdateAudit(row as Record<string, string>, currentUserId ?? "");
+        setUpdateAudit(row as unknown as Record<string, string>, currentUserId ?? "");
         persistAccount();
         renderAccountTable();
       });
@@ -378,6 +378,10 @@ function getDisplayedAccountIds(accountListForView: { ID: string }[]): string[] 
   return [...new Set([...ownIds, ...sharedIds])];
 }
 
+/**
+ * 勘定・勘定権限を取得し、勘定一覧テーブルを描画する。表示キーを setDisplayedKeys に登録する。
+ * @returns Promise
+ */
 export async function loadAndRenderAccountList(): Promise<void> {
   const [list] = await Promise.all([fetchAccountList(), fetchAccountPermissionList()]);
   setAccountListFull(list);
@@ -663,7 +667,7 @@ function renderAccountPermissionUsersModal(): void {
           const next = getAccountPermissionRows().map((p) => {
             if (p.ACCOUNT_ID !== accountId || p.USER_ID !== perm.USER_ID) return p;
             const updated = { ...p, PERMISSION_TYPE: p.PERMISSION_TYPE === "edit" ? "view" : "edit" };
-            setUpdateAudit(updated as Record<string, string>, currentUserId ?? "");
+            setUpdateAudit(updated as unknown as Record<string, string>, currentUserId ?? "");
             return updated;
           });
           setAccountPermissionListFull(next);
@@ -750,7 +754,7 @@ function saveAccountFormFromModal(): void {
     ICON_PATH: formIconPath || "",
     SORT_ORDER: String(maxOrder + 1),
   };
-  setNewRowAudit(newAccount, userId, newAccountId);
+  setNewRowAudit(newAccount as unknown as Record<string, string>, userId, newAccountId);
   accountListFull.push(newAccount);
   const permissionRows = getAccountFormPermissionRowsForSubmit();
   if (permissionRows.length > 0) {
@@ -792,6 +796,10 @@ function handleToggleDeleteMode(): void {
 // 初期化（イベント登録）
 // ---------------------------------------------------------------------------
 
+/**
+ * 勘定画面の初期化を行う。「account」ビュー表示ハンドラとモーダル・削除モード・ユーザーピッカー等のイベントを登録する。
+ * @returns なし
+ */
 export function initAccountView(): void {
   registerViewHandler("account", loadAndRenderAccountList);
 

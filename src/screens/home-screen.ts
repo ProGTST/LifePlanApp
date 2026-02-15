@@ -10,12 +10,21 @@ const PROFILE_NAME_LENGTH = 4;
 let greetInputEl: HTMLInputElement | null = null;
 let greetMsgEl: HTMLElement | null = null;
 
+/**
+ * 表示名の先頭 N 文字を取得する（デフォルトアイコン用略称）。
+ * @param name - 表示名
+ * @returns 先頭 PROFILE_NAME_LENGTH 文字（空の場合は ""）
+ */
 function getDisplayNameAbbr(name: string): string {
   const t = (name ?? "").trim();
   if (!t) return "";
   return t.slice(0, PROFILE_NAME_LENGTH);
 }
 
+/**
+ * USER.csv からユーザー一覧を取得する。
+ * @returns Promise。UserRow の配列
+ */
 async function fetchUserList(): Promise<UserRow[]> {
   const { header, rows } = await fetchCsv("/data/USER.csv");
   if (header.length === 0) return [];
@@ -27,7 +36,10 @@ async function fetchUserList(): Promise<UserRow[]> {
   return list;
 }
 
-/** ヘッダー左のプロフィールアイコン・表示名を描画（ホーム表示時） */
+/**
+ * ヘッダー左のプロフィールアイコン・表示名を描画する（ホーム表示時に呼ばれる）。
+ * @returns Promise
+ */
 async function renderHeaderProfile(): Promise<void> {
   const iconEl = document.getElementById("header-profile-icon");
   const nameEl = document.getElementById("header-profile-name");
@@ -69,6 +81,10 @@ async function renderHeaderProfile(): Promise<void> {
   }
 }
 
+/**
+ * 挨拶メッセージを Tauri の greet で取得し、表示要素に反映する。
+ * @returns Promise
+ */
 async function greet(): Promise<void> {
   if (greetMsgEl && greetInputEl) {
     greetMsgEl.textContent = await invoke("greet", {
@@ -77,6 +93,10 @@ async function greet(): Promise<void> {
   }
 }
 
+/**
+ * ホーム画面の初期化を行う。「home」ビュー表示時のハンドラ登録と挨拶フォームのイベント登録を行う。
+ * @returns なし
+ */
 export function initHomeScreen(): void {
   registerViewHandler("home", () => {
     renderHeaderProfile();

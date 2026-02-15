@@ -1161,10 +1161,18 @@ function loadAndShow(forceReloadFromCsv = false): void {
 }
 
 /** CSV 監視からの「最新のデータを取得」用。キャッシュを無視して再取得する。 */
+/**
+ * 収支履歴画面を強制再読み込みして再描画する。CSV 監視の通知後などに呼ぶ。
+ * @returns なし
+ */
 export function refreshTransactionHistory(): void {
   loadAndShow(true);
 }
 
+/**
+ * 収支履歴画面の初期化を行う。「transaction-history」ビュー表示ハンドラとタブ・フィルター・モーダル等のイベントを登録する。
+ * @returns なし
+ */
 export function initTransactionHistoryView(): void {
   registerViewHandler("transaction-history", loadAndShow);
 

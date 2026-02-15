@@ -23,7 +23,10 @@ const CUSTOM_ICON_FOLDER_SUBTITLES: Record<string, string> = {
 let resolveApply: ((color: string, iconPath: string) => void) | null = null;
 let customColorButtonsBound = false;
 
-/** public/icon/custom/icons.json からフォルダ別アイコン一覧を取得（フォルダ名 -> ファイル名の配列） */
+/**
+ * public/icon/custom/icons.json からフォルダ別アイコン一覧を取得する。
+ * @returns Promise。キー=フォルダ名、値=ファイル名の配列のオブジェクト。失敗時は {}
+ */
 export async function fetchCustomIconList(): Promise<Record<string, string[]>> {
   try {
     const res = await fetch(`${CUSTOM_ICON_BASE_PATH}/icons.json?t=${Date.now()}`);
@@ -36,6 +39,10 @@ export async function fetchCustomIconList(): Promise<Record<string, string[]>> {
   }
 }
 
+/**
+ * 色・アイコンピッカーの DOM 要素をまとめて取得する。
+ * @returns オーバーレイ・スウォッチ・カスタム入力・各種ボタン等の要素（存在しない場合は null）
+ */
 function getPickerEls() {
   const overlay = document.getElementById("color-icon-picker-overlay");
   const swatchesEl = document.getElementById("color-icon-picker-swatches");
@@ -55,9 +62,12 @@ export interface ColorIconPickerOptions {
 }
 
 /**
- * 色・アイコンピッカーモーダルを開く。
- * 適用時に onApply(selectedColor, selectedIconPath) が呼ばれる。
- * options.showIconSection が false のときはアイコン欄を非表示にする（色のみ選択）。
+ * 色・アイコンピッカーモーダルを開く。適用ボタンで onApply(選択色, 選択アイコンパス) が呼ばれる。
+ * @param initialColor - 初期表示する色（例: #rrggbb）
+ * @param initialIconPath - 初期表示するアイコンパス
+ * @param onApply - 適用時に呼ぶコールバック (color, iconPath)
+ * @param options - showIconSection が false のときはアイコン欄を非表示（色のみ選択）
+ * @returns なし
  */
 export function openColorIconPicker(
   initialColor: string,

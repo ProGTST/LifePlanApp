@@ -364,6 +364,10 @@ async function deleteCategoryRow(categoryId: string): Promise<void> {
   renderCategoryTable();
 }
 
+/**
+ * カテゴリー一覧を取得し、カテゴリーテーブルを描画する。表示キーを setDisplayedKeys に登録する。
+ * @returns Promise
+ */
 export async function loadAndRenderCategoryList(): Promise<void> {
   const list = await fetchCategoryList();
   setCategoryListFull(list);
@@ -516,6 +520,10 @@ function updateCategoryViewButton(): void {
   }
 }
 
+/**
+ * カテゴリー画面の初期化を行う。「category」ビュー表示ハンドラとモーダル・削除モード・タブ等のイベントを登録する。
+ * @returns なし
+ */
 export function initCategoryView(): void {
   registerViewHandler("category", loadAndRenderCategoryList);
 

@@ -38,8 +38,10 @@ const FILE_TO_VIEW: Record<string, string> = {
 };
 
 /**
- * 検索や画面表示でデータ取得した際に、表示しているデータのキー一覧を localStorage に保存する。
- * 各画面の loadAndRender や検索条件適用後に呼ぶこと。
+ * 検索や画面表示でデータ取得した際に、表示しているデータのキー一覧を localStorage に保存する。各画面の loadAndRender や検索条件適用後に呼ぶ。
+ * @param viewId - 画面 ID（例: "profile", "account"）
+ * @param keys - 表示中のデータのキー（ID 等）の配列
+ * @returns なし
  */
 export function setDisplayedKeys(viewId: string, keys: string[]): void {
   try {
@@ -52,6 +54,11 @@ export function setDisplayedKeys(viewId: string, keys: string[]): void {
   }
 }
 
+/**
+ * localStorage から指定画面の表示キー一覧を取得する。
+ * @param viewId - 画面 ID
+ * @returns 表示キーの配列。未保存・失敗時は空配列
+ */
 function getDisplayedKeys(viewId: string): string[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_DISPLAYED);
@@ -62,7 +69,11 @@ function getDisplayedKeys(viewId: string): string[] {
   }
 }
 
-/** 論理行に分割（ダブルクォート内の改行は無視） */
+/**
+ * CSV 本文を論理行に分割する。ダブルクォート内の改行は行区切りとみなさない。
+ * @param text - CSV 全文
+ * @returns 論理行の配列
+ */
 function splitCsvLogicalRows(text: string): string[] {
   const trimmed = text.trim();
   if (!trimmed) return [];
@@ -87,7 +98,9 @@ function splitCsvLogicalRows(text: string): string[] {
 }
 
 /**
- * CSV本文から「最も最近更新した行」をヘッダー名をキーとしたオブジェクトで返す。
+ * CSV 本文から UPDATE_DATETIME が最も新しい行を1件取り、ヘッダー名をキーとしたオブジェクトで返す。
+ * @param text - CSV 全文
+ * @returns 行オブジェクト。取得できない場合は null
  */
 function getLastUpdateRowFromCsvText(text: string): Record<string, string> | null {
   const rows = splitCsvLogicalRows(text);
@@ -111,8 +124,11 @@ function getLastUpdateRowFromCsvText(text: string): Record<string, string> | nul
 }
 
 /**
- * 更新行から、その画面で「表示データのキー」として照合する値を返す。
- * localStorage に保存した表示キー一覧にこの値が含まれていれば通知する。
+ * 更新行から、その画面で「表示データのキー」として照合する値を返す。localStorage の表示キー一覧に含まれるか判定に使う。
+ * @param viewId - 画面 ID
+ * @param fileName - CSV ファイル名（例: "USER.csv"）
+ * @param row - 更新された行オブジェクト
+ * @returns 照合用のキー文字列。該当しない組み合わせの場合は空文字
  */
 function getDisplayKeyForUpdate(
   viewId: string,
@@ -142,14 +158,22 @@ function getDisplayKeyForUpdate(
   }
 }
 
-/** 簡易ハッシュ（変更検知用） */
+/**
+ * テキストの簡易ハッシュを返す。CSV の変更検知に使用。
+ * @param text - 対象文字列
+ * @returns 長さと末尾200文字からなるハッシュ文字列
+ */
 function contentHash(text: string): string {
   return `${text.length}:${text.slice(-200)}`;
 }
 
 type GetCurrentState = () => { view: string; userId: string };
 
-/** 画面ごとの「最新データを取得」処理 */
+/**
+ * 指定画面の最新データを再取得して表示し直す。通知で「OK」押下時に呼ぶ。
+ * @param viewId - 画面 ID（profile, design, account 等）
+ * @returns Promise（各画面の loadAndRender / refresh の完了で resolve）
+ */
 async function refreshView(viewId: string): Promise<void> {
   switch (viewId) {
     case "profile": {
@@ -187,14 +211,24 @@ async function refreshView(viewId: string): Promise<void> {
   }
 }
 
-/** 通知ダイアログを表示し、OK なら refresh を実行 */
+/**
+ * 「データが更新されました。最新のデータを取得しますか？」と confirm し、OK なら refreshView を実行する。
+ * @param viewId - 画面 ID
+ * @returns なし
+ */
 function showUpdateNotifyDialog(viewId: string): void {
   const message = "データが更新されました。最新のデータを取得しますか？";
   if (!confirm(message)) return;
   refreshView(viewId);
 }
 
-/** 1ファイルを取得し、変更・更新者を判定。更新データのキーが localStorage の表示キーに含まれるときのみ通知 */
+/**
+ * 1ファイルを取得し、変更・更新者を判定する。更新データのキーが localStorage の表示キーに含まれるときのみ通知対象とする。
+ * @param name - CSV ファイル名（例: "ACCOUNT.csv"）
+ * @param getState - 現在の view と userId を返す関数
+ * @param lastState - 前回のハッシュ等を保持するオブジェクト（破壊的に更新）
+ * @returns 通知する場合は { viewId, shouldNotify: true }、しない場合は null
+ */
 async function checkFile(
   name: string,
   getState: GetCurrentState,
@@ -239,8 +273,9 @@ let pollTimer: ReturnType<typeof setInterval> | null = null;
 const lastKnown = new Map<string, { hash: string; updateUser: string }>();
 
 /**
- * CSV 監視を開始する。ログイン後（currentUserId が設定済み）に呼ぶ。
- * 各画面ではデータ取得・検索後に setDisplayedKeys(viewId, keys) で表示中のキーを保存すること。
+ * CSV 監視を開始する。ログイン後（currentUserId が設定済み）に呼ぶ。定期的にポーリングし、表示キーに含まれる更新があれば通知する。
+ * @param getState - 現在の view と userId を返す関数
+ * @returns なし
  */
 export function startCsvWatch(getState: GetCurrentState): void {
   if (pollTimer != null) return;
@@ -269,7 +304,8 @@ export function startCsvWatch(getState: GetCurrentState): void {
 }
 
 /**
- * 監視を停止する（ログアウト時など）。
+ * CSV 監視を停止する。ログアウト時などに呼ぶ。タイマーを解除し、保持状態をクリアする。
+ * @returns なし
  */
 export function stopCsvWatch(): void {
   if (pollTimer != null) {

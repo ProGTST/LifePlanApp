@@ -13,6 +13,10 @@ import {
 import { showMainView } from "./screen";
 import { stopCsvWatch } from "../utils/csvWatch";
 
+/**
+ * サイドバーを閉じ、開いていたパネル状態をクリアする。
+ * @returns なし
+ */
 export function closeSidebar(): void {
   const sidebar = document.getElementById("app-sidebar");
   if (sidebar) {
@@ -22,7 +26,11 @@ export function closeSidebar(): void {
   setSidebarOpenPanel(null);
 }
 
-/** フッター等からサイドバーを指定パネルで開く（メニュー or 設定） */
+/**
+ * フッター等からサイドバーを指定パネル（メニュー or 設定）で開く。既に同じパネルで開いていれば閉じる。
+ * @param panel - SIDEBAR_PANEL_MENU または SIDEBAR_PANEL_SETTINGS
+ * @returns なし
+ */
 export function openSidebarPanel(panel: string): void {
   const sidebar = document.getElementById("app-sidebar");
   const panelMenu = document.getElementById("sidebar-panel-menu");
@@ -45,6 +53,10 @@ export function openSidebarPanel(panel: string): void {
 const MENU_CURRENT_CLASS = "sidebar-menu-item--current";
 const SETTINGS_CURRENT_CLASS = "sidebar-settings-item--current";
 
+/**
+ * サイドバーのメニュー・設定項目のうち、現在のビューに一致するものを「現在」スタイルにし、他を更新する。
+ * @returns なし
+ */
 export function updateCurrentMenuItem(): void {
   const items = document.querySelectorAll<HTMLButtonElement>(".sidebar-menu-item");
   items.forEach((btn) => {
@@ -62,6 +74,10 @@ export function updateCurrentMenuItem(): void {
   });
 }
 
+/**
+ * サイドバーの開閉ボタン・メニュー切替・ログアウトのイベントを初期化する。
+ * @returns なし
+ */
 export function initSidebarToggle(): void {
   const sidebar = document.getElementById("app-sidebar");
   const panelMenu = document.getElementById("sidebar-panel-menu");
@@ -106,6 +122,10 @@ export function initSidebarToggle(): void {
   });
 }
 
+/**
+ * サイドバーのメニュー・設定項目のクリックで画面遷移するようにイベントを登録する。
+ * @returns なし
+ */
 export function initSidebarMenu(): void {
   updateCurrentMenuItem();
   document.querySelectorAll(".sidebar-menu-item").forEach((btn) => {

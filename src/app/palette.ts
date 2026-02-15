@@ -9,18 +9,33 @@ import { getColorPalette } from "../utils/storage";
 
 const HEX_COLOR = /^#[0-9A-Fa-f]{6}$/;
 
-/** ヘッダー先頭の BOM を除去（CSV の USER_ID 列が正しく一致するようにする） */
+/**
+ * ヘッダー先頭の BOM を除去する（CSV の USER_ID 列が正しく一致するようにする）。
+ * @param header - 列名の配列
+ * @returns 先頭のみ BOM 除去した配列
+ */
 function normalizeHeader(header: string[]): string[] {
   if (header.length === 0) return header;
   return header.map((h, i) => (i === 0 ? h.replace(/^\uFEFF/, "") : h));
 }
 
+/**
+ * 色文字列を 6 桁 hex に正規化する。無効な場合はデフォルト色を返す。
+ * @param v - 色の文字列
+ * @param key - パレットキー（デフォルト取得用）
+ * @returns 有効な #rrggbb または DEFAULT_PALETTE[key]
+ */
 function toValidHex(v: string | undefined, key: (typeof PALETTE_KEYS)[number]): string {
   const t = (v ?? "").trim();
   const normalized = t.startsWith("#") ? t : `#${t}`;
   return HEX_COLOR.test(normalized) ? normalized : DEFAULT_PALETTE[key];
 }
 
+/**
+ * 指定ユーザーのカラーパレットを COLOR_PALETTE.csv と localStorage から取得し、#app に CSS 変数として適用する。
+ * @param userId - ユーザー ID
+ * @returns Promise（適用完了で resolve）
+ */
 export async function applyUserPalette(userId: string): Promise<void> {
   const appEl = document.getElementById(APP_SCREEN_ID);
   if (!appEl) return;

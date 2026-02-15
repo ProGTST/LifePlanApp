@@ -16,6 +16,10 @@ import {
 import { saveUserCsvOnNavigate } from "../screens/profile-screen.ts";
 import { saveColorPaletteCsvOnNavigate } from "../screens/design-screen.ts";
 
+/**
+ * ログアウト・終了時用。未保存のマスタ（勘定・カテゴリー・タグ・ユーザー・カラーパレット）だけを CSV 保存する。
+ * @returns Promise（該当する保存がすべて完了で resolve）
+ */
 export async function saveDirtyCsvsOnly(): Promise<void> {
   const promises: Promise<void>[] = [];
   if (accountDirty) promises.push(saveAccountCsvOnly());

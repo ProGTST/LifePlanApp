@@ -210,6 +210,10 @@ async function deleteTagRow(tagId: string): Promise<void> {
   renderTagTable();
 }
 
+/**
+ * タグ一覧を取得し、タグテーブルを描画する。表示キーを setDisplayedKeys に登録する。
+ * @returns Promise
+ */
 export async function loadAndRenderTagList(): Promise<void> {
   const list = await fetchTagList();
   setTagListFull(list);
@@ -303,6 +307,10 @@ function handleToggleDeleteMode(): void {
   renderTagTable();
 }
 
+/**
+ * タグ画面の初期化を行う。「tag」ビュー表示ハンドラとモーダル・削除モードのイベントを登録する。
+ * @returns なし
+ */
 export function initTagView(): void {
   registerViewHandler("tag", loadAndRenderTagList);
 

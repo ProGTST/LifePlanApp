@@ -1,6 +1,7 @@
 /**
- * 1行（論理行・改行含む）のCSVをパースする。
- * ダブルクォート・カンマ・RFC 4180 の "" エスケープに対応。
+ * 1行（論理行・改行含む）の CSV をパースする。ダブルクォート・カンマ・RFC 4180 の "" エスケープに対応。
+ * @param line - 1行分の CSV 文字列
+ * @returns フィールドの配列
  */
 export function parseCsvLine(line: string): string[] {
   const result: string[] = [];
@@ -29,7 +30,9 @@ export function parseCsvLine(line: string): string[] {
 }
 
 /**
- * CSV本文を論理行に分割する。ダブルクォートで囲まれた中の改行は行区切りとみなさない。
+ * CSV 本文を論理行に分割する。ダブルクォートで囲まれた中の改行は行区切りとみなさない。
+ * @param text - CSV 全文
+ * @returns 論理行の配列
  */
 function splitCsvLogicalRows(text: string): string[] {
   const trimmed = text.trim();
@@ -55,8 +58,10 @@ function splitCsvLogicalRows(text: string): string[] {
 }
 
 /**
- * CSVファイルを API (GET /api/data/:filename) から取得し、ヘッダーと行の配列に分解する。
- * init を渡すと fetch の第二引数に渡す（例: { cache: 'reload' } でキャッシュを無効化）。
+ * CSV を API (GET /api/data/:filename) から取得し、ヘッダーと行の配列に分解する。
+ * @param path - 例: "/data/USER.csv"
+ * @param init - 省略可。fetch の第二引数（例: { cache: 'reload' } でキャッシュ無効化）
+ * @returns { header, rows } ヘッダー列名の配列と、行ごとのセル配列の配列
  */
 export async function fetchCsv(
   path: string,
@@ -76,8 +81,10 @@ export async function fetchCsv(
 }
 
 /**
- * ヘッダーと1行のセル配列からオブジェクトを生成。
- * VERSION 列がある場合は未設定時 "0" を設定する（後方互換）。
+ * ヘッダーと1行のセル配列からキー・値のオブジェクトを生成する。VERSION 列が空の場合は "0" を設定（後方互換）。
+ * @param header - 列名の配列
+ * @param cells - その行のセル値の配列
+ * @returns 列名をキー、セル値を値としたオブジェクト
  */
 export function rowToObject(header: string[], cells: string[]): Record<string, string> {
   const obj: Record<string, string> = {};

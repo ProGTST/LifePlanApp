@@ -3,14 +3,20 @@
  * 収支記録・勘定項目・カテゴリー・タグ・プロフィール・デザインで共通利用。
  */
 
-/** 現在日時を "YYYY-MM-DD HH:mm:ss" 形式で返す */
+/**
+ * 現在日時を "YYYY-MM-DD HH:mm:ss" 形式で返す。
+ * @returns 監査用の日時文字列
+ */
 export function getAuditTimestamp(): string {
   return new Date().toISOString().slice(0, 19).replace("T", " ");
 }
 
 /**
- * 新規登録時に監査項目を設定する。
- * 対象: ID, VERSION, REGIST_DATETIME, REGIST_USER, UPDATE_DATETIME, UPDATE_USER
+ * 新規登録時に監査項目を設定する。対象: ID, VERSION, REGIST_*, UPDATE_*
+ * @param row - 更新する行オブジェクト（破壊的に代入）
+ * @param userId - 登録ユーザー ID
+ * @param id - 行の ID
+ * @returns なし
  */
 export function setNewRowAudit(
   row: Record<string, string>,
@@ -27,8 +33,10 @@ export function setNewRowAudit(
 }
 
 /**
- * 更新時に監査項目を設定する。
- * 対象: VERSION（インクリメント）, UPDATE_DATETIME, UPDATE_USER
+ * 更新時に監査項目を設定する。VERSION を1増やし、UPDATE_DATETIME / UPDATE_USER を設定する。
+ * @param row - 更新する行オブジェクト（破壊的に代入）
+ * @param userId - 更新ユーザー ID
+ * @returns なし
  */
 export function setUpdateAudit(row: Record<string, string>, userId: string): void {
   const now = getAuditTimestamp();
@@ -39,8 +47,10 @@ export function setUpdateAudit(row: Record<string, string>, userId: string): voi
 }
 
 /**
- * 新規登録時（ID を持たない行用、例: COLOR_PALETTE）に監査項目を設定する。
- * 対象: VERSION, REGIST_DATETIME, REGIST_USER, UPDATE_DATETIME, UPDATE_USER
+ * 新規登録時（ID を持たない行用、例: COLOR_PALETTE）に監査項目を設定する。ID は設定しない。
+ * @param row - 更新する行オブジェクト（破壊的に代入）
+ * @param userId - 登録ユーザー ID
+ * @returns なし
  */
 export function setNewRowAuditWithoutId(row: Record<string, string>, userId: string): void {
   const now = getAuditTimestamp();

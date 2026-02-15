@@ -34,6 +34,10 @@ import { initDesignView } from "./screens/design-screen";
 import { initTransactionHistoryView } from "./screens/transaction-history-screen";
 import { initTransactionEntryView } from "./screens/transaction-entry-screen";
 
+/**
+ * アプリ画面の初期化を行う。各画面の init、フッター・サイドバーのイベント登録、初期表示ビュー「home」の表示、CSV 監視の開始を行う。
+ * @returns なし
+ */
 function initAppScreen(): void {
   initHomeScreen();
   initSidebarToggle();

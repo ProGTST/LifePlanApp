@@ -11,14 +11,31 @@ const viewHandlers: Record<string, () => void> = {};
 /** 画面遷移時（離脱時）に呼ぶ保存処理。viewId -> fn */
 const leaveSaveHandlers: Record<string, () => void> = {};
 
+/**
+ * 指定ビューを離脱するときに呼ぶ保存処理を登録する。
+ * @param viewId - ビュー ID
+ * @param fn - 離脱時に実行する関数（保存処理など）
+ * @returns なし
+ */
 export function registerLeaveSaveHandler(viewId: string, fn: () => void): void {
   leaveSaveHandlers[viewId] = fn;
 }
 
+/**
+ * 指定ビューを表示するときに呼ぶハンドラ（データ取得・描画）を登録する。
+ * @param viewId - ビュー ID
+ * @param fn - 表示時に実行する関数
+ * @returns なし
+ */
 export function registerViewHandler(viewId: string, fn: () => void): void {
   viewHandlers[viewId] = fn;
 }
 
+/**
+ * ログイン画面またはアプリ画面のどちらを表示するか切り替える。
+ * @param screenId - LOGIN_SCREEN_ID または APP_SCREEN_ID
+ * @returns なし
+ */
 export function showScreen(screenId: string): void {
   const loginEl = document.getElementById(LOGIN_SCREEN_ID);
   const appEl = document.getElementById(APP_SCREEN_ID);
@@ -33,6 +50,11 @@ export function showScreen(screenId: string): void {
   }
 }
 
+/**
+ * メインコンテンツ領域で表示するビューを切り替える。離脱時の保存処理を実行し、ヘッダー・フッターの表示を更新する。
+ * @param viewId - 表示するビュー ID（home, account, profile 等）
+ * @returns なし
+ */
 export function showMainView(viewId: string): void {
   const container = document.querySelector(MAIN_VIEW_CONTAINER);
   if (!container) return;
