@@ -23,29 +23,6 @@ function sortRowsById(rows: Record<string, string>[]): Record<string, string>[] 
 }
 
 /**
- * メモリ上の勘定・カテゴリー・タグを CSV に変換し、API 経由で ACCOUNT / CATEGORY / TAG に保存する。保存時は ID 昇順で出力する。
- * @returns Promise（全保存完了で resolve）
- */
-export async function saveMasterToCsv(): Promise<void> {
-  const account =
-    accountListFull.length > 0
-      ? accountListToCsv(sortRowsById(accountListFull as unknown as Record<string, string>[]))
-      : "";
-  const category =
-    categoryListFull.length > 0
-      ? categoryListToCsv(sortRowsById(categoryListFull as unknown as Record<string, string>[]))
-      : "";
-  const tag =
-    tagListFull.length > 0
-      ? tagListToCsv(sortRowsById(tagListFull as unknown as Record<string, string>[]))
-      : "";
-
-  if (account) await saveCsvViaApi("ACCOUNT.csv", account);
-  if (category) await saveCsvViaApi("CATEGORY.csv", category);
-  if (tag) await saveCsvViaApi("TAG.csv", tag);
-}
-
-/**
  * 勘定と勘定参照権限を ACCOUNT.csv / ACCOUNT_PERMISSION.csv に保存する（画面遷移時用）。保存完了後に clearAccountDirty を呼ぶ。
  * @returns Promise（保存とクリア完了で resolve）
  */

@@ -32,6 +32,8 @@ import {
 import { setDisplayedKeys } from "../utils/csvWatch.ts";
 import { registerViewHandler } from "../app/screen";
 import { openColorIconPicker } from "../utils/colorIconPicker.ts";
+import { createIconWrap, applyColorIconToElement } from "../utils/iconWrap.ts";
+import { openOverlay, closeOverlay } from "../utils/overlay.ts";
 import { ICON_DEFAULT_COLOR } from "../constants/colorPresets.ts";
 
 /** カテゴリー種別 */
@@ -260,7 +262,6 @@ async function moveCategoryOrder(fromIndex: number, toSlot: number): Promise<voi
 }
 
 const CATEGORY_TABLE_COL_COUNT = 5;
-const CATEGORY_ICON_DEFAULT_COLOR = "#646cff";
 
 /**
  * カテゴリー一覧テーブル（category-tbody）を描画する。ツリー/フラット切替・ドラッグ並び替え・名前編集・親選択・削除に対応。
@@ -283,18 +284,9 @@ function renderCategoryTable(): void {
     tr.setAttribute("data-category-id", row.ID);
     if (depth > 0) tr.setAttribute("data-tree-depth", String(depth));
     tr.setAttribute("aria-label", isTreeView ? `行 ${index + 1}` : `行 ${index + 1} ドラッグで並び替え`);
-    const iconColor = (row.COLOR?.trim() || CATEGORY_ICON_DEFAULT_COLOR) as string;
     const tdIcon = document.createElement("td");
     tdIcon.className = "data-table-icon-col";
-    const iconWrap = document.createElement("div");
-    iconWrap.className = "category-icon-wrap";
-    iconWrap.style.backgroundColor = iconColor;
-    if (row.ICON_PATH?.trim()) {
-      iconWrap.classList.add("category-icon-wrap--img");
-      iconWrap.style.webkitMaskImage = `url(${row.ICON_PATH.trim()})`;
-      iconWrap.style.maskImage = `url(${row.ICON_PATH.trim()})`;
-      iconWrap.setAttribute("aria-hidden", "true");
-    }
+    const iconWrap = createIconWrap(row.COLOR ?? "", row.ICON_PATH ?? "");
     iconWrap.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
@@ -470,7 +462,6 @@ function openCategoryModal(): void {
   const formParent = document.getElementById("category-form-parent") as HTMLSelectElement;
   const formColor = document.getElementById("category-form-color") as HTMLInputElement;
   const formIconPath = document.getElementById("category-form-icon-path") as HTMLInputElement;
-  const overlay = document.getElementById("category-modal-overlay");
   if (formName) formName.value = "";
   if (formType) formType.value = selectedCategoryType;
   fillCategoryFormParentSelect(selectedCategoryType);
@@ -478,10 +469,7 @@ function openCategoryModal(): void {
   if (formColor) formColor.value = ICON_DEFAULT_COLOR;
   if (formIconPath) formIconPath.value = "";
   updateCategoryFormColorIconPreview();
-  if (overlay) {
-    overlay.classList.add("is-visible");
-    overlay.setAttribute("aria-hidden", "false");
-  }
+  openOverlay("category-modal-overlay");
 }
 
 /**
@@ -489,11 +477,7 @@ function openCategoryModal(): void {
  * @returns なし
  */
 function closeCategoryModal(): void {
-  const overlay = document.getElementById("category-modal-overlay");
-  if (overlay) {
-    overlay.classList.remove("is-visible");
-    overlay.setAttribute("aria-hidden", "true");
-  }
+  closeOverlay("category-modal-overlay");
 }
 
 /**
@@ -501,14 +485,10 @@ function closeCategoryModal(): void {
  * @returns なし
  */
 function updateCategoryFormColorIconPreview(): void {
+  const wrap = document.getElementById("category-form-color-icon-preview");
   const color = (document.getElementById("category-form-color") as HTMLInputElement)?.value || ICON_DEFAULT_COLOR;
   const path = (document.getElementById("category-form-icon-path") as HTMLInputElement)?.value || "";
-  const wrap = document.getElementById("category-form-color-icon-preview");
-  if (!wrap) return;
-  wrap.style.backgroundColor = color;
-  wrap.classList.toggle("category-icon-wrap--img", !!path);
-  wrap.style.webkitMaskImage = path ? `url(${path})` : "";
-  wrap.style.maskImage = path ? `url(${path})` : "";
+  if (wrap) applyColorIconToElement(wrap, color, path);
 }
 
 /**

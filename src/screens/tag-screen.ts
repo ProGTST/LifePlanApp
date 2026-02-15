@@ -32,6 +32,8 @@ import {
 import { setDisplayedKeys } from "../utils/csvWatch.ts";
 import { registerViewHandler } from "../app/screen";
 import { openColorIconPicker } from "../utils/colorIconPicker.ts";
+import { createIconWrap, applyColorIconToElement } from "../utils/iconWrap.ts";
+import { openOverlay, closeOverlay } from "../utils/overlay.ts";
 import { ICON_DEFAULT_COLOR } from "../constants/colorPresets.ts";
 
 /**
@@ -132,18 +134,9 @@ function renderTagTable(): void {
     tr.setAttribute("data-tag-id", row.ID);
     tr.setAttribute("aria-label", `行 ${index + 1} ドラッグで並び替え`);
     const tdDrag = createDragHandleCell();
-    const iconColor = (row.COLOR?.trim() || ICON_DEFAULT_COLOR) as string;
     const tdIcon = document.createElement("td");
     tdIcon.className = "data-table-icon-col";
-    const iconWrap = document.createElement("div");
-    iconWrap.className = "category-icon-wrap";
-    iconWrap.style.backgroundColor = iconColor;
-    if (row.ICON_PATH?.trim()) {
-      iconWrap.classList.add("category-icon-wrap--img");
-      iconWrap.style.webkitMaskImage = `url(${row.ICON_PATH.trim()})`;
-      iconWrap.style.maskImage = `url(${row.ICON_PATH.trim()})`;
-      iconWrap.setAttribute("aria-hidden", "true");
-    }
+    const iconWrap = createIconWrap(row.COLOR ?? "", row.ICON_PATH ?? "");
     iconWrap.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
@@ -261,15 +254,11 @@ function openTagModal(): void {
   const formName = document.getElementById("tag-form-name") as HTMLInputElement;
   const formColor = document.getElementById("tag-form-color") as HTMLInputElement;
   const formIconPath = document.getElementById("tag-form-icon-path") as HTMLInputElement;
-  const overlay = document.getElementById("tag-modal-overlay");
   if (formName) formName.value = "";
   if (formColor) formColor.value = ICON_DEFAULT_COLOR;
   if (formIconPath) formIconPath.value = "";
   updateTagFormColorIconPreview();
-  if (overlay) {
-    overlay.classList.add("is-visible");
-    overlay.setAttribute("aria-hidden", "false");
-  }
+  openOverlay("tag-modal-overlay");
 }
 
 /**
@@ -277,14 +266,10 @@ function openTagModal(): void {
  * @returns なし
  */
 function updateTagFormColorIconPreview(): void {
+  const wrap = document.getElementById("tag-form-color-icon-preview");
   const color = (document.getElementById("tag-form-color") as HTMLInputElement)?.value || ICON_DEFAULT_COLOR;
   const path = (document.getElementById("tag-form-icon-path") as HTMLInputElement)?.value || "";
-  const wrap = document.getElementById("tag-form-color-icon-preview");
-  if (!wrap) return;
-  wrap.style.backgroundColor = color;
-  wrap.classList.toggle("category-icon-wrap--img", !!path);
-  wrap.style.webkitMaskImage = path ? `url(${path})` : "";
-  wrap.style.maskImage = path ? `url(${path})` : "";
+  if (wrap) applyColorIconToElement(wrap, color, path);
 }
 
 /**
@@ -292,11 +277,7 @@ function updateTagFormColorIconPreview(): void {
  * @returns なし
  */
 function closeTagModal(): void {
-  const overlay = document.getElementById("tag-modal-overlay");
-  if (overlay) {
-    overlay.classList.remove("is-visible");
-    overlay.setAttribute("aria-hidden", "true");
-  }
+  closeOverlay("tag-modal-overlay");
 }
 
 /**

@@ -12,6 +12,7 @@ import {
 } from "../state";
 import { showMainView } from "./screen";
 import { stopCsvWatch } from "../utils/csvWatch";
+import { saveDirtyCsvsOnly } from "../utils/saveDirtyCsvs";
 
 /**
  * サイドバーを閉じ、開いていたパネル状態をクリアする。
@@ -117,6 +118,7 @@ export function initSidebarToggle(): void {
     sidebar?.setAttribute("aria-hidden", "true");
     setSidebarOpenPanel(null);
     stopCsvWatch();
+    await saveDirtyCsvsOnly();
     sessionStorage.removeItem(USER_ID_STORAGE_KEY);
     window.location.href = LOGIN_PAGE_PATH;
   });

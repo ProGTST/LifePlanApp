@@ -20,6 +20,8 @@ import { setDisplayedKeys } from "../utils/csvWatch.ts";
 import { fetchCsv, rowToObject } from "../utils/csv";
 import { registerViewHandler, showMainView } from "../app/screen";
 import { updateCurrentMenuItem } from "../app/sidebar";
+import { createIconWrap } from "../utils/iconWrap";
+import { openOverlay, closeOverlay } from "../utils/overlay.ts";
 import { ICON_DEFAULT_COLOR } from "../constants/colorPresets";
 
 // ---------------------------------------------------------------------------
@@ -223,26 +225,6 @@ function getTagsForTransaction(transactionId: string): TagRow[] {
 // ---------------------------------------------------------------------------
 
 /**
- * 色・アイコンを表示する div ラッパーを生成する。
- * @param color - 背景色
- * @param iconPath - アイコン画像パス（省略可）
- * @param className - 要素に付与するクラス名
- * @returns ラッパー要素
- */
-function renderIconWrap(color: string, iconPath: string | undefined, className: string): HTMLDivElement {
-  const wrap = document.createElement("div");
-  wrap.className = className;
-  wrap.style.backgroundColor = color || ICON_DEFAULT_COLOR;
-  if (iconPath?.trim()) {
-    wrap.classList.add("category-icon-wrap--img");
-    wrap.style.webkitMaskImage = `url(${iconPath.trim()})`;
-    wrap.style.maskImage = `url(${iconPath.trim()})`;
-  }
-  wrap.setAttribute("aria-hidden", "true");
-  return wrap;
-}
-
-/**
  * 勘定のアイコンと名前を指定要素に追加する（一覧の勘定セル用）。
  * @param parent - 追加先の親要素
  * @param acc - 勘定行
@@ -256,9 +238,7 @@ function appendAccountWrap(
 ): void {
   const wrap = document.createElement(tag);
   wrap.className = "transaction-history-account-wrap";
-  wrap.appendChild(
-    renderIconWrap(acc.COLOR || ICON_DEFAULT_COLOR, acc.ICON_PATH, "category-icon-wrap")
-  );
+  wrap.appendChild(createIconWrap(acc.COLOR || ICON_DEFAULT_COLOR, acc.ICON_PATH));
   const nameSpan = document.createElement("span");
   nameSpan.className = "transaction-history-account-name";
   nameSpan.textContent = acc.ACCOUNT_NAME || "—";
@@ -433,7 +413,7 @@ function renderList(): void {
     const catWrap = document.createElement("div");
     catWrap.className = "transaction-history-category-cell";
     if (cat) {
-      const iconWrap = renderIconWrap(cat.COLOR || ICON_DEFAULT_COLOR, cat.ICON_PATH, "category-icon-wrap");
+      const iconWrap = createIconWrap(cat.COLOR || ICON_DEFAULT_COLOR, cat.ICON_PATH);
       catWrap.appendChild(iconWrap);
       const nameSpan = document.createElement("span");
       nameSpan.className = "transaction-history-category-name";
@@ -703,11 +683,9 @@ function renderWeeklyPanel(): void {
         typeIcon.setAttribute("aria-label", txType === "income" ? "収入" : txType === "expense" ? "支出" : "振替");
         item.appendChild(typeIcon);
         const cat = getCategoryById(row.CATEGORY_ID);
-        const catIcon = renderIconWrap(
-          cat?.COLOR || ICON_DEFAULT_COLOR,
-          cat?.ICON_PATH,
-          "transaction-history-week-category-icon"
-        );
+        const catIcon = createIconWrap(cat?.COLOR || ICON_DEFAULT_COLOR, cat?.ICON_PATH, {
+          className: "transaction-history-week-category-icon",
+        });
         item.appendChild(catIcon);
         const nameSpan = document.createElement("span");
         nameSpan.className = "transaction-history-week-block-name";
@@ -1004,19 +982,6 @@ function updateChosenDisplays(): void {
 }
 
 /**
- * 指定 ID の選択モーダル（オーバーレイ）を閉じる。
- * @param overlayId - オーバーレイ要素の ID
- * @returns なし
- */
-function closeSelectModal(overlayId: string): void {
-  const overlay = document.getElementById(overlayId);
-  if (overlay) {
-    overlay.classList.remove("is-visible");
-    overlay.setAttribute("aria-hidden", "true");
-  }
-}
-
-/**
  * 選択モーダル内のリストで選択中の ID 一覧を返す。
  * @param listContainerId - リストコンテナ要素の ID
  * @returns 選択された ID の配列
@@ -1072,7 +1037,7 @@ function createSelectItemRow(
     e.preventDefault();
     handleToggle();
   });
-  const iconWrap = renderIconWrap(color, iconPath, "category-icon-wrap");
+  const iconWrap = createIconWrap(color, iconPath);
   const nameSpan = document.createElement("span");
   nameSpan.className = "transaction-history-select-item-name";
   nameSpan.textContent = name;
@@ -1143,11 +1108,7 @@ function openCategorySelectModal(): void {
     t.setAttribute("aria-selected", String(isActive));
   });
   renderCategorySelectList(categorySelectModalType);
-  const overlay = document.getElementById("transaction-history-category-select-overlay");
-  if (overlay) {
-    overlay.classList.add("is-visible");
-    overlay.setAttribute("aria-hidden", "false");
-  }
+  openOverlay("transaction-history-category-select-overlay");
 }
 
 /**
@@ -1169,11 +1130,7 @@ function openTagSelectModal(): void {
     );
     listEl.appendChild(item);
   }
-  const overlay = document.getElementById("transaction-history-tag-select-overlay");
-  if (overlay) {
-    overlay.classList.add("is-visible");
-    overlay.setAttribute("aria-hidden", "false");
-  }
+  openOverlay("transaction-history-tag-select-overlay");
 }
 
 /** 勘定項目選択モーダルで表示中のタブ（個人 or 共有） */
@@ -1248,11 +1205,7 @@ function openAccountSelectModal(): void {
     el.setAttribute("aria-selected", String(isActive));
   });
   renderAccountSelectList(accountSelectModalTab);
-  const overlay = document.getElementById("transaction-history-account-select-overlay");
-  if (overlay) {
-    overlay.classList.add("is-visible");
-    overlay.setAttribute("aria-hidden", "false");
-  }
+  openOverlay("transaction-history-account-select-overlay");
 }
 
 /**
@@ -1507,11 +1460,11 @@ export function initTransactionHistoryView(): void {
     filterCategoryIds = Array.from(categorySelectModalSelectedIds);
     updateChosenDisplays();
     renderList();
-    closeSelectModal("transaction-history-category-select-overlay");
+    closeOverlay("transaction-history-category-select-overlay");
   });
   document.getElementById("transaction-history-category-select-overlay")?.addEventListener("click", (e) => {
     if (e.target instanceof HTMLElement && e.target.id === "transaction-history-category-select-overlay") {
-      closeSelectModal("transaction-history-category-select-overlay");
+      closeOverlay("transaction-history-category-select-overlay");
     }
   });
 
@@ -1525,11 +1478,11 @@ export function initTransactionHistoryView(): void {
     filterTagIds = getSelectedIdsFromList("transaction-history-tag-select-list");
     updateChosenDisplays();
     renderList();
-    closeSelectModal("transaction-history-tag-select-overlay");
+    closeOverlay("transaction-history-tag-select-overlay");
   });
   document.getElementById("transaction-history-tag-select-overlay")?.addEventListener("click", (e) => {
     if (e.target instanceof HTMLElement && e.target.id === "transaction-history-tag-select-overlay") {
-      closeSelectModal("transaction-history-tag-select-overlay");
+      closeOverlay("transaction-history-tag-select-overlay");
     }
   });
 
@@ -1561,11 +1514,11 @@ export function initTransactionHistoryView(): void {
     filterAccountIds = Array.from(accountSelectModalSelectedIds);
     updateChosenDisplays();
     renderList();
-    closeSelectModal("transaction-history-account-select-overlay");
+    closeOverlay("transaction-history-account-select-overlay");
   });
   document.getElementById("transaction-history-account-select-overlay")?.addEventListener("click", (e) => {
     if (e.target instanceof HTMLElement && e.target.id === "transaction-history-account-select-overlay") {
-      closeSelectModal("transaction-history-account-select-overlay");
+      closeOverlay("transaction-history-account-select-overlay");
     }
   });
 }

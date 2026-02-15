@@ -1,5 +1,7 @@
 import type { TransactionRow, CategoryRow, AccountRow, AccountPermissionRow, TagRow, TagManagementRow } from "../types";
 import { currentUserId, transactionEntryEditId, setTransactionEntryEditId, transactionEntryViewOnly, pushNavigation } from "../state";
+import { createIconWrap } from "../utils/iconWrap";
+import { openOverlay, closeOverlay } from "../utils/overlay";
 import { ICON_DEFAULT_COLOR } from "../constants/colorPresets";
 import { fetchCsv, rowToObject } from "../utils/csv";
 import { transactionListToCsv, tagManagementListToCsv } from "../utils/csvExport";
@@ -145,26 +147,6 @@ function getCategoryValueEl(): HTMLInputElement | null {
 }
 
 /**
- * カテゴリー・勘定の色・アイコンを表示するラッパー要素を生成する。
- * @param color - 背景色
- * @param iconPath - アイコン画像パス（省略可）
- * @param tag - 要素タグ名（div または span）
- * @returns ラッパー要素
- */
-function renderCategoryIconWrap(color: string, iconPath: string | undefined, tag: "div" | "span" = "div"): HTMLDivElement | HTMLSpanElement {
-  const wrap = document.createElement(tag);
-  wrap.className = "category-icon-wrap";
-  wrap.style.backgroundColor = color || ICON_DEFAULT_COLOR;
-  if (iconPath?.trim()) {
-    wrap.classList.add("category-icon-wrap--img");
-    wrap.style.webkitMaskImage = `url(${iconPath.trim()})`;
-    wrap.style.maskImage = `url(${iconPath.trim()})`;
-  }
-  wrap.setAttribute("aria-hidden", "true");
-  return wrap as HTMLDivElement | HTMLSpanElement;
-}
-
-/**
  * 収入側勘定の hidden 入力要素を返す。
  * @returns 要素または null
  */
@@ -214,7 +196,7 @@ function updateAccountTriggerDisplay(which: "out" | "in", accountId: string): vo
   }
   (triggerIcon as HTMLElement).innerHTML = "";
   (triggerIcon as HTMLElement).style.display = "";
-  const iconWrap = renderCategoryIconWrap(acc.COLOR || ICON_DEFAULT_COLOR, acc.ICON_PATH, "span");
+  const iconWrap = createIconWrap(acc.COLOR || ICON_DEFAULT_COLOR, acc.ICON_PATH, { tag: "span" });
   (triggerIcon as HTMLElement).appendChild(iconWrap);
   triggerText.textContent = (acc.ACCOUNT_NAME || "").trim() || "—";
 }
@@ -280,7 +262,7 @@ function updateCategoryTriggerDisplay(categoryId: string): void {
   }
   (triggerIcon as HTMLElement).innerHTML = "";
   (triggerIcon as HTMLElement).style.display = "";
-  const iconWrap = renderCategoryIconWrap(cat.COLOR || ICON_DEFAULT_COLOR, cat.ICON_PATH, "span");
+  const iconWrap = createIconWrap(cat.COLOR || ICON_DEFAULT_COLOR, cat.ICON_PATH, { tag: "span" });
   (triggerIcon as HTMLElement).appendChild(iconWrap);
   triggerText.textContent = (cat.CATEGORY_NAME || "").trim() || "—";
 }
@@ -332,7 +314,7 @@ function createTagSelectItemRow(id: string, name: string, color: string, iconPat
     e.preventDefault();
     handleToggle();
   });
-  const iconWrap = renderCategoryIconWrap(color || ICON_DEFAULT_COLOR, iconPath, "span");
+  const iconWrap = createIconWrap(color || ICON_DEFAULT_COLOR, iconPath, { tag: "span" });
   const nameSpan = document.createElement("span");
   nameSpan.className = "transaction-history-select-item-name";
   nameSpan.textContent = name;
@@ -344,11 +326,7 @@ function createTagSelectItemRow(id: string, name: string, color: string, iconPat
 }
 
 function closeTransactionEntryTagModal(): void {
-  const overlay = document.getElementById("transaction-entry-tag-select-overlay");
-  if (overlay) {
-    overlay.classList.remove("is-visible");
-    overlay.setAttribute("aria-hidden", "true");
-  }
+  closeOverlay("transaction-entry-tag-select-overlay");
   const trigger = document.getElementById("transaction-entry-tag-open-btn");
   if (trigger instanceof HTMLElement) trigger.focus();
 }
@@ -375,7 +353,7 @@ function renderTagChosenDisplay(): void {
   sorted.forEach((t) => {
     const chip = document.createElement("span");
     chip.className = "transaction-entry-tag-chip";
-    const iconWrap = renderCategoryIconWrap(t.COLOR || ICON_DEFAULT_COLOR, t.ICON_PATH, "span");
+    const iconWrap = createIconWrap(t.COLOR || ICON_DEFAULT_COLOR, t.ICON_PATH, { tag: "span" });
     const nameSpan = document.createElement("span");
     nameSpan.textContent = (t.TAG_NAME || "").trim() || "—";
     chip.appendChild(iconWrap);
@@ -400,11 +378,7 @@ function openTransactionEntryTagModal(): void {
     );
     listEl.appendChild(item);
   }
-  const overlay = document.getElementById("transaction-entry-tag-select-overlay");
-  if (overlay) {
-    overlay.classList.add("is-visible");
-    overlay.setAttribute("aria-hidden", "false");
-  }
+  openOverlay("transaction-entry-tag-select-overlay");
 }
 
 function fillCategorySelect(type: string): void {
@@ -426,7 +400,7 @@ function fillCategorySelect(type: string): void {
     option.className = "transaction-entry-category-option";
     option.setAttribute("role", "option");
     option.dataset.categoryId = c.ID;
-    const iconWrap = renderCategoryIconWrap(c.COLOR || ICON_DEFAULT_COLOR, c.ICON_PATH);
+    const iconWrap = createIconWrap(c.COLOR || ICON_DEFAULT_COLOR, c.ICON_PATH);
     const nameSpan = document.createElement("span");
     nameSpan.className = "transaction-entry-category-option-name";
     nameSpan.textContent = (c.CATEGORY_NAME || "").trim() || "—";
@@ -462,7 +436,7 @@ function fillAccountDropdown(which: "out" | "in", visibleIds: Set<string>): void
     option.className = "transaction-entry-account-option";
     option.setAttribute("role", "option");
     option.dataset.accountId = a.ID;
-    const iconWrap = renderCategoryIconWrap(a.COLOR || ICON_DEFAULT_COLOR, a.ICON_PATH);
+    const iconWrap = createIconWrap(a.COLOR || ICON_DEFAULT_COLOR, a.ICON_PATH);
     const nameSpan = document.createElement("span");
     nameSpan.className = "transaction-entry-account-option-name";
     nameSpan.textContent = (a.ACCOUNT_NAME || "").trim() || "—";

@@ -34,6 +34,8 @@ import {
 import { setDisplayedKeys } from "../utils/csvWatch.ts";
 import { registerViewHandler } from "../app/screen";
 import { openColorIconPicker } from "../utils/colorIconPicker.ts";
+import { createIconWrap, applyColorIconToElement } from "../utils/iconWrap.ts";
+import { openOverlay, closeOverlay } from "../utils/overlay.ts";
 import { ICON_DEFAULT_COLOR } from "../constants/colorPresets.ts";
 
 // ---------------------------------------------------------------------------
@@ -41,7 +43,6 @@ import { ICON_DEFAULT_COLOR } from "../constants/colorPresets.ts";
 // ---------------------------------------------------------------------------
 
 const ACCOUNT_TABLE_COL_COUNT = 5;
-const ACCOUNT_ICON_DEFAULT_COLOR = "#646cff";
 const ICON_DELETE = "/icon/circle-minus-solid-full.svg";
 
 // ---------------------------------------------------------------------------
@@ -208,25 +209,6 @@ function getSharedWithMeAccountIds(): string[] {
 }
 
 /**
- * 勘定の色・アイコンを表示する div ラッパーを生成する。
- * @param color - 背景色（#rrggbb）
- * @param iconPath - アイコン画像パス（空の場合は色のみ）
- * @returns ラッパー要素
- */
-function createAccountIconWrap(color: string, iconPath: string): HTMLDivElement {
-  const wrap = document.createElement("div");
-  wrap.className = "category-icon-wrap";
-  wrap.style.backgroundColor = (color?.trim() || ACCOUNT_ICON_DEFAULT_COLOR) as string;
-  if (iconPath?.trim()) {
-    wrap.classList.add("category-icon-wrap--img");
-    wrap.style.webkitMaskImage = `url(${iconPath.trim()})`;
-    wrap.style.maskImage = `url(${iconPath.trim()})`;
-    wrap.setAttribute("aria-hidden", "true");
-  }
-  return wrap;
-}
-
-/**
  * 「参照可能な勘定」タブのテーブルを描画する。権限付与された他ユーザー所有勘定を一覧表示する。
  * @returns Promise
  */
@@ -264,7 +246,7 @@ async function renderSharedWithMeAccountTable(): Promise<void> {
     tr.setAttribute("data-account-id", row.ID);
     const tdIcon = document.createElement("td");
     tdIcon.className = "data-table-icon-col";
-    tdIcon.appendChild(createAccountIconWrap(row.COLOR ?? "", row.ICON_PATH ?? ""));
+    tdIcon.appendChild(createIconWrap(row.COLOR ?? "", row.ICON_PATH ?? ""));
     const tdName = document.createElement("td");
     tdName.textContent = row.ACCOUNT_NAME || "—";
     const tdUser = document.createElement("td");
@@ -303,7 +285,7 @@ function renderAccountTable(): void {
     const tdDrag = createDragHandleCell();
     const tdIcon = document.createElement("td");
     tdIcon.className = "data-table-icon-col";
-    const iconWrap = createAccountIconWrap(row.COLOR ?? "", row.ICON_PATH ?? "");
+    const iconWrap = createIconWrap(row.COLOR ?? "", row.ICON_PATH ?? "");
     iconWrap.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
@@ -468,17 +450,13 @@ function openAccountModal(): void {
   const formName = document.getElementById("account-form-name") as HTMLInputElement;
   const formColor = document.getElementById("account-form-color") as HTMLInputElement;
   const formIconPath = document.getElementById("account-form-icon-path") as HTMLInputElement;
-  const overlay = document.getElementById("account-modal-overlay");
   if (formName) formName.value = "";
   if (formColor) formColor.value = ICON_DEFAULT_COLOR;
   if (formIconPath) formIconPath.value = "";
   updateAccountFormColorIconPreview();
   accountFormPermissionRows = [];
   renderAccountFormPermissionList(accountFormPermissionRows);
-  if (overlay) {
-    overlay.classList.add("is-visible");
-    overlay.setAttribute("aria-hidden", "false");
-  }
+  openOverlay("account-modal-overlay");
 }
 
 /**
@@ -486,12 +464,7 @@ function openAccountModal(): void {
  * @returns なし
  */
 function closeAccountModal(): void {
-  const overlay = document.getElementById("account-modal-overlay");
-  if (overlay) {
-    if (overlay.contains(document.activeElement)) (document.activeElement as HTMLElement)?.blur();
-    overlay.classList.remove("is-visible");
-    overlay.setAttribute("aria-hidden", "true");
-  }
+  closeOverlay("account-modal-overlay");
 }
 
 /**
@@ -499,14 +472,10 @@ function closeAccountModal(): void {
  * @returns なし
  */
 function updateAccountFormColorIconPreview(): void {
+  const wrap = document.getElementById("account-form-color-icon-preview");
   const color = (document.getElementById("account-form-color") as HTMLInputElement)?.value || ICON_DEFAULT_COLOR;
   const path = (document.getElementById("account-form-icon-path") as HTMLInputElement)?.value || "";
-  const wrap = document.getElementById("account-form-color-icon-preview");
-  if (!wrap) return;
-  wrap.style.backgroundColor = color;
-  wrap.classList.toggle("category-icon-wrap--img", !!path);
-  wrap.style.webkitMaskImage = path ? `url(${path})` : "";
-  wrap.style.maskImage = path ? `url(${path})` : "";
+  if (wrap) applyColorIconToElement(wrap, color, path);
 }
 
 // ---------------------------------------------------------------------------
@@ -623,11 +592,7 @@ function openAccountFormUserPicker(forAccountId?: string): void {
         listEl.appendChild(row);
       });
     }
-    const overlay = document.getElementById("account-form-user-picker-overlay");
-    if (overlay) {
-      overlay.classList.add("is-visible");
-      overlay.setAttribute("aria-hidden", "false");
-    }
+    openOverlay("account-form-user-picker-overlay");
   });
 }
 
@@ -685,12 +650,7 @@ function applyAccountFormUserPicker(): void {
  * @returns なし
  */
 function closeAccountFormUserPicker(): void {
-  const overlay = document.getElementById("account-form-user-picker-overlay");
-  if (overlay) {
-    if (overlay.contains(document.activeElement)) (document.activeElement as HTMLElement)?.blur();
-    overlay.classList.remove("is-visible");
-    overlay.setAttribute("aria-hidden", "true");
-  }
+  closeOverlay("account-form-user-picker-overlay");
 }
 
 /**
@@ -704,11 +664,7 @@ function openAccountPermissionUsersModal(accountId: string, accountName: string)
   const titleEl = document.getElementById("account-permission-users-title");
   if (titleEl) titleEl.textContent = `権限ユーザー：${accountName}`;
   renderAccountPermissionUsersModal();
-  const overlay = document.getElementById("account-permission-users-overlay");
-  if (overlay) {
-    overlay.classList.add("is-visible");
-    overlay.setAttribute("aria-hidden", "false");
-  }
+  openOverlay("account-permission-users-overlay");
 }
 
 /**
@@ -716,12 +672,7 @@ function openAccountPermissionUsersModal(accountId: string, accountName: string)
  * @returns なし
  */
 function closeAccountPermissionUsersModal(): void {
-  const overlay = document.getElementById("account-permission-users-overlay");
-  if (overlay) {
-    if (overlay.contains(document.activeElement)) (document.activeElement as HTMLElement)?.blur();
-    overlay.classList.remove("is-visible");
-    overlay.setAttribute("aria-hidden", "true");
-  }
+  closeOverlay("account-permission-users-overlay");
   accountPermissionEditTargetId = null;
   renderAccountTable();
   renderSharedWithMeAccountTable();
