@@ -1,10 +1,10 @@
 import { defineConfig } from "vite";
 
-// @ts-expect-error process is a nodejs global
+declare const process: { env: Record<string, string | undefined> };
 const host = process.env.TAURI_DEV_HOST;
 
 // https://vite.dev/config/
-export default defineConfig(async () => ({
+export default defineConfig(() => ({
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
   clearScreen: false,
   server: {
@@ -12,7 +12,7 @@ export default defineConfig(async () => ({
     strictPort: true,
     host: host || false,
     proxy: {
-      "/api": { target: "http://localhost:3000", changeOrigin: true },
+      "/api": { target: "http://localhost:3001", changeOrigin: true },
     },
     hmr: host
       ? {
@@ -29,7 +29,7 @@ export default defineConfig(async () => ({
   build: {
     target:
       process.env.TAURI_ENV_PLATFORM === "windows" ? "chrome105" : "safari13",
-    minify: !process.env.TAURI_ENV_DEBUG ? "esbuild" : false,
+    minify: (process.env.TAURI_ENV_DEBUG ? false : "esbuild") as false | "esbuild",
     sourcemap: !!process.env.TAURI_ENV_DEBUG,
     rollupOptions: {
       input: ["index.html", "login.html"],
