@@ -1,7 +1,7 @@
 ID,REGIST_DATETIME,REGIST_USER,UPDATE_DATETIME,UPDATE_USER,USER_ID,ACCOUNT_NAME,COLOR,ICON_PATH,SORT_ORDER
 1,2025-02-01 00:00:00,coara,2025-02-01 00:00:00,coara,coara,財布,#A56846,/icon/custom/01-money/wallet-solid-full.svg,1
 2,2025-02-01 00:00:00,coara,2026-02-12 09:29:53,coara,coara,みずほ銀行,#408CE5,/icon/custom/01-money/credit-card-solid-full.svg,2
-3,2026-02-12 06:06:02,coara,2026-02-14 13:06:18,coara,coara,paypay,#EA6F76,/icon/custom/01-money/cc-paypal-brands-solid-full.svg,0
+3,2026-02-12 06:06:02,coara,2026-02-14 13:06:18,coara,coara,paypay,#EA6F76,/icon/custom/05-documents/qrcode-solid-full.svg,0
 4,2026-02-12 06:06:07,coara,2026-02-12 06:06:07,coara,coara,その他,#C6D6DE,/icon/custom/01-money/coins-solid-full.svg,4
 5,2026-02-14 16:01:24,coara,2026-02-14 16:01:24,coara,coara,家族ウォレット,#ED83C3,/icon/custom/01-money/piggy-bank-solid-full.svg,5
 6,2025-02-01 00:00:00,panda,2025-02-01 00:00:00,panda,panda,財布,#A56846,,1

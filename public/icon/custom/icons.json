@@ -1,7 +1,6 @@
 {
   "01-money": [
     "cash-app-brands-solid-full.svg",
-    "cc-paypal-brands-solid-full.svg",
     "coins-solid-full.svg",
     "credit-card-solid-full.svg",
     "database-solid-full.svg",
@@ -58,7 +57,6 @@
     "bucket-solid-full.svg",
     "calendar-check-solid-full.svg",
     "calendar-solid-full.svg",
-    "camera-solid-full.svg",
     "cart-shopping-solid-full.svg",
     "chair-solid-full.svg",
     "champagne-glasses-solid-full.svg",
@@ -96,7 +94,6 @@
     "ticket-solid-full.svg",
     "toilet-paper-solid-full.svg",
     "tv-solid-full.svg",
-    "umbrella-solid-full.svg",
     "wifi-solid-full.svg"
   ],
   "04-buildings": [
@@ -158,6 +155,7 @@
     "van-shuttle-solid-full.svg"
   ],
   "11-hobby": [
+    "camera-solid-full.svg",
     "campground-solid-full.svg",
     "clapperboard-solid-full.svg",
     "compact-disc-solid-full.svg",
@@ -203,7 +201,8 @@
   "15-weather": [
     "bolt-solid-full.svg",
     "cloud-solid-full.svg",
-    "rainbow-solid-full.svg"
+    "rainbow-solid-full.svg",
+    "umbrella-solid-full.svg"
   ],
   "16-evets": [
     "award-solid-full.svg",

@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "node scripts/generate-custom-icons-json.js && vite",
+    "dev:host": "node scripts/generate-custom-icons-json.js && vite --host",
     "build": "node scripts/generate-custom-icons-json.js && tsc && vite build",
     "preview": "vite preview",
     "tauri": "set \"CARGO_BUILD_JOBS=1\" && set \"PATH=%USERPROFILE%\\.cargo\\bin;%PATH%\" && tauri"
