@@ -4,7 +4,6 @@ import {
   currentView,
   accountListFull,
   accountList,
-  accountListLoaded,
   accountDeleteMode,
   accountPermissionListFull,
   setAccountListFull,
@@ -336,11 +335,9 @@ function deleteAccountRow(accountId: string): void {
 // ---------------------------------------------------------------------------
 
 export async function loadAndRenderAccountList(): Promise<void> {
-  if (!accountListLoaded) {
-    const [list] = await Promise.all([fetchAccountList(), fetchAccountPermissionList()]);
-    setAccountListFull(list);
-    setAccountListLoaded(true);
-  }
+  const [list] = await Promise.all([fetchAccountList(), fetchAccountPermissionList()]);
+  setAccountListFull(list);
+  setAccountListLoaded(true);
   let next = currentUserId
     ? accountListFull.filter((r) => r.USER_ID === currentUserId)
     : [...accountListFull];

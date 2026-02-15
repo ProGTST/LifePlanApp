@@ -4,7 +4,6 @@ import {
   currentView,
   tagListFull,
   tagList,
-  tagListLoaded,
   tagDeleteMode,
   setTagListFull,
   setTagList,
@@ -170,11 +169,9 @@ function deleteTagRow(tagId: string): void {
 }
 
 export async function loadAndRenderTagList(): Promise<void> {
-  if (!tagListLoaded) {
-    const list = await fetchTagList();
-    setTagListFull(list);
-    setTagListLoaded(true);
-  }
+  const list = await fetchTagList();
+  setTagListFull(list);
+  setTagListLoaded(true);
   const sorted = tagListFull.slice().sort((a, b) => sortOrderNum(a.SORT_ORDER, b.SORT_ORDER));
   setTagList(sorted);
   document.getElementById("header-delete-btn")?.classList.toggle("is-active", tagDeleteMode);

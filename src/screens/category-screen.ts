@@ -4,7 +4,6 @@ import {
   currentView,
   categoryListFull,
   categoryList,
-  categoryListLoaded,
   categoryDeleteMode,
   setCategoryListFull,
   setCategoryList,
@@ -307,11 +306,9 @@ function deleteCategoryRow(categoryId: string): void {
 }
 
 export async function loadAndRenderCategoryList(): Promise<void> {
-  if (!categoryListLoaded) {
-    const list = await fetchCategoryList();
-    setCategoryListFull(list);
-    setCategoryListLoaded(true);
-  }
+  const list = await fetchCategoryList();
+  setCategoryListFull(list);
+  setCategoryListLoaded(true);
   const sorted = categoryListFull.slice().sort((a, b) => sortOrderNum(a.SORT_ORDER, b.SORT_ORDER));
   setCategoryList(sorted);
   updateCategoryTabsActive();
