@@ -73,27 +73,56 @@
             <div id="view-schedule" class="main-view main-view--hidden" data-view="schedule">
               <div class="view-body schedule-view-body">
                 <div class="schedule-view-toolbar">
-                  <label for="schedule-start-date" class="schedule-view-label">開始日</label>
-                  <input type="date" id="schedule-start-date" class="schedule-view-date-input" aria-label="開始日" />
-                  <div class="schedule-view-unit" role="radiogroup" aria-label="表示単位">
-                    <label class="schedule-view-unit-option"><input type="radio" name="schedule-unit" value="day" checked /> 日単位</label>
-                    <label class="schedule-view-unit-option"><input type="radio" name="schedule-unit" value="week" /> 週単位</label>
-                    <label class="schedule-view-unit-option"><input type="radio" name="schedule-unit" value="month" /> 月単位</label>
+                  <div class="schedule-view-toolbar-left">
+                    <label for="schedule-start-date" class="schedule-view-label">開始日</label>
+                    <input type="date" id="schedule-start-date" class="schedule-view-date-input" aria-label="開始日" />
+                    <div class="schedule-view-unit" role="radiogroup" aria-label="表示単位">
+                      <label class="schedule-view-unit-option"><input type="radio" name="schedule-unit" value="day" checked /> 日単位</label>
+                      <label class="schedule-view-unit-option"><input type="radio" name="schedule-unit" value="week" /> 週単位</label>
+                      <label class="schedule-view-unit-option"><input type="radio" name="schedule-unit" value="month" /> 月単位</label>
+                    </div>
+                  </div>
+                  <div class="schedule-view-toolbar-day-range is-hidden" id="schedule-day-range-wrap">
+                    <label for="schedule-past-months" class="schedule-view-label">過去</label>
+                    <select id="schedule-past-months" class="schedule-view-month-select" aria-label="過去の月数">
+                      <option value="1">1ヶ月</option>
+                      <option value="2">2ヶ月</option>
+                      <option value="3" selected>3ヶ月</option>
+                      <option value="4">4ヶ月</option>
+                      <option value="5">5ヶ月</option>
+                      <option value="6">6ヶ月</option>
+                      <option value="7">7ヶ月</option>
+                      <option value="8">8ヶ月</option>
+                      <option value="9">9ヶ月</option>
+                      <option value="10">10ヶ月</option>
+                      <option value="11">11ヶ月</option>
+                      <option value="12">12ヶ月</option>
+                    </select>
+                    <label for="schedule-future-months" class="schedule-view-label">未来</label>
+                    <select id="schedule-future-months" class="schedule-view-month-select" aria-label="未来の月数">
+                      <option value="1">1ヶ月</option>
+                      <option value="2">2ヶ月</option>
+                      <option value="3">3ヶ月</option>
+                      <option value="4">4ヶ月</option>
+                      <option value="5">5ヶ月</option>
+                      <option value="6" selected>6ヶ月</option>
+                      <option value="7">7ヶ月</option>
+                      <option value="8">8ヶ月</option>
+                      <option value="9">9ヶ月</option>
+                      <option value="10">10ヶ月</option>
+                      <option value="11">11ヶ月</option>
+                      <option value="12">12ヶ月</option>
+                    </select>
                   </div>
                 </div>
                 <div class="schedule-view-grid-wrap">
-                  <div class="schedule-fixed-wrap">
-                    <table class="schedule-view-table schedule-view-table--fixed" aria-label="スケジュール（固定列）">
-                      <thead><tr><th scope="col">種別</th><th scope="col">カテゴリー</th><th scope="col">取引名</th><th scope="col">状況</th></tr></thead>
-                      <tbody id="schedule-tbody-fixed"></tbody>
-                    </table>
-                  </div>
-                  <div class="schedule-scroll-wrap">
-                    <table class="schedule-view-table schedule-view-table--dates" aria-label="スケジュール（日付列）">
-                      <thead><tr id="schedule-yearmonth-row"></tr><tr id="schedule-head-row"></tr></thead>
-                      <tbody id="schedule-tbody"></tbody>
-                    </table>
-                  </div>
+                  <table class="schedule-view-table" id="schedule-table" aria-label="スケジュール">
+                    <thead>
+                      <tr id="schedule-yearmonth-row"></tr>
+                      <tr id="schedule-head-row"></tr>
+                    </thead>
+                    <tbody id="schedule-tbody"></tbody>
+                  </table>
                 </div>
               </div>
             </div>
