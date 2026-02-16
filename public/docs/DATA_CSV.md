@@ -120,9 +120,8 @@ LifePlanGant で扱う収支・タグ・勘定項目のデータは、`data/` �
 | STATUS | 計画 | `plan`（予定） / `actual`（実績） |
 | CATEGORY_ID | カテゴリID | CATEGORY.ID への参照 |
 | NAME | 項目名 | 例: 給与, スーパー買い物 |
-| ACTUAL_DATE | 実績日 | 日付（YYYY-MM-DD）。実績と計画で使用。予定の場合は計画の開始日と同一日を設定 |
-| PLAN_DATE_FROM | 計画の開始日 | 日付（YYYY-MM-DD）。実績と計画で使用。実績の場合は実績日と同一日を設定 |
-| PLAN_DATE_TO | 計画の終了日 | 日付（YYYY-MM-DD）。実績と計画で使用。実績の場合は実績日と同一日を設定 |
+| TRANDATE_FROM | 取引日（開始） | 日付（YYYY-MM-DD）。実績の場合は 1 日のみ入力可能で TRANDATE_TO と同一日を設定。予定の場合は範囲の開始日 |
+| TRANDATE_TO | 取引日（終了） | 日付（YYYY-MM-DD）。実績の場合は TRANDATE_FROM と同一日。予定の場合は範囲の終了日 |
 | AMOUNT | 金額 | 数値（円など単位はアプリ側で統一） |
 | MEMO | メモ | 任意 |
 | ACCOUNT_ID_IN | 勘定項目ID（収入、振替） | ACCOUNT.ID への参照。収益や振替の入金先を指定 |

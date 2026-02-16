@@ -88,9 +88,8 @@ export interface TransactionRow {
   STATUS: string;
   CATEGORY_ID: string;
   NAME: string;
-  ACTUAL_DATE: string;
-  PLAN_DATE_FROM: string;
-  PLAN_DATE_TO: string;
+  TRANDATE_FROM: string;
+  TRANDATE_TO: string;
   AMOUNT: string;
   MEMO: string;
   ACCOUNT_ID_IN: string;

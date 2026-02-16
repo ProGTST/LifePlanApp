@@ -698,14 +698,16 @@ async function loadFormForEdit(transactionId: string): Promise<void> {
   const dateEl = document.getElementById("transaction-entry-date") as HTMLInputElement | null;
   const dateFromEl = document.getElementById("transaction-entry-date-from") as HTMLInputElement | null;
   const dateToEl = document.getElementById("transaction-entry-date-to") as HTMLInputElement | null;
+  const from = row.TRANDATE_FROM || "";
+  const to = row.TRANDATE_TO || "";
   if (status === "plan") {
-    if (dateFromEl) dateFromEl.value = row.PLAN_DATE_FROM || "";
-    if (dateToEl) dateToEl.value = row.PLAN_DATE_TO || "";
-    if (dateEl) dateEl.value = row.ACTUAL_DATE || "";
+    if (dateFromEl) dateFromEl.value = from;
+    if (dateToEl) dateToEl.value = to;
+    if (dateEl) dateEl.value = from;
   } else {
-    if (dateEl) dateEl.value = row.ACTUAL_DATE || "";
-    if (dateFromEl) dateFromEl.value = row.PLAN_DATE_FROM || "";
-    if (dateToEl) dateToEl.value = row.PLAN_DATE_TO || "";
+    if (dateEl) dateEl.value = from;
+    if (dateFromEl) dateFromEl.value = from;
+    if (dateToEl) dateToEl.value = to;
   }
   const amountEl = document.getElementById("transaction-entry-amount") as HTMLInputElement | null;
   if (amountEl) amountEl.value = row.AMOUNT || "";
@@ -771,6 +773,8 @@ function buildNewRow(form: HTMLFormElement, nextId: number): Record<string, stri
   const accountIn = (form.querySelector("#transaction-entry-account-in") as HTMLInputElement)?.value ?? "";
   const accountOut = (form.querySelector("#transaction-entry-account-out") as HTMLInputElement)?.value ?? "";
   const userId = currentUserId ?? "";
+  const trFrom = status === "plan" ? dateFrom : date;
+  const trTo = status === "plan" ? dateTo : date;
   const row: Record<string, string> = {
     ID: String(nextId),
     REGIST_DATETIME: "",
@@ -781,9 +785,8 @@ function buildNewRow(form: HTMLFormElement, nextId: number): Record<string, stri
     STATUS: status,
     CATEGORY_ID: categoryId,
     NAME: name,
-    ACTUAL_DATE: status === "plan" ? dateFrom : date,
-    PLAN_DATE_FROM: status === "plan" ? dateFrom : date,
-    PLAN_DATE_TO: status === "plan" ? dateTo : date,
+    TRANDATE_FROM: trFrom,
+    TRANDATE_TO: trTo,
     AMOUNT: amount,
     MEMO: memo,
     ACCOUNT_ID_IN: type === "income" || type === "transfer" ? accountIn : "",
@@ -806,6 +809,8 @@ function buildUpdatedRow(form: HTMLFormElement, existing: TransactionRow): Recor
   const accountIn = (form.querySelector("#transaction-entry-account-in") as HTMLInputElement)?.value ?? "";
   const accountOut = (form.querySelector("#transaction-entry-account-out") as HTMLInputElement)?.value ?? "";
   const userId = currentUserId ?? "";
+  const trFrom = status === "plan" ? dateFrom : date;
+  const trTo = status === "plan" ? dateTo : date;
   const row: Record<string, string> = {
     ID: existing.ID,
     VERSION: existing.VERSION ?? "0",
@@ -817,9 +822,8 @@ function buildUpdatedRow(form: HTMLFormElement, existing: TransactionRow): Recor
     STATUS: status,
     CATEGORY_ID: categoryId,
     NAME: name,
-    ACTUAL_DATE: status === "plan" ? dateFrom : date,
-    PLAN_DATE_FROM: status === "plan" ? dateFrom : date,
-    PLAN_DATE_TO: status === "plan" ? dateTo : date,
+    TRANDATE_FROM: trFrom,
+    TRANDATE_TO: trTo,
     AMOUNT: amount,
     MEMO: memo,
     ACCOUNT_ID_IN: type === "income" || type === "transfer" ? accountIn : "",

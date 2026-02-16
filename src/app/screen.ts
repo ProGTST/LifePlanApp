@@ -205,6 +205,6 @@ export function showMainView(viewId: string): void {
   if (footerSettingsBtn) footerSettingsBtn.classList.toggle("is-visible", isProfileOrDesign);
   if (footerBackBtn) footerBackBtn.classList.toggle("is-visible", showFooterNav || isTransactionView);
 
-  const handlerViewId = isTransactionHistorySubView ? "transaction-history" : viewId;
+  const handlerViewId = viewId;
   viewHandlers[handlerViewId]?.();
 }

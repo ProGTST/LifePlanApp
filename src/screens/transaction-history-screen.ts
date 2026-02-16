@@ -16,8 +16,6 @@ import {
   setTransactionEntryEditId,
   setTransactionEntryViewOnly,
   pushNavigation,
-  transactionHistoryInitialTab,
-  setTransactionHistoryInitialTab,
 } from "../state";
 import { setDisplayedKeys } from "../utils/csvWatch.ts";
 import { fetchCsv, rowToObject } from "../utils/csv";
@@ -26,8 +24,6 @@ import { updateCurrentMenuItem } from "../app/sidebar";
 import { createIconWrap } from "../utils/iconWrap";
 import { openOverlay, closeOverlay } from "../utils/overlay.ts";
 import { ICON_DEFAULT_COLOR } from "../constants/colorPresets";
-import { Chart, registerables } from "chart.js";
-import ChartDataLabels from "chartjs-plugin-datalabels";
 
 // ---------------------------------------------------------------------------
 // 定数・状態
@@ -51,8 +47,68 @@ let filterAmountMin = "";
 let filterAmountMax = "";
 let filterFreeText = "";
 
-/** 週別・カレンダータブで表示する年月（YYYY-MM） */
-let selectedCalendarYM = "";
+/** フィルター変更時にカレンダー側で再描画するためのコールバック（calendar-screen が登録） */
+let onFilterChangeCallback: (() => void) | null = null;
+
+/**
+ * フィルター変更時のコールバックを登録する。カレンダー表示の再描画用。
+ * @param fn - コールバック関数
+ */
+export function registerFilterChangeCallback(fn: () => void): void {
+  onFilterChangeCallback = fn;
+}
+
+/**
+ * フィルター適用後の取引一覧を返す。カレンダー画面などから利用する。
+ */
+export function getFilteredTransactionList(): TransactionRow[] {
+  return applyFilters(transactionList);
+}
+
+/**
+ * 日付フィルターを指定し、画面上の日付入力欄を同期する。カレンダーで日付セルクリック時に使用。
+ * @param from - 開始日（YYYY-MM-DD）
+ * @param to - 終了日（YYYY-MM-DD）
+ */
+export function setFilterDateFromTo(from: string, to: string): void {
+  filterDateFrom = from;
+  filterDateTo = to;
+  const dateFromEl = document.getElementById("transaction-history-date-from") as HTMLInputElement | null;
+  const dateToEl = document.getElementById("transaction-history-date-to") as HTMLInputElement | null;
+  if (dateFromEl) {
+    dateFromEl.value = from;
+    dateFromEl.classList.remove("is-empty");
+  }
+  if (dateToEl) {
+    dateToEl.value = to;
+    dateToEl.classList.remove("is-empty");
+  }
+}
+
+/**
+ * 取引・マスタデータを CSV から取得し state に反映する。一覧・カレンダー両方で利用。
+ * @param noCache - true のときキャッシュを使わない
+ * @returns 完了する Promise
+ */
+export function loadTransactionData(noCache = false): Promise<void> {
+  return Promise.all([
+    fetchTransactionList(noCache),
+    fetchCategoryList(noCache),
+    fetchTagList(noCache),
+    fetchAccountList(noCache),
+    fetchAccountPermissionList(noCache),
+    fetchTagManagementList(noCache),
+  ]).then(([txList, catList, tagList, accList, permList, tagMgmt]) => {
+    const visibleIds = getVisibleAccountIds(accList, permList);
+    const filteredTx = filterTransactionsByVisibleAccounts(txList, visibleIds);
+    setTransactionList(filteredTx);
+    categoryRows = catList;
+    tagRows = tagList;
+    accountRows = accList;
+    permissionRows = permList;
+    setTagManagementList(tagMgmt);
+  });
+}
 
 // ---------------------------------------------------------------------------
 // データ取得
@@ -198,7 +254,7 @@ async function fetchTagManagementList(noCache = false): Promise<TagManagementRow
  * @param id - カテゴリー ID
  * @returns 該当行または undefined
  */
-function getCategoryById(id: string): CategoryRow | undefined {
+export function getCategoryById(id: string): CategoryRow | undefined {
   return categoryRows.find((c) => c.ID === id);
 }
 
@@ -207,7 +263,7 @@ function getCategoryById(id: string): CategoryRow | undefined {
  * @param id - 勘定 ID
  * @returns 該当行または undefined
  */
-function getAccountById(id: string): AccountRow | undefined {
+export function getAccountById(id: string): AccountRow | undefined {
   return accountRows.find((a) => a.ID === id);
 }
 
@@ -261,16 +317,15 @@ function applyFilters(rows: TransactionRow[]): TransactionRow[] {
     if (filterStatus.length > 0 && !filterStatus.includes(row.STATUS as "plan" | "actual")) return false;
     if (filterType.length > 0 && !filterType.includes(row.TYPE as "income" | "expense" | "transfer")) return false;
     if (filterDateFrom || filterDateTo) {
+      const from = row.TRANDATE_FROM || "";
+      const to = row.TRANDATE_TO || "";
       if (row.STATUS === "actual") {
-        const date = row.ACTUAL_DATE || "";
-        if (filterDateFrom && date < filterDateFrom) return false;
-        if (filterDateTo && date > filterDateTo) return false;
+        if (filterDateFrom && from < filterDateFrom) return false;
+        if (filterDateTo && from > filterDateTo) return false;
       } else {
-        const planFrom = row.PLAN_DATE_FROM || "";
-        const planTo = row.PLAN_DATE_TO || "";
-        if (!planFrom || !planTo) return false;
-        if (filterDateFrom && planTo < filterDateFrom) return false;
-        if (filterDateTo && planFrom > filterDateTo) return false;
+        if (!from || !to) return false;
+        if (filterDateFrom && to < filterDateFrom) return false;
+        if (filterDateTo && from > filterDateTo) return false;
       }
     }
     if (filterCategoryIds.length > 0 && !filterCategoryIds.includes(row.CATEGORY_ID)) return false;
@@ -295,375 +350,17 @@ function applyFilters(rows: TransactionRow[]): TransactionRow[] {
     return true;
   });
   return filtered.slice().sort((a, b) => {
-    const ad = a.ACTUAL_DATE || "";
-    const bd = b.ACTUAL_DATE || "";
-    const cmpDate = bd.localeCompare(ad);
-    if (cmpDate !== 0) return cmpDate;
-    const apf = a.PLAN_DATE_FROM || "";
-    const bpf = b.PLAN_DATE_FROM || "";
-    const cmpPlanFrom = bpf.localeCompare(apf);
-    if (cmpPlanFrom !== 0) return cmpPlanFrom;
-    const apt = a.PLAN_DATE_TO || "";
-    const bpt = b.PLAN_DATE_TO || "";
-    const cmpPlanTo = bpt.localeCompare(apt);
-    if (cmpPlanTo !== 0) return cmpPlanTo;
+    const af = a.TRANDATE_FROM || "";
+    const bf = b.TRANDATE_FROM || "";
+    const cmpFrom = bf.localeCompare(af);
+    if (cmpFrom !== 0) return cmpFrom;
+    const at = a.TRANDATE_TO || "";
+    const bt = b.TRANDATE_TO || "";
+    const cmpTo = bt.localeCompare(at);
+    if (cmpTo !== 0) return cmpTo;
     const ar = a.REGIST_DATETIME || "";
     const br = b.REGIST_DATETIME || "";
     return br.localeCompare(ar);
-  });
-}
-
-/**
- * 指定日付のカレンダー表示用サマリーを返す。予・実は件数、収・支・振は金額（予定の金額は予定終了日のみ集計）。
- * @param dateStr - 日付（YYYY-MM-DD）
- * @returns planCount, actualCount, incomeAmount, expenseAmount, transferAmount
- */
-function getCalendarDaySummary(
-  dateStr: string
-): { planCount: number; actualCount: number; incomeAmount: number; expenseAmount: number; transferAmount: number } {
-  const filtered = applyFilters(transactionList);
-  let planCount = 0;
-  let actualCount = 0;
-  let incomeAmount = 0;
-  let expenseAmount = 0;
-  let transferAmount = 0;
-  for (const row of filtered) {
-    if (row.STATUS === "actual") {
-      if (row.ACTUAL_DATE === dateStr) {
-        actualCount += 1;
-        const type = (row.TYPE || "expense").toLowerCase();
-        if (type === "income") incomeAmount += Number(row.AMOUNT) || 0;
-        else if (type === "expense") expenseAmount += Number(row.AMOUNT) || 0;
-        else if (type === "transfer") transferAmount += Number(row.AMOUNT) || 0;
-      }
-      continue;
-    }
-    const planFrom = row.PLAN_DATE_FROM || "";
-    const planTo = row.PLAN_DATE_TO || "";
-    if (!planFrom || !planTo) continue;
-    const inPlanRange = planFrom <= dateStr && dateStr <= planTo;
-    if (inPlanRange) planCount += 1;
-    if (dateStr === planTo) {
-      const type = (row.TYPE || "").toLowerCase();
-      if (type === "income") incomeAmount += Number(row.AMOUNT) || 0;
-      else if (type === "expense") expenseAmount += Number(row.AMOUNT) || 0;
-      else if (type === "transfer") transferAmount += Number(row.AMOUNT) || 0;
-    }
-  }
-  return { planCount, actualCount, incomeAmount, expenseAmount, transferAmount };
-}
-
-/**
- * 指定年月の収入合計・支出合計を予定と実績で分けて返す（カレンダー月合計用）。実績は ACTUAL_DATE、予定は PLAN_DATE_TO がその月のものを集計。
- * @param year - 年
- * @param month - 月（1-12）
- * @returns planIncome, planExpense, actualIncome, actualExpense
- */
-function getCalendarMonthTotals(
-  year: number,
-  month: number
-): { planIncome: number; planExpense: number; actualIncome: number; actualExpense: number } {
-  const monthStr = `${year}-${String(month).padStart(2, "0")}`;
-  const firstDay = monthStr + "-01";
-  const lastDate = new Date(year, month, 0).getDate();
-  const lastDay = monthStr + "-" + String(lastDate).padStart(2, "0");
-  const filtered = applyFilters(transactionList);
-  let planIncome = 0;
-  let planExpense = 0;
-  let actualIncome = 0;
-  let actualExpense = 0;
-  for (const row of filtered) {
-    if (row.STATUS === "actual") {
-      const d = row.ACTUAL_DATE || "";
-      if (d < firstDay || d > lastDay) continue;
-      const type = (row.TYPE || "expense").toLowerCase();
-      const amount = Number(row.AMOUNT) || 0;
-      if (type === "income") actualIncome += amount;
-      else if (type === "expense") actualExpense += amount;
-      continue;
-    }
-    const planTo = row.PLAN_DATE_TO || "";
-    if (!planTo || planTo < firstDay || planTo > lastDay) continue;
-    const type = (row.TYPE || "").toLowerCase();
-    const amount = Number(row.AMOUNT) || 0;
-    if (type === "income") planIncome += amount;
-    else if (type === "expense") planExpense += amount;
-  }
-  return { planIncome, planExpense, actualIncome, actualExpense };
-}
-
-/** グラフ用に登録済みか */
-let chartJsRegistered = false;
-/** 作成した Chart インスタンス（破棄用） */
-const chartInstances: Chart[] = [];
-
-/**
- * 指定年月のグラフ用データを集計する。日別の予定・実績収支とカテゴリー別集計を返す。
- * @param ym - 年月（YYYY-MM）
- * @returns 日別系列とカテゴリー別集計
- */
-function getChartDataForMonth(ym: string): {
-  labels: string[];
-  planIncomeByDay: number[];
-  actualIncomeByDay: number[];
-  planExpenseByDay: number[];
-  actualExpenseByDay: number[];
-  planIncomeByCategory: Array<{ id: string; name: string; amount: number; color: string }>;
-  planExpenseByCategory: Array<{ id: string; name: string; amount: number; color: string }>;
-  actualIncomeByCategory: Array<{ id: string; name: string; amount: number; color: string }>;
-  actualExpenseByCategory: Array<{ id: string; name: string; amount: number; color: string }>;
-} {
-  const m = ym.match(/^(\d{4})-(\d{2})$/);
-  if (!m) {
-    return {
-      labels: [],
-      planIncomeByDay: [],
-      actualIncomeByDay: [],
-      planExpenseByDay: [],
-      actualExpenseByDay: [],
-      planIncomeByCategory: [],
-      planExpenseByCategory: [],
-      actualIncomeByCategory: [],
-      actualExpenseByCategory: [],
-    };
-  }
-  const year = parseInt(m[1], 10);
-  const month = parseInt(m[2], 10);
-  const firstDay = ym + "-01";
-  const lastDate = new Date(year, month, 0).getDate();
-  const lastDay = ym + "-" + String(lastDate).padStart(2, "0");
-  const pad = (n: number) => String(n).padStart(2, "0");
-  const labels: string[] = [];
-  const planIncomeByDay: number[] = [];
-  const actualIncomeByDay: number[] = [];
-  const planExpenseByDay: number[] = [];
-  const actualExpenseByDay: number[] = [];
-  for (let d = 1; d <= lastDate; d++) {
-    labels.push(pad(d) + "日");
-    planIncomeByDay.push(0);
-    actualIncomeByDay.push(0);
-    planExpenseByDay.push(0);
-    actualExpenseByDay.push(0);
-  }
-  const planIncomeCat: Record<string, number> = {};
-  const planExpenseCat: Record<string, number> = {};
-  const actualIncomeCat: Record<string, number> = {};
-  const actualExpenseCat: Record<string, number> = {};
-  const filtered = applyFilters(transactionList);
-  for (const row of filtered) {
-    const type = (row.TYPE || "expense").toLowerCase();
-    const amount = Number(row.AMOUNT) || 0;
-    const catId = row.CATEGORY_ID || "";
-    if (row.STATUS === "actual") {
-      const d = row.ACTUAL_DATE || "";
-      if (d < firstDay || d > lastDay) continue;
-      const dayIdx = parseInt(d.slice(8, 10), 10) - 1;
-      if (dayIdx < 0 || dayIdx >= labels.length) continue;
-      if (type === "income") {
-        actualIncomeByDay[dayIdx] += amount;
-        actualIncomeCat[catId] = (actualIncomeCat[catId] || 0) + amount;
-      } else if (type === "expense") {
-        actualExpenseByDay[dayIdx] += amount;
-        actualExpenseCat[catId] = (actualExpenseCat[catId] || 0) + amount;
-      }
-      continue;
-    }
-    const planTo = row.PLAN_DATE_TO || "";
-    if (!planTo || planTo < firstDay || planTo > lastDay) continue;
-    const dayIdx = parseInt(planTo.slice(8, 10), 10) - 1;
-    if (dayIdx < 0 || dayIdx >= labels.length) continue;
-    if (type === "income") {
-      planIncomeByDay[dayIdx] += amount;
-      planIncomeCat[catId] = (planIncomeCat[catId] || 0) + amount;
-    } else if (type === "expense") {
-      planExpenseByDay[dayIdx] += amount;
-      planExpenseCat[catId] = (planExpenseCat[catId] || 0) + amount;
-    }
-  }
-  const toCategoryArray = (
-    rec: Record<string, number>
-  ): Array<{ id: string; name: string; amount: number; color: string }> =>
-    Object.entries(rec).map(([id, amount]) => ({
-      id,
-      name: getCategoryById(id)?.CATEGORY_NAME?.trim() || "未分類",
-      amount,
-      color: getCategoryById(id)?.COLOR || "#888888",
-    }));
-  return {
-    labels,
-    planIncomeByDay,
-    actualIncomeByDay,
-    planExpenseByDay,
-    actualExpenseByDay,
-    planIncomeByCategory: toCategoryArray(planIncomeCat),
-    planExpenseByCategory: toCategoryArray(planExpenseCat),
-    actualIncomeByCategory: toCategoryArray(actualIncomeCat),
-    actualExpenseByCategory: toCategoryArray(actualExpenseCat),
-  };
-}
-
-/**
- * 週カレンダー・月カレンダー用のグラフを描画する。指定年月のデータで 6 本のグラフを更新する。
- * @param ym - 年月（YYYY-MM）
- * @returns なし
- */
-function renderCharts(ym: string): void {
-  chartInstances.forEach((ch) => ch.destroy());
-  chartInstances.length = 0;
-  if (!ym || !/^\d{4}-\d{2}$/.test(ym)) return;
-  if (!chartJsRegistered) {
-    Chart.register(...registerables, ChartDataLabels);
-    chartJsRegistered = true;
-  }
-  const data = getChartDataForMonth(ym);
-  const chartOptions = { responsive: true, maintainAspectRatio: true, aspectRatio: 2 };
-  const incomeDiffByDay = data.labels.map((_, i) => data.actualIncomeByDay[i] - data.planIncomeByDay[i]);
-  const expenseDiffByDay = data.labels.map((_, i) => data.planExpenseByDay[i] - data.actualExpenseByDay[i]);
-  const mixedOptions = {
-    ...chartOptions,
-    scales: {
-      x: { title: { display: true, text: "日付" } },
-      y: { title: { display: true, text: "金額" }, beginAtZero: false },
-    },
-  };
-  const incomeDiffCanvas = document.getElementById("transaction-history-chart-income-diff") as HTMLCanvasElement | null;
-  if (incomeDiffCanvas) {
-    const ch = new Chart(incomeDiffCanvas, {
-      type: "bar",
-      data: {
-        labels: data.labels,
-        datasets: [
-          {
-            type: "bar",
-            label: "差分(実績−予定)",
-            data: incomeDiffByDay,
-            backgroundColor: "rgba(100, 100, 100, 0.6)",
-            order: 2,
-          },
-          {
-            type: "line",
-            label: "実績収入",
-            data: data.actualIncomeByDay,
-            borderColor: "rgb(46, 125, 50)",
-            backgroundColor: "rgba(46, 125, 50, 0.1)",
-            fill: false,
-            tension: 0.2,
-            order: 1,
-          },
-          {
-            type: "line",
-            label: "予定収入",
-            data: data.planIncomeByDay,
-            borderColor: "rgba(46, 125, 50, 0.7)",
-            borderDash: [4, 2],
-            backgroundColor: "transparent",
-            fill: false,
-            tension: 0.2,
-            order: 1,
-          },
-        ],
-      },
-      options: mixedOptions,
-    });
-    chartInstances.push(ch);
-  }
-  const expenseDiffCanvas = document.getElementById("transaction-history-chart-expense-diff") as HTMLCanvasElement | null;
-  if (expenseDiffCanvas) {
-    const ch = new Chart(expenseDiffCanvas, {
-      type: "bar",
-      data: {
-        labels: data.labels,
-        datasets: [
-          {
-            type: "bar",
-            label: "差分(予定−実績)",
-            data: expenseDiffByDay,
-            backgroundColor: "rgba(100, 100, 100, 0.6)",
-            order: 2,
-          },
-          {
-            type: "line",
-            label: "実績支出",
-            data: data.actualExpenseByDay,
-            borderColor: "rgb(198, 40, 40)",
-            backgroundColor: "rgba(198, 40, 40, 0.1)",
-            fill: false,
-            tension: 0.2,
-            order: 1,
-          },
-          {
-            type: "line",
-            label: "予定支出",
-            data: data.planExpenseByDay,
-            borderColor: "rgba(198, 40, 40, 0.7)",
-            borderDash: [4, 2],
-            backgroundColor: "transparent",
-            fill: false,
-            tension: 0.2,
-            order: 1,
-          },
-        ],
-      },
-      options: mixedOptions,
-    });
-    chartInstances.push(ch);
-  }
-  const pieOptions = {
-    ...chartOptions,
-    plugins: {
-      legend: { position: "bottom" as const },
-      datalabels: {
-        formatter: (value: number, ctx: { chart: Chart; dataIndex: number }) => {
-          const ds = ctx.chart.data.datasets[0];
-          const total = (ds.data as number[]).reduce((a, b) => a + b, 0);
-          const pct = total ? Math.round((value / total) * 100) : 0;
-          return `${pct}%`;
-        },
-        color: "#fff",
-        font: { size: 11, weight: "bold" as const },
-      },
-    },
-  };
-  const makePie = (
-    canvasId: string,
-    items: Array<{ name: string; amount: number; color: string }>
-  ): void => {
-    const el = document.getElementById(canvasId) as HTMLCanvasElement | null;
-    if (!el) return;
-    const safeItems = items.length > 0 ? items : [{ name: "データなし", amount: 1, color: "#e0e0e0" }];
-    const ch = new Chart(el, {
-      type: "pie",
-      data: {
-        labels: safeItems.map((i) => i.name),
-        datasets: [{ data: safeItems.map((i) => i.amount), backgroundColor: safeItems.map((i) => i.color) }],
-      },
-      options: pieOptions,
-    });
-    chartInstances.push(ch);
-  };
-  makePie("transaction-history-chart-plan-income-pie", data.planIncomeByCategory);
-  makePie("transaction-history-chart-plan-expense-pie", data.planExpenseByCategory);
-  makePie("transaction-history-chart-actual-income-pie", data.actualIncomeByCategory);
-  makePie("transaction-history-chart-actual-expense-pie", data.actualExpenseByCategory);
-}
-
-/**
- * 指定期間（from〜to、YYYY-MM-DD  inclusive）に含まれる取引を返す。予定は PLAN_DATE_FROM〜PLAN_DATE_TO が期間と重なるものを含む。
- * @param from - 開始日
- * @param to - 終了日
- * @returns 取引行の配列
- */
-function getTransactionsInRange(from: string, to: string): TransactionRow[] {
-  const filtered = applyFilters(transactionList);
-  return filtered.filter((row) => {
-    if (row.STATUS === "actual") {
-      const d = row.ACTUAL_DATE || "";
-      return d >= from && d <= to;
-    }
-    const planFrom = row.PLAN_DATE_FROM || "";
-    const planTo = row.PLAN_DATE_TO || "";
-    if (!planFrom || !planTo) return false;
-    return planFrom <= to && planTo >= from;
   });
 }
 
@@ -672,7 +369,7 @@ function getTransactionsInRange(from: string, to: string): TransactionRow[] {
  * @param row - 取引行
  * @returns "view" | "edit" | null
  */
-function getRowPermissionType(row: TransactionRow): "view" | "edit" | null {
+export function getRowPermissionType(row: TransactionRow): "view" | "edit" | null {
   const me = currentUserId;
   if (!me) return null;
   const inId = (row.ACCOUNT_ID_IN || "").trim();
@@ -693,13 +390,13 @@ function getRowPermissionType(row: TransactionRow): "view" | "edit" | null {
 }
 
 /**
- * 予定データで予定終了日が今日より過去かどうかを返す（日付のみで比較、タイムゾーンに左右されない）。
+ * 予定データで取引終了日が今日より過去かどうかを返す（日付のみで比較、タイムゾーンに左右されない）。
  * @param row - 取引行
  * @returns 過去の予定なら true
  */
 function isPlanDateToPast(row: TransactionRow): boolean {
-  if (row.STATUS !== "plan" || !row.PLAN_DATE_TO?.trim()) return false;
-  const s = row.PLAN_DATE_TO.trim();
+  if (row.STATUS !== "plan" || !row.TRANDATE_TO?.trim()) return false;
+  const s = row.TRANDATE_TO.trim();
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
   if (!m) return false;
   const planY = parseInt(m[1], 10);
@@ -718,7 +415,7 @@ function isPlanDateToPast(row: TransactionRow): boolean {
  * 収支履歴の一覧タブのテーブルを描画する。フィルター適用済みの取引を行で表示する。
  * @returns なし
  */
-function renderList(): void {
+export function renderList(): void {
   const tbody = document.getElementById("transaction-history-tbody");
   if (!tbody) return;
   tbody.innerHTML = "";
@@ -731,7 +428,7 @@ function renderList(): void {
     if (permType === "view") tr.classList.add("transaction-history-row--permission-view");
     else if (permType === "edit") tr.classList.add("transaction-history-row--permission-edit");
     const tdDate = document.createElement("td");
-    tdDate.textContent = row.ACTUAL_DATE || "—";
+    tdDate.textContent = row.TRANDATE_FROM || "—";
     const cat = getCategoryById(row.CATEGORY_ID);
     const tdCat = document.createElement("td");
     const catWrap = document.createElement("div");
@@ -824,7 +521,7 @@ function renderList(): void {
     }
     const tdPlanDateTo = document.createElement("td");
     tdPlanDateTo.textContent =
-      row.STATUS === "plan" ? (row.PLAN_DATE_TO || "—") : "—";
+      row.STATUS === "plan" ? (row.TRANDATE_TO || "—") : "—";
     tr.appendChild(tdDate);
     tr.appendChild(tdCat);
     tr.appendChild(tdPlan);
@@ -848,475 +545,13 @@ function renderList(): void {
 }
 
 /**
- * 選択年月の週一覧を返す。各週は日曜〜土曜の範囲で、当月に含まれる日がある週のみ。
- * @param year - 年
- * @param month - 月（1-12）
- * @returns 週情報の配列（from, to, weekNumber, dateRange）
+ * フィルター変更後に一覧を再描画し、カレンダー表示中ならカレンダー側の再描画も依頼する。
  */
-function getWeeksInMonth(
-  year: number,
-  month: number
-): { from: string; to: string; weekNumber: number; dateRange: string }[] {
-  const first = new Date(year, month - 1, 1);
-  const last = new Date(year, month, 0);
-  const lastDate = last.getDate();
-  const pad = (n: number) => String(n).padStart(2, "0");
-  const weeks: { from: string; to: string; weekNumber: number; dateRange: string }[] = [];
-  let weekIndex = 0;
-  let sun = 1 - first.getDay();
-  while (sun <= lastDate) {
-    const sat = sun + 6;
-    const weekFrom = Math.max(1, sun);
-    const weekTo = Math.min(lastDate, sat);
-    if (weekFrom <= lastDate && weekTo >= 1) {
-      weekIndex += 1;
-      const fromStr = `${year}-${pad(month)}-${pad(weekFrom)}`;
-      const toStr = `${year}-${pad(month)}-${pad(weekTo)}`;
-      const dateRange = `${month}月${weekFrom}日～${month}月${weekTo}日`;
-      weeks.push({ from: fromStr, to: toStr, weekNumber: weekIndex, dateRange });
-    }
-    sun += 7;
+function notifyFilterChange(): void {
+  renderList();
+  if (currentView === "transaction-history-weekly" || currentView === "transaction-history-calendar") {
+    onFilterChangeCallback?.();
   }
-  return weeks;
-}
-
-const WEEKDAY_JA = ["日", "月", "火", "水", "木", "金", "土"];
-
-/**
- * YYYY-MM-DD を "2月1日(日)" 形式にフォーマットする。
- * @param dateStr - 日付文字列
- * @returns フォーマット後の文字列
- */
-function formatDateMdWeek(dateStr: string): string {
-  const match = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (!match) return "—";
-  const [, y, m, d] = match;
-  const month = parseInt(m, 10);
-  const day = parseInt(d, 10);
-  const date = new Date(parseInt(y, 10), month - 1, day);
-  const week = WEEKDAY_JA[date.getDay()];
-  return `${month}月${day}日(${week})`;
-}
-
-/**
- * 今日の日付を YYYY-MM-DD で返す。
- * @returns 日付文字列
- */
-function getTodayYMD(): string {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-
-/**
- * 指定週（from〜to）に今日が含まれるかどうかを返す。
- * @param from - 週の開始日（YYYY-MM-DD）
- * @param to - 週の終了日（YYYY-MM-DD）
- * @returns 含まれる場合 true
- */
-function isCurrentWeek(from: string, to: string): boolean {
-  const today = getTodayYMD();
-  return today >= from && today <= to;
-}
-
-/** YYYY-MM-DD に日数を加算した日付を返す（週表示の予定「中間日」判定用） */
-function addDays(dateStr: string, delta: number): string {
-  const [y, m, d] = dateStr.split("-").map(Number);
-  const date = new Date(y, m - 1, d + delta);
-  const yy = date.getFullYear();
-  const mm = String(date.getMonth() + 1).padStart(2, "0");
-  const dd = String(date.getDate()).padStart(2, "0");
-  return `${yy}-${mm}-${dd}`;
-}
-
-/**
- * 週表示パネルを描画する。選択年月の週ごとにブロックを生成し、各週の取引を表示する。
- * @returns なし
- */
-function renderWeeklyPanel(): void {
-  const container = document.getElementById("transaction-history-weekly-blocks");
-  if (!container) return;
-  container.innerHTML = "";
-  const m = selectedCalendarYM.match(/^(\d{4})-(\d{2})$/);
-  if (!m) return;
-  const year = parseInt(m[1], 10);
-  const month = parseInt(m[2], 10);
-  const weeks = getWeeksInMonth(year, month);
-  for (const week of weeks) {
-    const block = document.createElement("div");
-    block.className = "transaction-history-week-block";
-    const title = document.createElement("div");
-    title.className = "transaction-history-week-block-title";
-    if (isCurrentWeek(week.from, week.to)) {
-      title.classList.add("transaction-history-week-block-title--current");
-    }
-    const line1 = document.createElement("div");
-    line1.className = "transaction-history-week-block-title-line";
-    line1.textContent = `${week.weekNumber}週目`;
-    const line2 = document.createElement("div");
-    line2.className = "transaction-history-week-block-title-line";
-    line2.textContent = week.dateRange;
-    title.appendChild(line1);
-    title.appendChild(line2);
-    block.appendChild(title);
-    const list = document.createElement("div");
-    list.className = "transaction-history-week-block-list";
-    const rows = getTransactionsInRange(week.from, week.to);
-    const byDate = new Map<string, { row: TransactionRow; showAmount: boolean }[]>();
-    const push = (dateStr: string, row: TransactionRow, showAmount: boolean): void => {
-      if (!byDate.has(dateStr)) byDate.set(dateStr, []);
-      byDate.get(dateStr)!.push({ row, showAmount });
-    };
-    const inWeek = (d: string): boolean => d >= week.from && d <= week.to;
-    for (const row of rows) {
-      if (row.STATUS === "actual") {
-        const dateStr = row.ACTUAL_DATE || "";
-        if (!dateStr) continue;
-        push(dateStr, row, true);
-      } else {
-        const planFrom = row.PLAN_DATE_FROM || "";
-        const planTo = row.PLAN_DATE_TO || "";
-        if (!planFrom || !planTo) continue;
-        const fromInWeek = inWeek(planFrom);
-        const toInWeek = inWeek(planTo);
-        if (planFrom === planTo) {
-          if (fromInWeek) push(planFrom, row, true);
-        } else {
-          if (fromInWeek) push(planFrom, row, false);
-          if (toInWeek) push(planTo, row, true);
-          const firstMid = addDays(planFrom, 1);
-          const lastMid = addDays(planTo, -1);
-          const hasMiddleInWeek = firstMid <= lastMid && week.from <= lastMid && firstMid <= week.to;
-          if (hasMiddleInWeek && !fromInWeek && !toInWeek) push(week.from, row, false);
-        }
-      }
-    }
-    let planIncome = 0;
-    let planExpense = 0;
-    let actualIncome = 0;
-    let actualExpense = 0;
-    for (const items of byDate.values()) {
-      for (const { row, showAmount } of items) {
-        if (!showAmount) continue;
-        const amount = Number(row.AMOUNT) || 0;
-        const type = (row.TYPE || "expense") as "income" | "expense" | "transfer";
-        const isPlan = row.STATUS === "plan";
-        if (type === "income") {
-          if (isPlan) planIncome += amount;
-          else actualIncome += amount;
-        } else if (type === "expense") {
-          if (isPlan) planExpense += amount;
-          else actualExpense += amount;
-        }
-      }
-    }
-    const planBalance = planIncome - planExpense;
-    const actualBalance = actualIncome - actualExpense;
-
-    const sortedDates = Array.from(byDate.keys()).sort();
-    for (const dateStr of sortedDates) {
-      const dayGroup = document.createElement("div");
-      dayGroup.className = "transaction-history-week-day-group";
-      const dayTitle = document.createElement("div");
-      dayTitle.className = "transaction-history-week-day-title";
-      dayTitle.textContent = formatDateMdWeek(dateStr);
-      dayGroup.appendChild(dayTitle);
-      const dayItems = document.createElement("div");
-      dayItems.className = "transaction-history-week-day-items";
-      for (const { row, showAmount } of byDate.get(dateStr)!) {
-        const item = document.createElement("div");
-        item.className = "transaction-history-week-block-item";
-        const permType = getRowPermissionType(row);
-        if (permType === "view") item.classList.add("transaction-history-week-block-item--permission-view");
-        else if (permType === "edit") item.classList.add("transaction-history-week-block-item--permission-edit");
-        item.dataset.transactionId = row.ID;
-        item.setAttribute("role", "button");
-        item.setAttribute("tabindex", "0");
-        item.setAttribute("aria-label", `${row.NAME || "取引"}を編集`);
-        const typeIcon = document.createElement("span");
-        typeIcon.className = "transaction-history-type-icon";
-        const txType = (row.TYPE || "expense") as "income" | "expense" | "transfer";
-        typeIcon.classList.add(`transaction-history-type-icon--${txType}`);
-        typeIcon.textContent = txType === "income" ? "収" : txType === "expense" ? "支" : "振";
-        typeIcon.setAttribute("aria-label", txType === "income" ? "収入" : txType === "expense" ? "支出" : "振替");
-        item.appendChild(typeIcon);
-        const cat = getCategoryById(row.CATEGORY_ID);
-        const catIcon = createIconWrap(cat?.COLOR || ICON_DEFAULT_COLOR, cat?.ICON_PATH, {
-          className: "transaction-history-week-category-icon",
-        });
-        item.appendChild(catIcon);
-        const nameSpan = document.createElement("span");
-        nameSpan.className = "transaction-history-week-block-name";
-        nameSpan.textContent = row.NAME || "—";
-        item.appendChild(nameSpan);
-        const amountSpan = document.createElement("span");
-        amountSpan.className = "transaction-history-week-block-amount";
-        amountSpan.textContent = showAmount && row.AMOUNT ? Number(row.AMOUNT).toLocaleString() : "0";
-        item.appendChild(amountSpan);
-        const openEntry = (): void => {
-          const permType = getRowPermissionType(row);
-          setTransactionEntryViewOnly(permType === "view");
-          setTransactionEntryEditId(row.ID);
-          pushNavigation("transaction-entry");
-          showMainView("transaction-entry");
-          updateCurrentMenuItem();
-        };
-        item.addEventListener("click", openEntry);
-        item.addEventListener("keydown", (e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            openEntry();
-          }
-        });
-        dayItems.appendChild(item);
-      }
-      dayGroup.appendChild(dayItems);
-      list.appendChild(dayGroup);
-    }
-    block.appendChild(list);
-
-    const footer = document.createElement("div");
-    footer.className = "transaction-history-week-block-footer";
-    footer.setAttribute("role", "group");
-    footer.setAttribute("aria-label", "週合計");
-    const addFooterSection = (
-      sectionLabel: string,
-      income: number,
-      expense: number,
-      balance: number
-    ): void => {
-      const sectionTitle = document.createElement("div");
-      sectionTitle.className = "transaction-history-week-block-footer-section-title";
-      sectionTitle.textContent = sectionLabel;
-      footer.appendChild(sectionTitle);
-      const footerRow = document.createElement("div");
-      footerRow.className = "transaction-history-week-block-footer-row";
-      const incomeCell = document.createElement("div");
-      incomeCell.className = "transaction-history-week-block-footer-cell";
-      incomeCell.innerHTML = `<span class="transaction-history-week-block-footer-label">収入</span><span class="transaction-history-week-block-footer-amount">${income.toLocaleString()}</span>`;
-      const expenseCell = document.createElement("div");
-      expenseCell.className = "transaction-history-week-block-footer-cell";
-      expenseCell.innerHTML = `<span class="transaction-history-week-block-footer-label">支出</span><span class="transaction-history-week-block-footer-amount">${expense.toLocaleString()}</span>`;
-      const balanceCell = document.createElement("div");
-      balanceCell.className = "transaction-history-week-block-footer-cell transaction-history-week-block-footer-cell--balance";
-      const balanceAmountClass =
-        balance < 0
-          ? "transaction-history-week-block-footer-amount transaction-history-week-block-footer-amount--negative"
-          : "transaction-history-week-block-footer-amount";
-      balanceCell.innerHTML = `<span class="transaction-history-week-block-footer-label">総合計</span><span class="${balanceAmountClass}">${balance.toLocaleString()}</span>`;
-      footerRow.appendChild(incomeCell);
-      footerRow.appendChild(expenseCell);
-      footerRow.appendChild(balanceCell);
-      footer.appendChild(footerRow);
-    };
-    addFooterSection("予定", planIncome, planExpense, planBalance);
-    addFooterSection("実績", actualIncome, actualExpense, actualBalance);
-    block.appendChild(footer);
-    container.appendChild(block);
-  }
-}
-
-/**
- * カレンダー用に指定年月の1日の曜日（0=日）と末日を返す。
- * @param year - 年
- * @param month - 月（1-12）
- * @returns firstDay（0-6）, lastDate（その月の日数）
- */
-function getMonthCalendarInfo(year: number, month: number): { firstDay: number; lastDate: number } {
-  const first = new Date(year, month - 1, 1);
-  const last = new Date(year, month, 0);
-  return { firstDay: first.getDay(), lastDate: last.getDate() };
-}
-
-/**
- * カレンダータブの月表示を描画する。日付セルに取引サマリーを表示する。
- * @returns なし
- */
-function renderCalendarPanel(): void {
-  const grid = document.getElementById("transaction-history-calendar-grid");
-  if (!grid) return;
-  grid.innerHTML = "";
-  const m = selectedCalendarYM.match(/^(\d{4})-(\d{2})$/);
-  if (!m) return;
-  const year = parseInt(m[1], 10);
-  const month = parseInt(m[2], 10);
-  const { firstDay, lastDate } = getMonthCalendarInfo(year, month);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
-  weekdays.forEach((w) => {
-    const th = document.createElement("div");
-    th.className = "transaction-history-calendar-weekday";
-    th.textContent = w;
-    grid.appendChild(th);
-  });
-  let day = 1;
-  const totalCells = firstDay + lastDate;
-  const rows = Math.ceil(totalCells / 7) * 7;
-  for (let i = 0; i < rows; i++) {
-    const cell = document.createElement("div");
-    cell.className = "transaction-history-calendar-day";
-    if (i < firstDay || day > lastDate) {
-      cell.classList.add("transaction-history-calendar-day--empty");
-    } else {
-      const dateStr = `${year}-${pad(month)}-${pad(day)}`;
-      cell.classList.add("transaction-history-calendar-day--clickable");
-      cell.setAttribute("role", "button");
-      cell.setAttribute("tabindex", "0");
-      cell.setAttribute("aria-label", `${dateStr}の取引を一覧で表示`);
-      if (dateStr === getTodayYMD()) {
-        cell.classList.add("transaction-history-calendar-day--today");
-      }
-      const num = document.createElement("div");
-      num.className = "transaction-history-calendar-day-num";
-      num.textContent = String(day);
-      cell.appendChild(num);
-      const summary = getCalendarDaySummary(dateStr);
-      const addSummaryLine = (
-        iconModifierClass: string,
-        iconText: string,
-        label: string,
-        text: string
-      ): void => {
-        const line = document.createElement("div");
-        line.className = "transaction-history-calendar-day-summary";
-        const typeIcon = document.createElement("span");
-        typeIcon.className = `transaction-history-type-icon ${iconModifierClass}`;
-        typeIcon.textContent = iconText;
-        typeIcon.setAttribute("aria-label", label);
-        const textSpan = document.createElement("span");
-        textSpan.className = "transaction-history-calendar-day-summary-amount";
-        textSpan.textContent = text;
-        line.appendChild(typeIcon);
-        line.appendChild(textSpan);
-        cell.appendChild(line);
-      };
-      if (summary.planCount > 0) {
-        const iconEl = document.createElement("span");
-        iconEl.className = "transaction-history-plan-icon";
-        iconEl.textContent = "予";
-        iconEl.setAttribute("aria-label", "予定");
-        const line = document.createElement("div");
-        line.className = "transaction-history-calendar-day-summary";
-        line.appendChild(iconEl);
-        const textSpan = document.createElement("span");
-        textSpan.className = "transaction-history-calendar-day-summary-amount";
-        textSpan.textContent = `${summary.planCount}件`;
-        line.appendChild(textSpan);
-        cell.appendChild(line);
-      }
-      if (summary.actualCount > 0) {
-        const iconEl = document.createElement("span");
-        iconEl.className = "transaction-history-plan-icon";
-        iconEl.textContent = "実";
-        iconEl.setAttribute("aria-label", "実績");
-        const line = document.createElement("div");
-        line.className = "transaction-history-calendar-day-summary";
-        line.appendChild(iconEl);
-        const textSpan = document.createElement("span");
-        textSpan.className = "transaction-history-calendar-day-summary-amount";
-        textSpan.textContent = `${summary.actualCount}件`;
-        line.appendChild(textSpan);
-        cell.appendChild(line);
-      }
-      if (summary.incomeAmount > 0) {
-        addSummaryLine(
-          "transaction-history-type-icon--income",
-          "収",
-          "収入",
-          summary.incomeAmount.toLocaleString()
-        );
-      }
-      if (summary.expenseAmount > 0) {
-        addSummaryLine(
-          "transaction-history-type-icon--expense",
-          "支",
-          "支出",
-          summary.expenseAmount.toLocaleString()
-        );
-      }
-      if (summary.transferAmount > 0) {
-        addSummaryLine(
-          "transaction-history-type-icon--transfer",
-          "振",
-          "振替",
-          summary.transferAmount.toLocaleString()
-        );
-      }
-      const showListForDate = (): void => {
-        filterDateFrom = dateStr;
-        filterDateTo = dateStr;
-        const dateFromEl = document.getElementById("transaction-history-date-from") as HTMLInputElement | null;
-        const dateToEl = document.getElementById("transaction-history-date-to") as HTMLInputElement | null;
-        if (dateFromEl) {
-          dateFromEl.value = dateStr;
-          dateFromEl.classList.remove("is-empty");
-        }
-        if (dateToEl) {
-          dateToEl.value = dateStr;
-          dateToEl.classList.remove("is-empty");
-        }
-        switchTab("list");
-        renderList();
-      };
-      cell.addEventListener("click", showListForDate);
-      cell.addEventListener("keydown", (e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          showListForDate();
-        }
-      });
-      day++;
-    }
-    grid.appendChild(cell);
-  }
-
-  const panel = grid.parentElement;
-  const existingFooter = document.getElementById("transaction-history-calendar-footer");
-  if (existingFooter) existingFooter.remove();
-  const { planIncome, planExpense, actualIncome, actualExpense } = getCalendarMonthTotals(year, month);
-  const planBalance = planIncome - planExpense;
-  const actualBalance = actualIncome - actualExpense;
-  const footer = document.createElement("div");
-  footer.id = "transaction-history-calendar-footer";
-  footer.className = "transaction-history-calendar-footer";
-  footer.setAttribute("role", "group");
-  footer.setAttribute("aria-label", "月合計");
-  const addFooterSection = (
-    sectionLabel: string,
-    income: number,
-    expense: number,
-    balance: number
-  ): void => {
-    const sectionTitle = document.createElement("div");
-    sectionTitle.className = "transaction-history-calendar-footer-section-title";
-    sectionTitle.textContent = sectionLabel;
-    footer.appendChild(sectionTitle);
-    const footerRow = document.createElement("div");
-    footerRow.className = "transaction-history-calendar-footer-row";
-    const addFooterLine = (label: string, value: number, negativeRed = false): void => {
-      const line = document.createElement("div");
-      line.className = "transaction-history-calendar-footer-line";
-      const labelSpan = document.createElement("span");
-      labelSpan.className = "transaction-history-calendar-footer-label";
-      labelSpan.textContent = label;
-      const valueSpan = document.createElement("span");
-      valueSpan.className = "transaction-history-calendar-footer-amount";
-      if (negativeRed && value < 0) valueSpan.classList.add("transaction-history-calendar-footer-amount--negative");
-      valueSpan.textContent = value.toLocaleString();
-      line.appendChild(labelSpan);
-      line.appendChild(valueSpan);
-      footerRow.appendChild(line);
-    };
-    addFooterLine("収入", income);
-    addFooterLine("支出", expense);
-    addFooterLine("総合計", balance, true);
-    footer.appendChild(footerRow);
-  };
-  addFooterSection("予定", planIncome, planExpense, planBalance);
-  addFooterSection("実績", actualIncome, actualExpense, actualBalance);
-  panel?.appendChild(footer);
 }
 
 /**
@@ -1324,7 +559,7 @@ function renderCalendarPanel(): void {
  * 収支履歴画面のときは一覧パネルの hidden を外す（カレンダーから戻った際に表示されなくなる不具合を防ぐ）。
  * @returns なし
  */
-function updateTransactionHistoryTabLayout(): void {
+export function updateTransactionHistoryTabLayout(): void {
   const fromCalendarMenu =
     currentView === "transaction-history-weekly" || currentView === "transaction-history-calendar";
   const dateRow = document.getElementById("transaction-history-date-row");
@@ -1335,46 +570,6 @@ function updateTransactionHistoryTabLayout(): void {
   if (currentView === "transaction-history") {
     const listPanel = document.getElementById("transaction-history-list-panel");
     listPanel?.classList.remove("transaction-history-panel--hidden");
-  }
-}
-
-/**
- * 収支履歴のタブ（一覧・週・カレンダー）を切り替え、該当パネルを表示する。
- * @param tabId - "list" | "weekly" | "calendar"
- * @returns なし
- */
-function switchTab(tabId: string): void {
-  document.querySelectorAll(".transaction-history-tab").forEach((btn) => {
-    const b = btn as HTMLButtonElement;
-    b.classList.toggle("is-active", b.dataset.tab === tabId);
-    b.setAttribute("aria-selected", b.dataset.tab === tabId ? "true" : "false");
-  });
-  document.querySelectorAll(".transaction-history-panel").forEach((panel) => {
-    const isList = panel.id === "transaction-history-list-panel" && tabId === "list";
-    const isWeekly = panel.id === "transaction-history-weekly-panel" && tabId === "weekly";
-    const isCalendar = panel.id === "transaction-history-calendar-panel" && tabId === "calendar";
-    (panel as HTMLElement).classList.toggle("transaction-history-panel--hidden", !isList && !isWeekly && !isCalendar);
-  });
-
-  const chartsBody = document.getElementById("transaction-history-charts-body");
-  const isChartsVisible = tabId === "weekly" || tabId === "calendar";
-  if (chartsBody) chartsBody.classList.toggle("transaction-history-panel--hidden", !isChartsVisible);
-
-  const tabsRow = document.querySelector(".transaction-history-tabs-row");
-  const centerWrap = document.querySelector(".transaction-history-tabs-row-center");
-  const ymInput = document.getElementById("transaction-history-calendar-ym") as HTMLInputElement;
-  const isNavVisible = tabId === "weekly" || tabId === "calendar";
-  tabsRow?.classList.toggle("is-nav-visible", isNavVisible);
-  if (centerWrap) centerWrap.setAttribute("aria-hidden", isNavVisible ? "false" : "true");
-  if (isNavVisible && ymInput) {
-    if (!selectedCalendarYM) {
-      const now = new Date();
-      selectedCalendarYM = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-    }
-    ymInput.value = selectedCalendarYM;
-    if (tabId === "weekly") renderWeeklyPanel();
-    else if (tabId === "calendar") renderCalendarPanel();
-    renderCharts(selectedCalendarYM);
   }
 }
 
@@ -1466,7 +661,7 @@ function updateChosenDisplays(): void {
     (id) => {
       filterCategoryIds = filterCategoryIds.filter((x) => x !== id);
       updateChosenDisplays();
-      renderList();
+      notifyFilterChange();
     },
     (id) => getCategoryById(id)?.COLOR
   );
@@ -1477,7 +672,7 @@ function updateChosenDisplays(): void {
     (id) => {
       filterTagIds = filterTagIds.filter((x) => x !== id);
       updateChosenDisplays();
-      renderList();
+      notifyFilterChange();
     },
     (id) => tagRows.find((r) => r.ID === id)?.COLOR
   );
@@ -1488,7 +683,7 @@ function updateChosenDisplays(): void {
     (id) => {
       filterAccountIds = filterAccountIds.filter((x) => x !== id);
       updateChosenDisplays();
-      renderList();
+      notifyFilterChange();
     },
     (id) => getAccountById(id)?.COLOR
   );
@@ -1770,19 +965,11 @@ function resetConditions(): void {
 
   syncFilterButtons();
   updateChosenDisplays();
-  renderList();
-  const activeTab = document.querySelector(".transaction-history-tab.is-active") as HTMLButtonElement | undefined;
-  if (activeTab?.dataset.tab === "weekly") {
-    renderWeeklyPanel();
-    if (selectedCalendarYM) renderCharts(selectedCalendarYM);
-  } else if (activeTab?.dataset.tab === "calendar") {
-    renderCalendarPanel();
-    if (selectedCalendarYM) renderCharts(selectedCalendarYM);
-  }
+  notifyFilterChange();
 }
 
 /**
- * 収支履歴のデータを読み込んで表示する。フィルター・タブに応じて一覧・週・カレンダーを描画する。
+ * 収支履歴のデータを読み込んで一覧タブを描画する。週・カレンダーは calendar-screen が担当する。
  * @param forceReloadFromCsv - true のときはキャッシュを使わず CSV を再取得する（最新化ボタン用）
  * @returns なし
  */
@@ -1808,37 +995,8 @@ function loadAndShow(forceReloadFromCsv = false): void {
     if (dateFromEl) dateFromEl.classList.toggle("is-empty", !dateFromEl.value);
     if (dateToEl) dateToEl.classList.toggle("is-empty", !dateToEl.value);
   }
-  Promise.all([
-    fetchTransactionList(forceReloadFromCsv),
-    fetchCategoryList(forceReloadFromCsv),
-    fetchTagList(forceReloadFromCsv),
-    fetchAccountList(forceReloadFromCsv),
-    fetchAccountPermissionList(forceReloadFromCsv),
-    fetchTagManagementList(forceReloadFromCsv),
-  ]).then(([txList, catList, tagList, accList, permList, tagMgmt]) => {
-    const visibleIds = getVisibleAccountIds(accList, permList);
-    const filteredTx = filterTransactionsByVisibleAccounts(txList, visibleIds);
-    setTransactionList(filteredTx);
-    categoryRows = catList;
-    tagRows = tagList;
-    accountRows = accList;
-    permissionRows = permList;
-    setTagManagementList(tagMgmt);
+  loadTransactionData(forceReloadFromCsv).then(() => {
     renderList();
-    const initialTab = transactionHistoryInitialTab;
-    if (initialTab === "weekly" || initialTab === "calendar") {
-      setTransactionHistoryInitialTab(null);
-      switchTab(initialTab);
-    } else if (currentView === "transaction-history-weekly" || currentView === "transaction-history-calendar") {
-      const activeTab = document.querySelector(".transaction-history-tab.is-active") as HTMLButtonElement | undefined;
-      if (activeTab?.dataset.tab === "weekly") {
-        renderWeeklyPanel();
-        if (selectedCalendarYM) renderCharts(selectedCalendarYM);
-      } else if (activeTab?.dataset.tab === "calendar") {
-        renderCalendarPanel();
-        if (selectedCalendarYM) renderCharts(selectedCalendarYM);
-      }
-    }
   });
 }
 
@@ -1858,47 +1016,9 @@ export function refreshTransactionHistory(): void {
 export function initTransactionHistoryView(): void {
   registerViewHandler("transaction-history", loadAndShow);
   registerRefreshHandler("transaction-history", () => loadAndShow(true));
-  registerRefreshHandler("transaction-history-weekly", () => loadAndShow(true));
-  registerRefreshHandler("transaction-history-calendar", () => loadAndShow(true));
 
   document.getElementById("transaction-history-reset-conditions-btn")?.addEventListener("click", () => {
     resetConditions();
-  });
-
-  document.querySelectorAll(".transaction-history-tab").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const tab = (btn as HTMLButtonElement).dataset.tab;
-      if (tab) switchTab(tab);
-    });
-  });
-
-  const ymInput = document.getElementById("transaction-history-calendar-ym") as HTMLInputElement;
-  const calendarPrev = document.getElementById("transaction-history-calendar-prev");
-  const calendarNext = document.getElementById("transaction-history-calendar-next");
-  function applyCalendarYM(ym: string): void {
-    selectedCalendarYM = ym;
-    if (ymInput) ymInput.value = ym;
-    const tabList = document.querySelector(".transaction-history-tab.is-active") as HTMLButtonElement | null;
-    const tab = tabList?.dataset.tab;
-    if (tab === "weekly") renderWeeklyPanel();
-    else if (tab === "calendar") renderCalendarPanel();
-    if (tab === "weekly" || tab === "calendar") renderCharts(ym);
-  }
-  calendarPrev?.addEventListener("click", () => {
-    if (!selectedCalendarYM) return;
-    const [y, m] = selectedCalendarYM.split("-").map(Number);
-    const d = new Date(y, m - 2, 1);
-    applyCalendarYM(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
-  });
-  calendarNext?.addEventListener("click", () => {
-    if (!selectedCalendarYM) return;
-    const [y, m] = selectedCalendarYM.split("-").map(Number);
-    const d = new Date(y, m, 1);
-    applyCalendarYM(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
-  });
-  ymInput?.addEventListener("change", () => {
-    const v = ymInput.value;
-    if (v) applyCalendarYM(v);
   });
 
   function updateDateInputEmptyState(el: HTMLInputElement | null): void {
@@ -1914,12 +1034,12 @@ export function initTransactionHistoryView(): void {
   dateFrom?.addEventListener("change", () => {
     filterDateFrom = dateFrom.value || "";
     updateDateInputEmptyState(dateFrom);
-    renderList();
+    notifyFilterChange();
   });
   dateTo?.addEventListener("change", () => {
     filterDateTo = dateTo.value || "";
     updateDateInputEmptyState(dateTo);
-    renderList();
+    notifyFilterChange();
   });
 
   const searchArea = document.getElementById("transaction-history-common");
@@ -1932,7 +1052,7 @@ export function initTransactionHistoryView(): void {
         filterStatus = [...filterStatus, status];
       }
       syncFilterButtons();
-      renderList();
+      notifyFilterChange();
     });
   });
 
@@ -1945,7 +1065,7 @@ export function initTransactionHistoryView(): void {
         filterType = [...filterType, type];
       }
       syncFilterButtons();
-      renderList();
+      notifyFilterChange();
     });
   });
 
@@ -1953,17 +1073,17 @@ export function initTransactionHistoryView(): void {
   const amountMax = document.getElementById("transaction-history-amount-max") as HTMLInputElement;
   amountMin?.addEventListener("input", () => {
     filterAmountMin = amountMin.value.trim();
-    renderList();
+    notifyFilterChange();
   });
   amountMax?.addEventListener("input", () => {
     filterAmountMax = amountMax.value.trim();
-    renderList();
+    notifyFilterChange();
   });
 
   const freeText = document.getElementById("transaction-history-free-text") as HTMLInputElement;
   freeText?.addEventListener("input", () => {
     filterFreeText = freeText.value.trim();
-    renderList();
+    notifyFilterChange();
   });
 
   document.getElementById("transaction-history-category-btn")?.addEventListener("click", openCategorySelectModal);
@@ -1992,7 +1112,7 @@ export function initTransactionHistoryView(): void {
   document.getElementById("transaction-history-category-select-apply")?.addEventListener("click", () => {
     filterCategoryIds = Array.from(categorySelectModalSelectedIds);
     updateChosenDisplays();
-    renderList();
+    notifyFilterChange();
     closeOverlay("transaction-history-category-select-overlay");
   });
   document.getElementById("transaction-history-category-select-overlay")?.addEventListener("click", (e) => {
@@ -2010,7 +1130,7 @@ export function initTransactionHistoryView(): void {
   document.getElementById("transaction-history-tag-select-apply")?.addEventListener("click", () => {
     filterTagIds = getSelectedIdsFromList("transaction-history-tag-select-list");
     updateChosenDisplays();
-    renderList();
+    notifyFilterChange();
     closeOverlay("transaction-history-tag-select-overlay");
   });
   document.getElementById("transaction-history-tag-select-overlay")?.addEventListener("click", (e) => {
@@ -2046,7 +1166,7 @@ export function initTransactionHistoryView(): void {
   document.getElementById("transaction-history-account-select-apply")?.addEventListener("click", () => {
     filterAccountIds = Array.from(accountSelectModalSelectedIds);
     updateChosenDisplays();
-    renderList();
+    notifyFilterChange();
     closeOverlay("transaction-history-account-select-overlay");
   });
   document.getElementById("transaction-history-account-select-overlay")?.addEventListener("click", (e) => {
