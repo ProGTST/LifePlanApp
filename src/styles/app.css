@@ -1270,6 +1270,104 @@
   flex-shrink: 0;
 }
 
+.transaction-entry-actual-select-category-icon {
+  flex-shrink: 0;
+  width: 1.25rem;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  border-radius: var(--radius-sm);
+  box-sizing: border-box;
+}
+
+/* 取引実績選択：週選択ピッカー */
+.transaction-entry-actual-select-week-picker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+  margin-bottom: 0.25rem;
+}
+.transaction-entry-actual-select-week-picker button {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius-sm);
+  background: var(--gray-50);
+  color: var(--gray-700);
+  cursor: pointer;
+}
+.transaction-entry-actual-select-week-picker button:hover {
+  background: var(--gray-100);
+}
+.transaction-entry-actual-select-week-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--gray-800);
+  min-width: 9rem;
+  width: 9rem;
+  text-align: center;
+  padding: 0.25rem 0.35rem;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius-sm);
+  background: var(--gray-50);
+  box-sizing: border-box;
+}
+.transaction-entry-actual-select-week-picker .transaction-entry-actual-select-week-label:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+#transaction-entry-actual-select-list .transaction-entry-actual-select-empty {
+  margin: 0;
+  padding: 1.5rem 0.75rem;
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--gray-600);
+}
+
+/* 取引実績選択：グリッドで列を固定し、カテゴリーアイコン・取引名・開始日・金額を縦に整列 */
+#transaction-entry-actual-select-list .transaction-history-select-item {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 8rem) 6.5rem 5rem;
+  align-items: center;
+  gap: 0.5rem;
+}
+#transaction-entry-actual-select-list .transaction-entry-actual-select-name {
+  min-width: 0;
+  cursor: pointer;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  white-space: normal;
+  line-height: 1.35;
+}
+#transaction-entry-actual-select-list .transaction-entry-actual-select-date {
+  cursor: pointer;
+  color: var(--gray-600);
+  font-size: 0.8125rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#transaction-entry-actual-select-list .transaction-entry-actual-select-amount-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0;
+  min-width: 0;
+  cursor: pointer;
+  font-weight: 600;
+}
+#transaction-entry-actual-select-list .transaction-entry-actual-select-amount-num {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+#transaction-entry-actual-select-list .transaction-entry-actual-select-amount-unit {
+  flex-shrink: 0;
+}
+
 .transaction-history-select-item-name {
   flex: 1;
   min-width: 0;
@@ -1743,7 +1841,7 @@
 
 .data-form .transaction-entry-tag-row {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 0.5rem;
   flex-wrap: wrap;
   margin-bottom: 0;
@@ -1754,9 +1852,12 @@
   font-size: 0.9375rem;
   flex: 0 0 4.5rem;
 }
-.data-form .transaction-entry-tag-area {
+.data-form .transaction-entry-tag-row .transaction-entry-tag-chosen {
   flex: 1;
   min-width: 0;
+}
+.data-form .transaction-entry-tag-area {
+  flex-shrink: 0;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -1767,6 +1868,11 @@
   flex-wrap: wrap;
   gap: 0.375rem;
   align-items: center;
+  border: 1px solid var(--gray-500);
+  border-radius: var(--radius-md);
+  padding: 0.375rem;
+  min-height: 2rem;
+  box-sizing: border-box;
 }
 .data-form .transaction-entry-tag-chip {
   display: inline-flex;
@@ -1784,6 +1890,38 @@
   height: 16px;
 }
 .data-form .transaction-entry-tag-open-btn {
+  flex-shrink: 0;
+}
+
+/* 収支記録：実績行（ラベルと「取引実績を選択」ボタンを横並びに）。予定のときのみ表示 */
+.data-form .transaction-entry-actual-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0;
+}
+.data-form #transaction-entry-actual-row[hidden] {
+  display: none !important;
+}
+.data-form .transaction-entry-actual-row .transaction-entry-buttons-label {
+  margin-bottom: 0;
+  font-weight: 500;
+  font-size: 0.9375rem;
+  flex: 0 0 4.5rem;
+}
+.data-form .transaction-entry-actual-row #transaction-entry-actual-chosen {
+  flex: 1;
+  min-width: 0;
+}
+.data-form .transaction-entry-actual-area {
+  flex-shrink: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+.data-form .transaction-entry-actual-open-btn {
   flex-shrink: 0;
 }
 
@@ -3137,9 +3275,8 @@
   border: 1px solid var(--gray-300);
   border-radius: var(--radius-sm);
   padding: 0.35rem;
-  min-height: 3.5rem;
-  overflow-y: auto;
-  max-height: 8rem;
+  min-height: 7rem;
+  overflow: visible;
 }
 
 .transaction-history-calendar-day--empty {

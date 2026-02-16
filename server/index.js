@@ -22,6 +22,7 @@ const ALLOWED_NAMES = new Set([
   "TAG.csv",
   "TAG_MANAGEMENT.csv",
   "TRANSACTION.csv",
+  "TRANSACTION_MANAGEMENT.csv",
   "USER.csv",
 ]);
 

@@ -23,6 +23,7 @@ const WATCHED_FILES = [
   "TAG.csv",
   "TRANSACTION.csv",
   "TAG_MANAGEMENT.csv",
+  "TRANSACTION_MANAGEMENT.csv",
 ] as const;
 
 /** ファイル → 画面ID */
@@ -35,6 +36,7 @@ const FILE_TO_VIEW: Record<string, string> = {
   "TAG.csv": "tag",
   "TRANSACTION.csv": "transaction-history",
   "TAG_MANAGEMENT.csv": "transaction-history",
+  "TRANSACTION_MANAGEMENT.csv": "transaction-history",
 };
 
 /**

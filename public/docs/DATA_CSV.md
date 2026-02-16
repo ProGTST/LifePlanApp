@@ -79,7 +79,27 @@ LifePlanGant で扱う収支・タグ・勘定項目のデータは、`data/` �
 
 ---
 
-## 4. カテゴリテーブル（CATEGORY）
+## 4. 取引予定-実績紐付けテーブル（TRANSACTION_MANAGEMENT）
+
+**ファイル**: `data/TRANSACTION_MANAGEMENT.csv`
+
+「どの取引予定（plan）にどの取引実績（actual）が紐づいているか」を表す中間テーブルです。  
+1件の取引予定に複数の取引実績を紐づけられます。
+
+| 列名 | 説明 | 備考 |
+|------|------|------|
+| ID | 一意識別子 | 数値 |
+| VERSION | 楽観的ロック用 | 初期値 0。更新時に 1 増やす |
+| REGIST_DATETIME | 登録日時 | 共通 |
+| REGIST_USER | 登録ユーザーID | USER.ID への参照 |
+| UPDATE_DATETIME | 更新日時 | 共通 |
+| UPDATE_USER | 更新ユーザーID | USER.ID への参照 |
+| TRAN_PLAN_ID | 取引予定ID | TRANSACTION.ID（STATUS=plan）への参照 |
+| TRAN_ACTUAL_ID | 取引実績ID | TRANSACTION.ID（STATUS=actual）への参照 |
+
+---
+
+## 5. カテゴリテーブル（CATEGORY）
 
 **ファイル**: `data/CATEGORY.csv`
 
@@ -102,7 +122,7 @@ LifePlanGant で扱う収支・タグ・勘定項目のデータは、`data/` �
 
 ---
 
-## 5. 収支テーブル（TRANSACTION）
+## 6. 収支テーブル（TRANSACTION）
 
 **ファイル**: `data/TRANSACTION.csv`
 
@@ -129,7 +149,7 @@ LifePlanGant で扱う収支・タグ・勘定項目のデータは、`data/` �
 
 ---
 
-## 6. 勘定項目テーブル（ACCOUNT）
+## 7. 勘定項目テーブル（ACCOUNT）
 
 **ファイル**: `data/ACCOUNT.csv`
 
@@ -151,7 +171,7 @@ LifePlanGant で扱う収支・タグ・勘定項目のデータは、`data/` �
 
 ---
 
-## 7. 勘定項目参照権限テーブル（ACCOUNT_PERMISSION）
+## 8. 勘定項目参照権限テーブル（ACCOUNT_PERMISSION）
 
 **ファイル**: `data/ACCOUNT_PERMISSION.csv`
 
@@ -189,6 +209,7 @@ TAG (1) ----< TAG_MANAGEMENT >---- (N) TRANSACTION
 - **TRANSACTION** は **CATEGORY** に属する（多対一）。
 - **TRANSACTION** は **ACCOUNT** を最大2つ参照する（ACCOUNT_ID_IN：収益側、ACCOUNT_ID_OUT：費用側。振替時は両方設定してフローを表す）。
 - **TRANSACTION** と **TAG** は **TAG_MANAGEMENT** を通じて多対多。
+- **TRANSACTION**（予定）と **TRANSACTION**（実績）は **TRANSACTION_MANAGEMENT** を通じて、1件の予定に複数の実績を紐づけられる。
 - **CATEGORY** は PARENT_ID で親子関係を持てる（階層構造）。
 
 ---
@@ -200,6 +221,7 @@ TAG (1) ----< TAG_MANAGEMENT >---- (N) TRANSACTION
 | `data/USER.csv` | USER | ユーザーマスタ |
 | `data/TAG.csv` | TAG | タグマスタ |
 | `data/TAG_MANAGEMENT.csv` | TAG_MANAGEMENT | 収支とタグの対応 |
+| `data/TRANSACTION_MANAGEMENT.csv` | TRANSACTION_MANAGEMENT | 取引予定と取引実績の紐付け |
 | `data/CATEGORY.csv` | CATEGORY | カテゴリマスタ（収入・支出の分類） |
 | `data/TRANSACTION.csv` | TRANSACTION | 収支（計画・実績） |
 | `data/ACCOUNT.csv` | ACCOUNT | 勘定項目マスタ |

@@ -1,10 +1,10 @@
-import type { TransactionRow, CategoryRow, AccountRow, AccountPermissionRow, TagRow, TagManagementRow } from "../types";
+import type { TransactionRow, CategoryRow, AccountRow, AccountPermissionRow, TagRow, TagManagementRow, TransactionManagementRow } from "../types";
 import { currentUserId, transactionEntryEditId, setTransactionEntryEditId, transactionEntryViewOnly, pushNavigation } from "../state";
 import { createIconWrap } from "../utils/iconWrap";
 import { openOverlay, closeOverlay } from "../utils/overlay";
 import { ICON_DEFAULT_COLOR } from "../constants/colorPresets";
 import { fetchCsv, rowToObject } from "../utils/csv";
-import { transactionListToCsv, tagManagementListToCsv } from "../utils/csvExport";
+import { transactionListToCsv, tagManagementListToCsv, transactionManagementListToCsv } from "../utils/csvExport";
 import { saveCsvViaApi } from "../utils/dataApi";
 import { registerViewHandler, showMainView } from "../app/screen";
 import { setNewRowAudit, setUpdateAudit } from "../utils/auditFields";
@@ -23,6 +23,14 @@ let visibleAccountIds: Set<string> = new Set();
 /** 出金元・入金先プルダウンに表示する勘定 ID（権限が edit のもののみ） */
 let editableAccountIds: Set<string> = new Set();
 let selectedTagIds: Set<string> = new Set();
+/** 予定に紐づける取引実績の ID 一覧（予定編集時のみ有効） */
+let selectedActualIds: Set<string> = new Set();
+/** 実績選択チップ表示用: id・名称・カテゴリーID（selectedActualIds と同期） */
+let selectedActualDisplayInfo: { id: string; name: string; categoryId: string }[] = [];
+/** 実績選択モーダル用: 全実績行（週でフィルタ前） */
+let actualSelectAllRows: TransactionRow[] = [];
+/** 実績選択モーダル用: 現在表示している週範囲 */
+let actualSelectWeek: { start: string; end: string } | null = null;
 let editingTransactionId: string | null = null;
 
 /** 連続モード（新規登録時のみ有効。ONだと保存後に画面遷移せず連続登録） */
@@ -58,6 +66,67 @@ function getEditableAccountIds(accounts: AccountRow[], permissions: AccountPermi
     .filter((p) => p.USER_ID === me && (p.PERMISSION_TYPE || "").toLowerCase() === "edit")
     .forEach((p) => ids.add(p.ACCOUNT_ID));
   return ids;
+}
+
+/**
+ * 参照可能な勘定に紐づく取引のみに絞る（ACCOUNT_ID_IN または ACCOUNT_ID_OUT が visibleAccountIds に含まれるもの）。
+ * @param txList - 取引行の配列
+ * @param visibleAccountIds - 参照可能な勘定 ID の Set
+ * @returns 絞り込み後の取引行の配列
+ */
+function filterTransactionsByVisibleAccounts(
+  txList: TransactionRow[],
+  visibleAccountIds: Set<string>
+): TransactionRow[] {
+  return txList.filter((row) => {
+    const inId = (row.ACCOUNT_ID_IN || "").trim();
+    const outId = (row.ACCOUNT_ID_OUT || "").trim();
+    return (inId && visibleAccountIds.has(inId)) || (outId && visibleAccountIds.has(outId));
+  });
+}
+
+/** 日付文字列 YYYY-MM-DD に days 日を加算した日付を返す。 */
+function addDays(dateStr: string, days: number): string {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const date = new Date(y, (m ?? 1) - 1, (d ?? 1) + days);
+  const yy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const dd = String(date.getDate()).padStart(2, "0");
+  return `${yy}-${mm}-${dd}`;
+}
+
+/** 指定日を含む週の月曜～日曜の範囲を返す（ISO週）。 */
+function getWeekRangeFromDate(dateStr: string): { start: string; end: string } {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const date = new Date(y, (m ?? 1) - 1, d ?? 1);
+  const dayOfWeek = date.getDay();
+  const daysFromMonday = (dayOfWeek + 6) % 7;
+  const monday = new Date(date);
+  monday.setDate(date.getDate() - daysFromMonday);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const start = `${monday.getFullYear()}-${pad(monday.getMonth() + 1)}-${pad(monday.getDate())}`;
+  const end = `${sunday.getFullYear()}-${pad(sunday.getMonth() + 1)}-${pad(sunday.getDate())}`;
+  return { start, end };
+}
+
+/** 週範囲のラベル文字列（例: 2025年2月10日～2月16日）を返す。 */
+function formatWeekLabel(weekStart: string, weekEnd: string): string {
+  const [ys, ms, ds] = weekStart.split("-").map(Number);
+  const [ye, me, de] = weekEnd.split("-").map(Number);
+  if (weekStart.slice(0, 4) === weekEnd.slice(0, 4) && weekStart.slice(0, 7) === weekEnd.slice(0, 7)) {
+    return `${ys}年${ms}月${ds}日～${de}日`;
+  }
+  if (weekStart.slice(0, 4) === weekEnd.slice(0, 4)) {
+    return `${ys}年${ms}月${ds}日～${me}月${de}日`;
+  }
+  return `${ys}年${ms}月${ds}日～${ye}年${me}月${de}日`;
+}
+
+/** 日付が週範囲内か（以上・以下）で判定する。 */
+function isDateInWeek(dateStr: string, weekStart: string, weekEnd: string): boolean {
+  return dateStr >= weekStart && dateStr <= weekEnd;
 }
 
 /**
@@ -150,6 +219,26 @@ async function fetchTagManagementRows(noCache = false): Promise<{ nextId: number
   for (const cells of rows) {
     if (cells.length === 0 || cells.every((c) => !c.trim())) continue;
     const row = rowToObject(header, cells) as unknown as TagManagementRow;
+    const n = parseInt(row.ID ?? "0", 10);
+    if (!Number.isNaN(n) && n > maxId) maxId = n;
+    list.push(row);
+  }
+  return { nextId: maxId + 1, rows: list };
+}
+
+/**
+ * TRANSACTION_MANAGEMENT.csv を取得し、紐付け行の配列と次に使う ID を返す。
+ * @param noCache - true のときキャッシュを使わない
+ * @returns Promise。nextId と紐付け行の配列
+ */
+async function fetchTransactionManagementRows(noCache = false): Promise<{ nextId: number; rows: TransactionManagementRow[] }> {
+  const init = noCache ? CSV_NO_CACHE : undefined;
+  const { header, rows } = await fetchCsv("/data/TRANSACTION_MANAGEMENT.csv", init);
+  const list: TransactionManagementRow[] = [];
+  let maxId = 0;
+  for (const cells of rows) {
+    if (cells.length === 0 || cells.every((c) => !c.trim())) continue;
+    const row = rowToObject(header, cells) as unknown as TransactionManagementRow;
     const n = parseInt(row.ID ?? "0", 10);
     if (!Number.isNaN(n) && n > maxId) maxId = n;
     list.push(row);
@@ -361,6 +450,8 @@ function getSelectedTagIdsFromModal(): string[] {
     .filter((id): id is string => id != null);
 }
 
+const TAG_CHIP_REMOVE_ICON = "/icon/circle-xmark-solid-full.svg";
+
 function renderTagChosenDisplay(): void {
   const el = document.getElementById("transaction-entry-tag-chosen");
   if (!el) return;
@@ -369,15 +460,36 @@ function renderTagChosenDisplay(): void {
   const sorted = tagRows
     .filter((t) => selectedTagIds.has(t.ID))
     .sort((a, b) => tagSortOrderNum(a.SORT_ORDER) - tagSortOrderNum(b.SORT_ORDER));
+  if (sorted.length === 0) {
+    el.textContent = "未選択";
+    return;
+  }
   sorted.forEach((t) => {
-    const chip = document.createElement("span");
-    chip.className = "transaction-entry-tag-chip";
-    const iconWrap = createIconWrap(t.COLOR || ICON_DEFAULT_COLOR, t.ICON_PATH, { tag: "span" });
-    const nameSpan = document.createElement("span");
-    nameSpan.textContent = (t.TAG_NAME || "").trim() || "—";
-    chip.appendChild(iconWrap);
-    chip.appendChild(nameSpan);
-    el.appendChild(chip);
+    const wrap = document.createElement("span");
+    wrap.className = "transaction-history-chosen-label-wrap";
+    const bg = (t.COLOR ?? "").trim() || "#646cff";
+    wrap.style.backgroundColor = bg;
+    wrap.style.color = "#ffffff";
+    const label = document.createElement("span");
+    label.className = "transaction-history-chosen-label";
+    label.textContent = (t.TAG_NAME || "").trim() || "—";
+    wrap.appendChild(label);
+    const removeBtn = document.createElement("button");
+    removeBtn.type = "button";
+    removeBtn.className = "transaction-history-chosen-label-remove";
+    removeBtn.setAttribute("aria-label", "選択から削除");
+    const removeImg = document.createElement("img");
+    removeImg.src = TAG_CHIP_REMOVE_ICON;
+    removeImg.alt = "";
+    removeBtn.appendChild(removeImg);
+    removeBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      selectedTagIds.delete(t.ID);
+      renderTagChosenDisplay();
+    });
+    wrap.appendChild(removeBtn);
+    el.appendChild(wrap);
   });
 }
 
@@ -398,6 +510,214 @@ function openTransactionEntryTagModal(): void {
     listEl.appendChild(item);
   }
   openOverlay("transaction-entry-tag-select-overlay");
+}
+
+/**
+ * 実績選択欄に選択中の取引実績を表示する（名称・バツ・カテゴリー色のチップ）。
+ */
+function renderActualChosenDisplay(): void {
+  const container = document.getElementById("transaction-entry-actual-chosen");
+  if (!container) return;
+  container.innerHTML = "";
+  if (selectedActualDisplayInfo.length === 0) {
+    container.textContent = "実績なし";
+    return;
+  }
+  selectedActualDisplayInfo.forEach((info) => {
+    const wrap = document.createElement("span");
+    wrap.className = "transaction-history-chosen-label-wrap";
+    const cat = getCategoryById(info.categoryId);
+    const bg = (cat?.COLOR ?? "").trim() || "#646cff";
+    wrap.style.backgroundColor = bg;
+    wrap.style.color = "#ffffff";
+    const label = document.createElement("span");
+    label.className = "transaction-history-chosen-label";
+    label.textContent = info.name;
+    wrap.appendChild(label);
+    const removeBtn = document.createElement("button");
+    removeBtn.type = "button";
+    removeBtn.className = "transaction-history-chosen-label-remove";
+    removeBtn.setAttribute("aria-label", "選択から削除");
+    const removeImg = document.createElement("img");
+    removeImg.src = TAG_CHIP_REMOVE_ICON;
+    removeImg.alt = "";
+    removeBtn.appendChild(removeImg);
+    removeBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      selectedActualIds.delete(info.id);
+      selectedActualDisplayInfo = selectedActualDisplayInfo.filter((a) => a.id !== info.id);
+      renderActualChosenDisplay();
+    });
+    wrap.appendChild(removeBtn);
+    container.appendChild(wrap);
+  });
+}
+
+/**
+ * 実績選択モーダル内の1行（チェック・カテゴリーアイコン・取引名・日付・金額）を生成する。
+ */
+function createActualSelectItemRow(row: TransactionRow, isSelected: boolean): HTMLElement {
+  const wrap = document.createElement("div");
+  wrap.className = "transaction-history-select-item";
+  wrap.dataset.id = row.ID;
+  wrap.dataset.name = (row.NAME || "").trim() || "—";
+  wrap.dataset.categoryId = row.CATEGORY_ID || "";
+  const checkBtn = document.createElement("button");
+  checkBtn.type = "button";
+  checkBtn.className = "transaction-history-select-check-btn";
+  checkBtn.setAttribute("aria-label", "選択");
+  checkBtn.setAttribute("aria-pressed", isSelected ? "true" : "false");
+  if (isSelected) checkBtn.classList.add("is-selected");
+  const checkIcon = document.createElement("span");
+  checkIcon.className = "transaction-history-select-check-icon";
+  checkIcon.setAttribute("aria-hidden", "true");
+  checkBtn.appendChild(checkIcon);
+  wrap.appendChild(checkBtn);
+  const cat = getCategoryById(row.CATEGORY_ID);
+  if (cat) {
+    const catIconWrap = createIconWrap(cat.COLOR || ICON_DEFAULT_COLOR, cat.ICON_PATH, { tag: "span" });
+    catIconWrap.classList.add("transaction-entry-actual-select-category-icon");
+    wrap.appendChild(catIconWrap);
+  }
+  const nameSpan = document.createElement("span");
+  nameSpan.className = "transaction-entry-actual-select-name";
+  nameSpan.textContent = row.NAME || "—";
+  wrap.appendChild(nameSpan);
+  const dateSpan = document.createElement("span");
+  dateSpan.className = "transaction-entry-actual-select-date";
+  dateSpan.textContent = row.TRANDATE_FROM || "—";
+  wrap.appendChild(dateSpan);
+  const amountWrap = document.createElement("span");
+  amountWrap.className = "transaction-entry-actual-select-amount-wrap";
+  const amountNum = document.createElement("span");
+  amountNum.className = "transaction-entry-actual-select-amount-num";
+  amountNum.textContent = row.AMOUNT ? Number(row.AMOUNT).toLocaleString() : "—";
+  const amountUnit = document.createElement("span");
+  amountUnit.className = "transaction-entry-actual-select-amount-unit";
+  amountUnit.textContent = row.AMOUNT ? "円" : "";
+  amountWrap.appendChild(amountNum);
+  amountWrap.appendChild(amountUnit);
+  wrap.appendChild(amountWrap);
+  const handleRowClick = (): void => {
+    const pressed = checkBtn.getAttribute("aria-pressed") === "true";
+    const next = !pressed;
+    checkBtn.setAttribute("aria-pressed", String(next));
+    checkBtn.classList.toggle("is-selected", next);
+  };
+  checkBtn.addEventListener("click", handleRowClick);
+  nameSpan.addEventListener("click", handleRowClick);
+  dateSpan.addEventListener("click", handleRowClick);
+  amountWrap.addEventListener("click", handleRowClick);
+  return wrap;
+}
+
+/**
+ * 実績選択モーダルで週を切り替える前に、現在表示中の週の選択状態だけを selectedActualIds に反映する。
+ * 他週で選択した ID はそのまま残す。
+ */
+function mergeActualSelectionFromModal(): void {
+  const listEl = document.getElementById("transaction-entry-actual-select-list");
+  if (!listEl) return;
+  const items = listEl.querySelectorAll<HTMLElement>(".transaction-history-select-item");
+  const currentWeekIds = new Set(
+    Array.from(items)
+      .map((el) => el.getAttribute("data-id"))
+      .filter((id): id is string => id != null)
+  );
+  const selectedInDom = new Set(getSelectedActualIdsFromModal());
+  selectedActualIds = new Set([
+    ...[...selectedActualIds].filter((id) => !currentWeekIds.has(id)),
+    ...selectedInDom,
+  ]);
+}
+
+/**
+ * 実績選択モーダルのリストと週ラベルを、actualSelectAllRows と actualSelectWeek に従って描画する。
+ */
+function renderActualSelectList(): void {
+  const listEl = document.getElementById("transaction-entry-actual-select-list");
+  const weekInput = document.getElementById("transaction-entry-actual-select-week-label") as HTMLInputElement | null;
+  if (!listEl || !actualSelectWeek) return;
+  const { start: weekStart, end: weekEnd } = actualSelectWeek;
+  if (weekInput) weekInput.value = weekStart;
+  const inWeek = actualSelectAllRows.filter((r) => isDateInWeek((r.TRANDATE_FROM || "").slice(0, 10), weekStart, weekEnd));
+  const sorted = inWeek.slice().sort((a, b) => (b.TRANDATE_FROM || "").localeCompare(a.TRANDATE_FROM || ""));
+  listEl.innerHTML = "";
+  if (sorted.length === 0) {
+    const emptyEl = document.createElement("p");
+    emptyEl.className = "transaction-entry-actual-select-empty";
+    emptyEl.textContent = "この週は取引実績がありません。";
+    listEl.appendChild(emptyEl);
+  } else {
+    for (const row of sorted) {
+      const item = createActualSelectItemRow(row, selectedActualIds.has(row.ID));
+      listEl.appendChild(item);
+    }
+  }
+}
+
+function openTransactionEntryActualModal(): void {
+  const listEl = document.getElementById("transaction-entry-actual-select-list");
+  if (!listEl) return;
+  const planType = (getTypeInput()?.value ?? "expense").toLowerCase();
+  const dateFromEl = document.getElementById("transaction-entry-date-from") as HTMLInputElement | null;
+  const dateEl = document.getElementById("transaction-entry-date") as HTMLInputElement | null;
+  const planStart = (dateFromEl?.value || dateEl?.value || "").trim();
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+  const initialDate = planStart || todayStr;
+  (async () => {
+    const [txResult, accList, permList] = await Promise.all([
+      fetchTransactionRows(true),
+      fetchAccountList(true),
+      fetchAccountPermissionList(true),
+    ]);
+    const visibleIds = getVisibleAccountIds(accList, permList);
+    const txRows = filterTransactionsByVisibleAccounts(txResult.rows, visibleIds);
+    const actualRows = txRows.filter(
+      (r) =>
+        (r.STATUS || "").toLowerCase() === "actual" &&
+        (r.TYPE || "").toLowerCase() === planType &&
+        r.ID !== editingTransactionId
+    );
+    actualSelectAllRows = actualRows;
+    actualSelectWeek = getWeekRangeFromDate(initialDate);
+    renderActualSelectList();
+    openOverlay("transaction-entry-actual-select-overlay");
+  })();
+}
+
+function getSelectedActualIdsFromModal(): string[] {
+  return getSelectedActualsFromModal().map((a) => a.id);
+}
+
+/** モーダル内で選択されている実績の id・名称・カテゴリーID を返す。 */
+function getSelectedActualsFromModal(): { id: string; name: string; categoryId: string }[] {
+  const listEl = document.getElementById("transaction-entry-actual-select-list");
+  if (!listEl) return [];
+  return Array.from(listEl.querySelectorAll<HTMLElement>(".transaction-history-select-item .transaction-history-select-check-btn.is-selected"))
+    .map((btn) => {
+      const item = btn.closest(".transaction-history-select-item");
+      const id = item?.getAttribute("data-id");
+      const name = item?.getAttribute("data-name") ?? "—";
+      const categoryId = item?.getAttribute("data-category-id") ?? "";
+      return id != null ? { id, name, categoryId } : null;
+    })
+    .filter((a): a is { id: string; name: string; categoryId: string } => a != null);
+}
+
+function closeTransactionEntryActualModal(): void {
+  closeOverlay("transaction-entry-actual-select-overlay");
+}
+
+/**
+ * 予定/実績切替時に実績欄の表示・非表示を更新する。
+ */
+function updateActualRowVisibility(): void {
+  const status = getStatusInput()?.value ?? "actual";
+  const row = document.getElementById("transaction-entry-actual-row");
+  if (row) row.hidden = status !== "plan";
 }
 
 function fillCategorySelect(type: string): void {
@@ -542,6 +862,7 @@ function setStatusAndSync(status: string): void {
     btn.classList.toggle("is-active", s === normalized);
   });
   updateDateRowsVisibility(normalized);
+  updateActualRowVisibility();
 }
 
 const todayYMD = (): string => new Date().toISOString().slice(0, 10);
@@ -565,6 +886,7 @@ function updateDateRowsVisibility(status: string): void {
     if (!dateToInput.value) dateToInput.value = d;
   }
   if (!isPlan && dateInput && !dateInput.value) dateInput.value = todayYMD();
+  updateActualRowVisibility();
 }
 
 function setTodayToAllDateInputs(): void {
@@ -603,7 +925,11 @@ function resetForm(): void {
   updateAccountTriggerDisplay("out", getAccountOutValueEl()?.value ?? "");
   updateAccountTriggerDisplay("in", getAccountInValueEl()?.value ?? "");
   selectedTagIds.clear();
+  selectedActualIds.clear();
+  selectedActualDisplayInfo = [];
   renderTagChosenDisplay();
+  renderActualChosenDisplay();
+  updateActualRowVisibility();
 }
 
 /**
@@ -667,6 +993,7 @@ function setTransactionEntryReadonly(readonly: boolean): void {
     "transaction-entry-account-out-trigger",
     "transaction-entry-account-in-trigger",
     "transaction-entry-tag-open-btn",
+    "transaction-entry-actual-open-btn",
     "transaction-entry-type-expense",
     "transaction-entry-type-income",
     "transaction-entry-type-transfer",
@@ -681,7 +1008,12 @@ function setTransactionEntryReadonly(readonly: boolean): void {
 }
 
 async function loadFormForEdit(transactionId: string): Promise<void> {
-  const { rows: txRows } = await fetchTransactionRows(true);
+  const [tagMgmtResult, txMgmtResult, txResult] = await Promise.all([
+    fetchTagManagementRows(true),
+    fetchTransactionManagementRows(true),
+    fetchTransactionRows(true),
+  ]);
+  const txRows = txResult.rows;
   const row = txRows.find((r) => r.ID === transactionId);
   if (!row) return;
   const type = row.TYPE || "expense";
@@ -732,11 +1064,25 @@ async function loadFormForEdit(transactionId: string): Promise<void> {
     updateAccountTriggerDisplay("out", row.ACCOUNT_ID_OUT || "");
     updateAccountTriggerDisplay("in", row.ACCOUNT_ID_IN || "");
   }
-  const { rows: mgmtRows } = await fetchTagManagementRows(true);
+  const mgmtRows = tagMgmtResult.rows;
+  const txMgmtRows = txMgmtResult.rows;
   selectedTagIds = new Set(
     mgmtRows.filter((r) => r.TRANSACTION_ID === transactionId).map((r) => r.TAG_ID)
   );
+  selectedActualIds = new Set(
+    txMgmtRows.filter((r) => r.TRAN_PLAN_ID === transactionId).map((r) => r.TRAN_ACTUAL_ID)
+  );
+  selectedActualDisplayInfo = Array.from(selectedActualIds)
+    .map((id) => {
+      const r = txRows.find((row) => row.ID === id);
+      return r
+        ? { id: r.ID, name: (r.NAME || "").trim() || "—", categoryId: r.CATEGORY_ID || "" }
+        : null;
+    })
+    .filter((x): x is { id: string; name: string; categoryId: string } => x != null);
   renderTagChosenDisplay();
+  renderActualChosenDisplay();
+  updateActualRowVisibility();
 }
 
 async function loadOptions(): Promise<void> {
@@ -841,6 +1187,10 @@ async function saveTagManagementCsv(csv: string): Promise<void> {
   await saveCsvViaApi("TAG_MANAGEMENT.csv", csv);
 }
 
+async function saveTransactionManagementCsv(csv: string): Promise<void> {
+  await saveCsvViaApi("TRANSACTION_MANAGEMENT.csv", csv);
+}
+
 /**
  * 収支記録画面の初期化を行う。「transaction-entry」ビュー表示ハンドラとフォーム送信・削除・連続入力等のイベントを登録する。
  * @returns なし
@@ -865,6 +1215,7 @@ export function initTransactionEntryView(): void {
       updateTransactionEntrySubmitButtonVisibility();
       updateTransactionEntryContinuousButtonVisibility();
       updateTransactionEntryCopyAsNewButtonVisibility();
+      updateActualRowVisibility();
       setTransactionEntryReadonly(transactionEntryViewOnly);
     })();
   });
@@ -944,6 +1295,26 @@ export function initTransactionEntryView(): void {
         }
         const mgmtCsv = tagManagementListToCsv(newMgmtRows);
         await saveTagManagementCsv(mgmtCsv);
+        const { nextId: nextTxMgmtId, rows: txMgmtRows } = await fetchTransactionManagementRows(true);
+        const othersTxMgmt = txMgmtRows.filter(
+          (r) => r.TRAN_PLAN_ID !== editingTransactionId && (r.ID ?? "").trim() !== ""
+        );
+        const newTxMgmtRows = othersTxMgmt.map((r) => ({ ...r } as Record<string, string>));
+        const savedStatus = (updatedRow as Record<string, string>).STATUS ?? "";
+        if (savedStatus.toLowerCase() === "plan") {
+          let txMgmtId = nextTxMgmtId;
+          for (const actualId of selectedActualIds) {
+            const row: Record<string, string> = {
+              TRAN_PLAN_ID: editingTransactionId,
+              TRAN_ACTUAL_ID: actualId,
+            };
+            setNewRowAudit(row, currentUserId ?? "", String(txMgmtId));
+            newTxMgmtRows.push(row);
+            txMgmtId += 1;
+          }
+        }
+        const txMgmtCsv = transactionManagementListToCsv(newTxMgmtRows);
+        await saveTransactionManagementCsv(txMgmtCsv);
         editingTransactionId = null;
         resetForm();
         pushNavigation("transaction-history");
@@ -971,6 +1342,23 @@ export function initTransactionEntryView(): void {
           }
           const mgmtCsv = tagManagementListToCsv(newMgmtRows);
           await saveTagManagementCsv(mgmtCsv);
+        }
+        if (getStatusInput()?.value === "plan" && selectedActualIds.size > 0) {
+          const { nextId: nextTxMgmtId, rows: txMgmtRows } = await fetchTransactionManagementRows(true);
+          const userId = currentUserId ?? "";
+          const newTxMgmtRows = [...txMgmtRows.map((r) => ({ ...r } as Record<string, string>))];
+          let txMgmtId = nextTxMgmtId;
+          for (const actualId of selectedActualIds) {
+            const row: Record<string, string> = {
+              TRAN_PLAN_ID: newTransactionId,
+              TRAN_ACTUAL_ID: actualId,
+            };
+            setNewRowAudit(row, userId, String(txMgmtId));
+            newTxMgmtRows.push(row);
+            txMgmtId += 1;
+          }
+          const txMgmtCsv = transactionManagementListToCsv(newTxMgmtRows);
+          await saveTransactionManagementCsv(txMgmtCsv);
         }
         resetForm();
         if (!continuousMode) {
@@ -1032,6 +1420,12 @@ export function initTransactionEntryView(): void {
         .map((r) => ({ ...r } as Record<string, string>));
       const mgmtCsv = tagManagementListToCsv(newMgmtRows);
       await saveTagManagementCsv(mgmtCsv);
+      const { rows: txMgmtRows } = await fetchTransactionManagementRows(true);
+      const newTxMgmtRows = txMgmtRows
+        .filter((r) => r.TRAN_PLAN_ID !== editingTransactionId && r.TRAN_ACTUAL_ID !== editingTransactionId)
+        .map((r) => ({ ...r } as Record<string, string>));
+      const txMgmtCsv = transactionManagementListToCsv(newTxMgmtRows);
+      await saveTransactionManagementCsv(txMgmtCsv);
       editingTransactionId = null;
       resetForm();
       updateTransactionEntryDeleteButtonVisibility();
@@ -1072,6 +1466,23 @@ export function initTransactionEntryView(): void {
         const mgmtCsv = tagManagementListToCsv(newMgmtRows);
         await saveTagManagementCsv(mgmtCsv);
       }
+      if (selectedActualIds.size > 0) {
+        const { nextId: nextTxMgmtId, rows: txMgmtRows } = await fetchTransactionManagementRows(true);
+        const userId = currentUserId ?? "";
+        const newTxMgmtRows = [...txMgmtRows.map((r) => ({ ...r } as Record<string, string>))];
+        let txMgmtId = nextTxMgmtId;
+        for (const actualId of selectedActualIds) {
+          const row: Record<string, string> = {
+            TRAN_PLAN_ID: newTransactionId,
+            TRAN_ACTUAL_ID: actualId,
+          };
+          setNewRowAudit(row, userId, String(txMgmtId));
+          newTxMgmtRows.push(row);
+          txMgmtId += 1;
+        }
+        const txMgmtCsv = transactionManagementListToCsv(newTxMgmtRows);
+        await saveTransactionManagementCsv(txMgmtCsv);
+      }
       editingTransactionId = null;
       resetForm();
       updateTransactionEntryDeleteButtonVisibility();
@@ -1086,6 +1497,54 @@ export function initTransactionEntryView(): void {
   });
 
   document.getElementById("transaction-entry-tag-open-btn")?.addEventListener("click", () => openTransactionEntryTagModal());
+  document.getElementById("transaction-entry-actual-open-btn")?.addEventListener("click", () => openTransactionEntryActualModal());
+  document.getElementById("transaction-entry-actual-select-apply")?.addEventListener("click", () => {
+    const selected = getSelectedActualsFromModal();
+    selectedActualIds = new Set(selected.map((a) => a.id));
+    selectedActualDisplayInfo = selected;
+    renderActualChosenDisplay();
+    closeTransactionEntryActualModal();
+  });
+  document.getElementById("transaction-entry-actual-select-clear")?.addEventListener("click", () => {
+    document
+      .querySelectorAll("#transaction-entry-actual-select-list .transaction-history-select-check-btn")
+      .forEach((el) => {
+        el.classList.remove("is-selected");
+        el.setAttribute("aria-pressed", "false");
+      });
+  });
+  document.querySelector(".transaction-entry-actual-select-week-prev")?.addEventListener("click", () => {
+    if (!actualSelectWeek) return;
+    mergeActualSelectionFromModal();
+    actualSelectWeek = {
+      start: addDays(actualSelectWeek.start, -7),
+      end: addDays(actualSelectWeek.end, -7),
+    };
+    renderActualSelectList();
+  });
+  document.querySelector(".transaction-entry-actual-select-week-next")?.addEventListener("click", () => {
+    if (!actualSelectWeek) return;
+    mergeActualSelectionFromModal();
+    actualSelectWeek = {
+      start: addDays(actualSelectWeek.start, 7),
+      end: addDays(actualSelectWeek.end, 7),
+    };
+    renderActualSelectList();
+  });
+  document.getElementById("transaction-entry-actual-select-week-label")?.addEventListener("change", (e) => {
+    const input = e.target as HTMLInputElement;
+    const value = (input?.value || "").trim();
+    if (value) {
+      mergeActualSelectionFromModal();
+      actualSelectWeek = getWeekRangeFromDate(value);
+      renderActualSelectList();
+    }
+  });
+  document.getElementById("transaction-entry-actual-select-overlay")?.addEventListener("click", (e) => {
+    if (e.target instanceof HTMLElement && e.target.id === "transaction-entry-actual-select-overlay") {
+      closeTransactionEntryActualModal();
+    }
+  });
   document.getElementById("transaction-entry-tag-select-apply")?.addEventListener("click", () => {
     selectedTagIds = new Set(getSelectedTagIdsFromModal());
     renderTagChosenDisplay();

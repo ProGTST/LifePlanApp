@@ -160,6 +160,26 @@ export function tagManagementListToCsv(rows: Record<string, string>[]): string {
   return toCsvString([...TAG_MANAGEMENT_HEADER], rows);
 }
 
+const TRANSACTION_MANAGEMENT_HEADER = [
+  "ID",
+  "VERSION",
+  "REGIST_DATETIME",
+  "REGIST_USER",
+  "UPDATE_DATETIME",
+  "UPDATE_USER",
+  "TRAN_PLAN_ID",
+  "TRAN_ACTUAL_ID",
+] as const;
+
+/**
+ * 取引予定-実績紐付け一覧を TRANSACTION_MANAGEMENT.csv 形式の CSV 文字列に変換する。
+ * @param rows - 紐付け行のオブジェクト配列
+ * @returns CSV 文字列
+ */
+export function transactionManagementListToCsv(rows: Record<string, string>[]): string {
+  return toCsvString([...TRANSACTION_MANAGEMENT_HEADER], rows);
+}
+
 const USER_HEADER = [
   "ID",
   "VERSION",

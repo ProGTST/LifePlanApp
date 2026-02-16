@@ -107,3 +107,15 @@ export interface TagManagementRow {
   TRANSACTION_ID: string;
   TAG_ID: string;
 }
+
+/** 取引予定-実績紐付け（TRANSACTION_MANAGEMENT）の1行 */
+export interface TransactionManagementRow {
+  ID: string;
+  VERSION: string;
+  REGIST_DATETIME: string;
+  REGIST_USER: string;
+  UPDATE_DATETIME: string;
+  UPDATE_USER: string;
+  TRAN_PLAN_ID: string;
+  TRAN_ACTUAL_ID: string;
+}
