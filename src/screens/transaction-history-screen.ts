@@ -134,9 +134,11 @@ export function getFilteredTransactionList(): TransactionRow[] {
 
 /**
  * スケジュール用の検索条件でフィルター適用後の取引一覧を返す。他画面の条件とは同期しない。
+ * スケジュールでは計画（予定/実績）による抽出は行わない。表示は getPlanRows で予定のみに絞る。
  */
 export function getFilteredTransactionListForSchedule(): TransactionRow[] {
-  return applyFilters(transactionList, getScheduleFilterState());
+  const state = getScheduleFilterState();
+  return applyFilters(transactionList, { ...state, filterStatus: ["plan", "actual"] });
 }
 
 /**

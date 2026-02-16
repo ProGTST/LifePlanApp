@@ -2414,6 +2414,10 @@
 #transaction-history-common .view-body {
   margin-bottom: 0.75rem;
 }
+/* スケジュール表示時は検索条件の「計画」欄を非表示（計画による抽出は行わない） */
+#transaction-history-common.is-schedule-search #transaction-history-search-plan-row {
+  display: none;
+}
 
 .transaction-history-search-accordion {
   border: 1px solid var(--gray-400);
@@ -3113,11 +3117,17 @@
   background: var(--gray-200);
 }
 
-/* 権限付与勘定に紐づく取引：参照権限は薄黄、編集権限は薄緑 */
-#transaction-history-table tr.transaction-history-row--permission-view {
+/* 権限付与勘定に紐づく取引：固定列のみ参照は薄黄、編集は薄緑 */
+#transaction-history-table tr.transaction-history-row--permission-view td:nth-child(1),
+#transaction-history-table tr.transaction-history-row--permission-view td:nth-child(2),
+#transaction-history-table tr.transaction-history-row--permission-view td:nth-child(3),
+#transaction-history-table tr.transaction-history-row--permission-view td:nth-child(4) {
   background: #fffde7;
 }
-#transaction-history-table tr.transaction-history-row--permission-edit {
+#transaction-history-table tr.transaction-history-row--permission-edit td:nth-child(1),
+#transaction-history-table tr.transaction-history-row--permission-edit td:nth-child(2),
+#transaction-history-table tr.transaction-history-row--permission-edit td:nth-child(3),
+#transaction-history-table tr.transaction-history-row--permission-edit td:nth-child(4) {
   background: #e8f5e9;
 }
 #transaction-history-table tr.transaction-history-row--clickable {
@@ -3666,6 +3676,21 @@
 .schedule-view-table thead tr:first-child th:nth-child(4) { background: var(--gray-100); z-index: 3; }
 .schedule-view-table thead tr:nth-child(2) th:nth-child(4) { background: var(--gray-100); z-index: 3; }
 .schedule-view-table tbody td:nth-child(1) { background: var(--color-view-bg, #fff); }
+/* 参照可能な勘定の取引：固定列のみ参照は薄黄、編集は薄緑 */
+.schedule-view-table tbody tr.transaction-history-row--permission-view td:nth-child(1),
+.schedule-view-table tbody tr.transaction-history-row--permission-view td:nth-child(2),
+.schedule-view-table tbody tr.transaction-history-row--permission-view td:nth-child(3),
+.schedule-view-table tbody tr.transaction-history-row--permission-view td:nth-child(4),
+.schedule-view-table tbody tr.transaction-history-row--permission-view td:nth-child(5) {
+  background: #fffde7;
+}
+.schedule-view-table tbody tr.transaction-history-row--permission-edit td:nth-child(1),
+.schedule-view-table tbody tr.transaction-history-row--permission-edit td:nth-child(2),
+.schedule-view-table tbody tr.transaction-history-row--permission-edit td:nth-child(3),
+.schedule-view-table tbody tr.transaction-history-row--permission-edit td:nth-child(4),
+.schedule-view-table tbody tr.transaction-history-row--permission-edit td:nth-child(5) {
+  background: #e8f5e9;
+}
 .schedule-view-table tbody tr:hover td:nth-child(1),
 .schedule-view-table tbody tr:hover td:nth-child(2),
 .schedule-view-table tbody tr:hover td:nth-child(3),
@@ -3677,6 +3702,20 @@
 .schedule-view-table tbody tr:focus-within td:nth-child(4),
 .schedule-view-table tbody tr:focus-within td:nth-child(5) {
   background: var(--gray-50);
+}
+.schedule-view-table tbody tr.transaction-history-row--permission-view:hover td:nth-child(1),
+.schedule-view-table tbody tr.transaction-history-row--permission-view:hover td:nth-child(2),
+.schedule-view-table tbody tr.transaction-history-row--permission-view:hover td:nth-child(3),
+.schedule-view-table tbody tr.transaction-history-row--permission-view:hover td:nth-child(4),
+.schedule-view-table tbody tr.transaction-history-row--permission-view:hover td:nth-child(5) {
+  background: #fffde7;
+}
+.schedule-view-table tbody tr.transaction-history-row--permission-edit:hover td:nth-child(1),
+.schedule-view-table tbody tr.transaction-history-row--permission-edit:hover td:nth-child(2),
+.schedule-view-table tbody tr.transaction-history-row--permission-edit:hover td:nth-child(3),
+.schedule-view-table tbody tr.transaction-history-row--permission-edit:hover td:nth-child(4),
+.schedule-view-table tbody tr.transaction-history-row--permission-edit:hover td:nth-child(5) {
+  background: #e8f5e9;
 }
 /* フォーカス行の固定列を手前に描画し、日付列が透けて見えないようにする */
 .schedule-view-table tbody tr:focus-within {
@@ -3703,6 +3742,20 @@
   background: var(--gray-50);
   z-index: -1;
   pointer-events: none;
+}
+.schedule-view-table tbody tr.transaction-history-row--permission-view:focus-within td:nth-child(1)::before,
+.schedule-view-table tbody tr.transaction-history-row--permission-view:focus-within td:nth-child(2)::before,
+.schedule-view-table tbody tr.transaction-history-row--permission-view:focus-within td:nth-child(3)::before,
+.schedule-view-table tbody tr.transaction-history-row--permission-view:focus-within td:nth-child(4)::before,
+.schedule-view-table tbody tr.transaction-history-row--permission-view:focus-within td:nth-child(5)::before {
+  background: #fffde7;
+}
+.schedule-view-table tbody tr.transaction-history-row--permission-edit:focus-within td:nth-child(1)::before,
+.schedule-view-table tbody tr.transaction-history-row--permission-edit:focus-within td:nth-child(2)::before,
+.schedule-view-table tbody tr.transaction-history-row--permission-edit:focus-within td:nth-child(3)::before,
+.schedule-view-table tbody tr.transaction-history-row--permission-edit:focus-within td:nth-child(4)::before,
+.schedule-view-table tbody tr.transaction-history-row--permission-edit:focus-within td:nth-child(5)::before {
+  background: #e8f5e9;
 }
 .schedule-view-table {
   border-collapse: separate;

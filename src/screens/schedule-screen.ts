@@ -3,6 +3,7 @@ import {
   loadTransactionData,
   getFilteredTransactionListForSchedule,
   getCategoryById,
+  getRowPermissionType,
   registerFilterChangeCallback,
 } from "./transaction-history-screen";
 import { registerViewHandler, registerRefreshHandler } from "../app/screen";
@@ -276,7 +277,20 @@ function overlaps(rowFrom: string, rowTo: string, colFrom: string, colTo: string
 
 function getPlanRows(): TransactionRow[] {
   const list = getFilteredTransactionListForSchedule();
-  return list.filter((r) => (r.STATUS || "").toLowerCase() === "plan");
+  const planOnly = list.filter((r) => (r.STATUS || "").toLowerCase() === "plan");
+  return planOnly.slice().sort((a, b) => {
+    const af = a.TRANDATE_FROM || "";
+    const bf = b.TRANDATE_FROM || "";
+    const cmpFrom = af.localeCompare(bf);
+    if (cmpFrom !== 0) return cmpFrom;
+    const at = a.TRANDATE_TO || "";
+    const bt = b.TRANDATE_TO || "";
+    const cmpTo = at.localeCompare(bt);
+    if (cmpTo !== 0) return cmpTo;
+    const ar = a.REGIST_DATETIME || "";
+    const br = b.REGIST_DATETIME || "";
+    return ar.localeCompare(br);
+  });
 }
 
 function getTypeLabel(type: string): string {
@@ -423,6 +437,9 @@ function renderScheduleGrid(): void {
     const to = (row.TRANDATE_TO || "").slice(0, 10) || from;
 
     const tr = document.createElement("tr");
+    const permType = getRowPermissionType(row);
+    if (permType === "view") tr.classList.add("transaction-history-row--permission-view");
+    else if (permType === "edit") tr.classList.add("transaction-history-row--permission-edit");
     const typeTd = document.createElement("td");
     typeTd.className = "schedule-col-type";
     const txType = (row.TYPE || "expense") as "income" | "expense" | "transfer";

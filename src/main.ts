@@ -67,6 +67,7 @@ function initAppScreen(): void {
   }
 
   document.getElementById("footer-home-btn")?.addEventListener("click", () => navigateTo("home"));
+  document.getElementById("footer-calendar-btn")?.addEventListener("click", () => navigateTo("transaction-history-calendar"));
   document.getElementById("footer-schedule-btn")?.addEventListener("click", () => navigateTo("schedule"));
   document.getElementById("footer-history-btn")?.addEventListener("click", () => navigateTo("transaction-history"));
   document.getElementById("calendar-view-to-history-btn")?.addEventListener("click", () => navigateTo("transaction-history"));
@@ -82,11 +83,16 @@ function initAppScreen(): void {
   /* 戻るボタン: 遷移スタックを pop してひとつ前の画面に戻る（戻り先はスタックに積まない） */
   document.getElementById("footer-back-btn")?.addEventListener("click", () => {
     const isTransactionView =
-      currentView === "transaction-history" || currentView === "transaction-entry" || currentView === "transaction-analysis";
+      currentView === "transaction-history" ||
+      currentView === "transaction-history-weekly" ||
+      currentView === "transaction-history-calendar" ||
+      currentView === "transaction-entry" ||
+      currentView === "transaction-analysis";
     const canGoBack =
       MASTER_LIST_VIEW_IDS.includes(currentView as (typeof MASTER_LIST_VIEW_IDS)[number]) ||
       currentView === "profile" ||
       currentView === "design" ||
+      currentView === "schedule" ||
       isTransactionView;
     if (!canGoBack) return;
     const target = popNavigation();
