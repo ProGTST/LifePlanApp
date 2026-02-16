@@ -1,5 +1,10 @@
 import type { TransactionRow } from "../types";
-import { loadTransactionData, getFilteredTransactionList, getCategoryById } from "./transaction-history-screen";
+import {
+  loadTransactionData,
+  getFilteredTransactionListForSchedule,
+  getCategoryById,
+  registerFilterChangeCallback,
+} from "./transaction-history-screen";
 import { registerViewHandler, registerRefreshHandler } from "../app/screen";
 import { setDisplayedKeys } from "../utils/csvWatch";
 import { createIconWrap } from "../utils/iconWrap";
@@ -270,7 +275,7 @@ function overlaps(rowFrom: string, rowTo: string, colFrom: string, colTo: string
 }
 
 function getPlanRows(): TransactionRow[] {
-  const list = getFilteredTransactionList();
+  const list = getFilteredTransactionListForSchedule();
   return list.filter((r) => (r.STATUS || "").toLowerCase() === "plan");
 }
 
@@ -342,6 +347,7 @@ function renderScheduleGrid(): void {
 
   const columns = getDateColumns(startYMD, unit, dayRange);
   const rows = getPlanRows();
+  const todayYMD = getTodayYMD();
 
   const yearMonthRow = document.getElementById("schedule-yearmonth-row");
   if (yearMonthRow) {
@@ -351,7 +357,7 @@ function renderScheduleGrid(): void {
     ymFixed1.colSpan = 2;
     ymFixed1.className = "schedule-view-yearmonth-col schedule-view-yearmonth-col--fixed";
     yearMonthRow.appendChild(ymFixed1);
-    for (let i = 0; i < 2; i++) {
+    for (let i = 0; i < 3; i++) {
       const th = document.createElement("th");
       th.scope = "col";
       th.className = "schedule-view-yearmonth-col schedule-view-yearmonth-col--fixed";
@@ -379,6 +385,7 @@ function renderScheduleGrid(): void {
   headRow.appendChild(kindTh);
   [
     { label: "取引名", ariaLabel: "取引名" },
+    { label: "取引日", ariaLabel: "取引日" },
     { label: "状況", ariaLabel: "状況" },
   ].forEach(({ label, ariaLabel }) => {
     const th = document.createElement("th");
@@ -397,6 +404,12 @@ function renderScheduleGrid(): void {
     const isStartMonth = unit === "month" && startYMD >= col.dateFrom && startYMD <= col.dateTo;
     if (isStartDay || isStartWeek || isStartMonth) {
       th.setAttribute("data-schedule-start-date", "true");
+    }
+    const isCurrentDay = unit === "day" && col.dateFrom === todayYMD;
+    const isCurrentWeek = unit === "week" && todayYMD >= col.dateFrom && todayYMD <= col.dateTo;
+    const isCurrentMonth = unit === "month" && todayYMD >= col.dateFrom && todayYMD <= col.dateTo;
+    if (isCurrentDay || isCurrentWeek || isCurrentMonth) {
+      th.classList.add("schedule-view-date-col--current");
     }
     const line0 = col.labelLine0 ? `<span class="schedule-view-date-line0">${col.labelLine0}</span>` : "";
     th.innerHTML = `${line0}<span class="schedule-view-date-line1">${col.labelLine1}</span><span class="schedule-view-date-line2">${col.labelLine2}</span>`;
@@ -426,12 +439,18 @@ function renderScheduleGrid(): void {
     const nameTd = document.createElement("td");
     nameTd.className = "schedule-col-name";
     nameTd.textContent = (row.NAME || "").trim() || "—";
+    const dateRangeTd = document.createElement("td");
+    dateRangeTd.className = "schedule-col-date-range";
+    const fromFmt = from ? from.replace(/-/g, "/") : "";
+    const toFmt = to ? to.replace(/-/g, "/") : "";
+    dateRangeTd.textContent = from && to ? (from === to ? fromFmt : `${fromFmt}～${toFmt}`) : "—";
     const statusTd = document.createElement("td");
     statusTd.className = "schedule-col-status";
     statusTd.textContent = "予定";
     tr.appendChild(typeTd);
     tr.appendChild(catTd);
     tr.appendChild(nameTd);
+    tr.appendChild(dateRangeTd);
     tr.appendChild(statusTd);
     columns.forEach((col) => {
       const td = document.createElement("td");
@@ -439,6 +458,12 @@ function renderScheduleGrid(): void {
       if (overlaps(from, to, col.dateFrom, col.dateTo)) {
         td.classList.add("schedule-view-date-cell--active");
         td.setAttribute("aria-label", "対象期間");
+      }
+      const isCurrentDay = unit === "day" && col.dateFrom === todayYMD;
+      const isCurrentWeek = unit === "week" && todayYMD >= col.dateFrom && todayYMD <= col.dateTo;
+      const isCurrentMonth = unit === "month" && todayYMD >= col.dateFrom && todayYMD <= col.dateTo;
+      if (isCurrentDay || isCurrentWeek || isCurrentMonth) {
+        td.classList.add("schedule-view-date-cell--current");
       }
       tr.appendChild(td);
     });
@@ -481,6 +506,12 @@ export function initScheduleView(): void {
 
   registerRefreshHandler("schedule", () => {
     loadTransactionData(true).then(() => renderScheduleGrid());
+  });
+
+  registerFilterChangeCallback(() => {
+    if (document.getElementById("view-schedule")?.classList.contains("main-view--hidden") === false) {
+      renderScheduleGrid();
+    }
   });
 
   const startInput = document.getElementById("schedule-start-date") as HTMLInputElement | null;

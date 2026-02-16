@@ -491,16 +491,26 @@
 
 /* ----- メインコンテンツ ----- */
 .app-main {
+  display: flex;
+  flex-direction: column;
   flex: 1;
-  overflow: auto;
+  overflow: hidden;
   padding: 1.5rem 1.5rem 2rem;
   background: var(--color-main-bg, #f0f2f5);
   color: var(--color-main-fg, #1a1a1a);
   min-height: 0;
 }
 
+/* 検索条件エリアは高さを内容に合わせ、スケジュール・収支履歴などが残りを占有 */
+.app-main > #transaction-history-common {
+  flex-shrink: 0;
+}
+
 .main-view {
   display: block;
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: auto;
   height: 100%;
 }
 
@@ -2400,6 +2410,10 @@
 .transaction-history-search {
   /* 検索エリアは1つ目の view-body 内のため、下線・下余白は view-body 間の余白で代替 */
 }
+/* 収支検索の view-body：スケジュール・収支履歴などとの間に余白 */
+#transaction-history-common .view-body {
+  margin-bottom: 0.75rem;
+}
 
 .transaction-history-search-accordion {
   border: 1px solid var(--gray-400);
@@ -3521,6 +3535,7 @@
   flex-direction: column;
   height: 100%;
   min-height: 0;
+  overflow: hidden;
 }
 .schedule-view-body {
   display: flex;
@@ -3634,21 +3649,33 @@
 .schedule-view-table thead tr:nth-child(2) th:nth-child(3),
 .schedule-view-table tbody td:nth-child(4) {
   position: sticky;
-  left: 15rem;
+  left: 16rem;
   z-index: 1;
   background: var(--color-view-bg, #fff);
 }
 .schedule-view-table thead tr:first-child th:nth-child(3) { background: var(--gray-100); z-index: 3; }
 .schedule-view-table thead tr:nth-child(2) th:nth-child(3) { background: var(--gray-100); z-index: 3; }
+.schedule-view-table thead tr:first-child th:nth-child(4),
+.schedule-view-table thead tr:nth-child(2) th:nth-child(4),
+.schedule-view-table tbody td:nth-child(5) {
+  position: sticky;
+  left: 26rem;
+  z-index: 1;
+  background: var(--color-view-bg, #fff);
+}
+.schedule-view-table thead tr:first-child th:nth-child(4) { background: var(--gray-100); z-index: 3; }
+.schedule-view-table thead tr:nth-child(2) th:nth-child(4) { background: var(--gray-100); z-index: 3; }
 .schedule-view-table tbody td:nth-child(1) { background: var(--color-view-bg, #fff); }
 .schedule-view-table tbody tr:hover td:nth-child(1),
 .schedule-view-table tbody tr:hover td:nth-child(2),
 .schedule-view-table tbody tr:hover td:nth-child(3),
 .schedule-view-table tbody tr:hover td:nth-child(4),
+.schedule-view-table tbody tr:hover td:nth-child(5),
 .schedule-view-table tbody tr:focus-within td:nth-child(1),
 .schedule-view-table tbody tr:focus-within td:nth-child(2),
 .schedule-view-table tbody tr:focus-within td:nth-child(3),
-.schedule-view-table tbody tr:focus-within td:nth-child(4) {
+.schedule-view-table tbody tr:focus-within td:nth-child(4),
+.schedule-view-table tbody tr:focus-within td:nth-child(5) {
   background: var(--gray-50);
 }
 /* フォーカス行の固定列を手前に描画し、日付列が透けて見えないようにする */
@@ -3659,7 +3686,8 @@
 .schedule-view-table tbody tr:focus-within td:nth-child(1),
 .schedule-view-table tbody tr:focus-within td:nth-child(2),
 .schedule-view-table tbody tr:focus-within td:nth-child(3),
-.schedule-view-table tbody tr:focus-within td:nth-child(4) {
+.schedule-view-table tbody tr:focus-within td:nth-child(4),
+.schedule-view-table tbody tr:focus-within td:nth-child(5) {
   z-index: 10;
   isolation: isolate;
 }
@@ -3667,7 +3695,8 @@
 .schedule-view-table tbody tr:focus-within td:nth-child(1)::before,
 .schedule-view-table tbody tr:focus-within td:nth-child(2)::before,
 .schedule-view-table tbody tr:focus-within td:nth-child(3)::before,
-.schedule-view-table tbody tr:focus-within td:nth-child(4)::before {
+.schedule-view-table tbody tr:focus-within td:nth-child(4)::before,
+.schedule-view-table tbody tr:focus-within td:nth-child(5)::before {
   content: "";
   position: absolute;
   inset: 0;
@@ -3741,10 +3770,14 @@
   max-width: 5rem;
 }
 .schedule-view-yearmonth-col--fixed:nth-child(2) {
-  width: 10rem;
-  min-width: 8rem;
+  width: 11rem;
+  min-width: 9rem;
 }
 .schedule-view-yearmonth-col--fixed:nth-child(3) {
+  width: 10rem;
+  min-width: 10rem;
+}
+.schedule-view-yearmonth-col--fixed:nth-child(4) {
   width: 3.5rem;
   min-width: 3.5rem;
 }
@@ -3757,10 +3790,15 @@
   max-width: 5rem;
 }
 .schedule-view-head-col:nth-child(2) {
-  width: 10rem;
-  min-width: 8rem;
+  width: 11rem;
+  min-width: 9rem;
 }
 .schedule-view-head-col:nth-child(3) {
+  width: 10rem;
+  min-width: 10rem;
+  text-align: center;
+}
+.schedule-view-head-col:nth-child(4) {
   width: 3.5rem;
   min-width: 3.5rem;
   text-align: center;
@@ -3798,13 +3836,24 @@
   min-height: 22px;
 }
 .schedule-col-name {
-  width: 10rem;
-  min-width: 8rem;
+  width: 11rem;
+  min-width: 9rem;
   max-width: 14rem;
   white-space: normal;
   overflow-wrap: break-word;
   word-break: break-word;
   overflow: visible;
+  vertical-align: top;
+}
+.schedule-col-date-range {
+  width: 10rem;
+  min-width: 10rem;
+  max-width: 10rem;
+  font-size: 0.75rem;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   vertical-align: top;
 }
 .schedule-col-status {
@@ -3827,6 +3876,17 @@
   width: 2.25rem;
   text-align: center;
   font-weight: 500;
+}
+.schedule-view-date-col--current {
+  background: color-mix(in srgb, var(--color-button-bg, #2563eb) 22%, transparent);
+  color: var(--color-button-bg, #2563eb);
+  border-left: 2px solid var(--color-button-bg, #2563eb);
+  border-right: 2px solid var(--color-button-bg, #2563eb);
+}
+.schedule-view-date-col--current .schedule-view-date-line0,
+.schedule-view-date-col--current .schedule-view-date-line1,
+.schedule-view-date-col--current .schedule-view-date-line2 {
+  color: var(--color-button-bg, #2563eb);
 }
 .schedule-view-date-line0,
 .schedule-view-date-line1,
@@ -3854,6 +3914,13 @@
   background: var(--color-button-bg);
   opacity: 0.5;
 }
+.schedule-view-date-cell--current {
+  background: color-mix(in srgb, var(--color-button-bg, #2563eb) 22%, transparent);
+}
+.schedule-view-date-cell--current.schedule-view-date-cell--active {
+  background: var(--color-button-bg);
+  opacity: 0.5;
+}
 .schedule-view-table tbody tr:hover .schedule-view-date-cell--active {
   opacity: 0.75;
 }
@@ -3861,6 +3928,7 @@
 .schedule-view-table tbody tr:focus-within td.schedule-col-type,
 .schedule-view-table tbody tr:focus-within td.schedule-col-category,
 .schedule-view-table tbody tr:focus-within td.schedule-col-name,
+.schedule-view-table tbody tr:focus-within td.schedule-col-date-range,
 .schedule-view-table tbody tr:focus-within td.schedule-col-status {
   background: var(--gray-50) !important;
 }
@@ -3868,6 +3936,7 @@
 .schedule-view-table tbody td.schedule-col-type:focus,
 .schedule-view-table tbody td.schedule-col-category:focus,
 .schedule-view-table tbody td.schedule-col-name:focus,
+.schedule-view-table tbody td.schedule-col-date-range:focus,
 .schedule-view-table tbody td.schedule-col-status:focus {
   background: var(--gray-50) !important;
 }

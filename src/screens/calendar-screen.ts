@@ -14,7 +14,7 @@ import { Chart, registerables } from "chart.js";
 import ChartDataLabels from "chartjs-plugin-datalabels";
 import {
   loadTransactionData,
-  getFilteredTransactionList,
+  getFilteredTransactionListForCalendar,
   getCategoryById,
   getRowPermissionType,
   updateTransactionHistoryTabLayout,
@@ -114,7 +114,7 @@ function getMonthCalendarInfo(year: number, month: number): { firstDay: number; 
 function getCalendarDaySummary(
   dateStr: string
 ): { planCount: number; actualCount: number; incomeAmount: number; expenseAmount: number; transferAmount: number } {
-  const filtered = getFilteredTransactionList();
+  const filtered = getFilteredTransactionListForCalendar();
   let planCount = 0;
   let actualCount = 0;
   let incomeAmount = 0;
@@ -154,7 +154,7 @@ function getCalendarMonthTotals(
   const firstDay = monthStr + "-01";
   const lastDate = new Date(year, month, 0).getDate();
   const lastDay = monthStr + "-" + String(lastDate).padStart(2, "0");
-  const filtered = getFilteredTransactionList();
+  const filtered = getFilteredTransactionListForCalendar();
   let planIncome = 0;
   let planExpense = 0;
   let actualIncome = 0;
@@ -180,7 +180,7 @@ function getCalendarMonthTotals(
 }
 
 function getTransactionsInRange(from: string, to: string): TransactionRow[] {
-  const filtered = getFilteredTransactionList();
+  const filtered = getFilteredTransactionListForCalendar();
   return filtered.filter((row) => {
     const trFrom = row.TRANDATE_FROM || "";
     const trTo = row.TRANDATE_TO || "";
@@ -239,7 +239,7 @@ function getChartDataForMonth(ym: string): {
   const planExpenseCat: Record<string, number> = {};
   const actualIncomeCat: Record<string, number> = {};
   const actualExpenseCat: Record<string, number> = {};
-  const filtered = getFilteredTransactionList();
+  const filtered = getFilteredTransactionListForCalendar();
   for (const row of filtered) {
     const type = (row.TYPE || "expense").toLowerCase();
     const amount = Number(row.AMOUNT) || 0;

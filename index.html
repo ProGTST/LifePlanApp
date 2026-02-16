@@ -69,6 +69,69 @@
               </div>
             </div>
 
+            <!-- 収支履歴・カレンダー・スケジュール共通: 検索条件 -->
+            <div id="transaction-history-common" class="transaction-history-common main-view--hidden" aria-label="収支検索">
+              <div class="view-body">
+                <section class="transaction-history-search" aria-label="検索条件">
+                  <details class="transaction-history-search-accordion">
+                    <summary class="transaction-history-search-summary">検索条件</summary>
+                    <div class="transaction-history-search-body">
+                      <div class="transaction-history-search-row-group">
+                        <div id="transaction-history-date-row" class="transaction-history-search-row">
+                          <span class="transaction-history-search-label">日付</span>
+                          <input type="date" id="transaction-history-date-from" class="transaction-history-date-input" aria-label="日付FROM" />
+                          <span class="transaction-history-search-sep">～</span>
+                          <input type="date" id="transaction-history-date-to" class="transaction-history-date-input" aria-label="日付TO" />
+                        </div>
+                        <div class="transaction-history-search-row">
+                          <span class="transaction-history-search-label">計画</span>
+                          <div class="transaction-history-search-buttons" role="group" aria-label="計画">
+                            <button type="button" class="btn-secondary transaction-history-filter-btn is-active" data-status="plan" id="transaction-history-status-plan">予定</button>
+                            <button type="button" class="btn-secondary transaction-history-filter-btn is-active" data-status="actual" id="transaction-history-status-actual">実績</button>
+                          </div>
+                        </div>
+                        <div class="transaction-history-search-row">
+                          <span class="transaction-history-search-label">収支種別</span>
+                          <div class="transaction-history-search-buttons" role="group" aria-label="収支種別">
+                            <button type="button" class="btn-secondary transaction-history-filter-btn is-active" data-type="expense" id="transaction-history-type-expense">支出</button>
+                            <button type="button" class="btn-secondary transaction-history-filter-btn is-active" data-type="income" id="transaction-history-type-income">収入</button>
+                            <button type="button" class="btn-secondary transaction-history-filter-btn is-active" data-type="transfer" id="transaction-history-type-transfer">振替</button>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="transaction-history-search-row">
+                        <span class="transaction-history-search-label">勘定項目</span>
+                        <span id="transaction-history-account-display" class="transaction-history-chosen-display" aria-live="polite"></span>
+                        <button type="button" class="btn-secondary" id="transaction-history-account-btn">選択</button>
+                      </div>
+                      <div class="transaction-history-search-row">
+                        <span class="transaction-history-search-label">カテゴリー</span>
+                        <span id="transaction-history-category-display" class="transaction-history-chosen-display" aria-live="polite"></span>
+                        <button type="button" class="btn-secondary" id="transaction-history-category-btn">選択</button>
+                      </div>
+                      <div class="transaction-history-search-row">
+                        <span class="transaction-history-search-label">タグ</span>
+                        <span id="transaction-history-tag-display" class="transaction-history-chosen-display" aria-live="polite"></span>
+                        <button type="button" class="btn-secondary" id="transaction-history-tag-btn">選択</button>
+                      </div>
+                      <div class="transaction-history-search-row-group">
+                        <div class="transaction-history-search-row">
+                          <span class="transaction-history-search-label">金額</span>
+                          <input type="text" id="transaction-history-amount-min" class="transaction-history-amount-input" inputmode="numeric" placeholder="最小" aria-label="金額最小" />
+                          <span class="transaction-history-search-sep">～</span>
+                          <input type="text" id="transaction-history-amount-max" class="transaction-history-amount-input" inputmode="numeric" placeholder="最大" aria-label="金額最大" />
+                        </div>
+                        <div class="transaction-history-search-row">
+                          <span class="transaction-history-search-label">任意</span>
+                          <input type="text" id="transaction-history-free-text" class="transaction-history-free-text-input" placeholder="項目名・内容の部分一致" aria-label="任意検索" />
+                        </div>
+                      </div>
+                    </div>
+                  </details>
+                </section>
+              </div>
+            </div>
+
             <!-- ビュー: スケジュール（ガント風） -->
             <div id="view-schedule" class="main-view main-view--hidden" data-view="schedule">
               <div class="view-body schedule-view-body">
@@ -199,69 +262,6 @@
                   </thead>
                   <tbody id="tag-tbody"></tbody>
                 </table>
-              </div>
-            </div>
-
-            <!-- 収支履歴・カレンダー共通: 検索条件（どちらかの画面表示時に表示） -->
-            <div id="transaction-history-common" class="transaction-history-common main-view--hidden" aria-label="収支検索">
-              <div class="view-body">
-                <section class="transaction-history-search" aria-label="検索条件">
-                  <details class="transaction-history-search-accordion">
-                    <summary class="transaction-history-search-summary">検索条件</summary>
-                    <div class="transaction-history-search-body">
-                      <div class="transaction-history-search-row-group">
-                        <div id="transaction-history-date-row" class="transaction-history-search-row">
-                          <span class="transaction-history-search-label">日付</span>
-                          <input type="date" id="transaction-history-date-from" class="transaction-history-date-input" aria-label="日付FROM" />
-                          <span class="transaction-history-search-sep">～</span>
-                          <input type="date" id="transaction-history-date-to" class="transaction-history-date-input" aria-label="日付TO" />
-                        </div>
-                        <div class="transaction-history-search-row">
-                          <span class="transaction-history-search-label">計画</span>
-                          <div class="transaction-history-search-buttons" role="group" aria-label="計画">
-                            <button type="button" class="btn-secondary transaction-history-filter-btn is-active" data-status="plan" id="transaction-history-status-plan">予定</button>
-                            <button type="button" class="btn-secondary transaction-history-filter-btn is-active" data-status="actual" id="transaction-history-status-actual">実績</button>
-                          </div>
-                        </div>
-                        <div class="transaction-history-search-row">
-                          <span class="transaction-history-search-label">収支種別</span>
-                          <div class="transaction-history-search-buttons" role="group" aria-label="収支種別">
-                            <button type="button" class="btn-secondary transaction-history-filter-btn is-active" data-type="expense" id="transaction-history-type-expense">支出</button>
-                            <button type="button" class="btn-secondary transaction-history-filter-btn is-active" data-type="income" id="transaction-history-type-income">収入</button>
-                            <button type="button" class="btn-secondary transaction-history-filter-btn is-active" data-type="transfer" id="transaction-history-type-transfer">振替</button>
-                          </div>
-                        </div>
-                      </div>
-                      <div class="transaction-history-search-row">
-                        <span class="transaction-history-search-label">勘定項目</span>
-                        <span id="transaction-history-account-display" class="transaction-history-chosen-display" aria-live="polite"></span>
-                        <button type="button" class="btn-secondary" id="transaction-history-account-btn">選択</button>
-                      </div>
-                      <div class="transaction-history-search-row">
-                        <span class="transaction-history-search-label">カテゴリー</span>
-                        <span id="transaction-history-category-display" class="transaction-history-chosen-display" aria-live="polite"></span>
-                        <button type="button" class="btn-secondary" id="transaction-history-category-btn">選択</button>
-                      </div>
-                      <div class="transaction-history-search-row">
-                        <span class="transaction-history-search-label">タグ</span>
-                        <span id="transaction-history-tag-display" class="transaction-history-chosen-display" aria-live="polite"></span>
-                        <button type="button" class="btn-secondary" id="transaction-history-tag-btn">選択</button>
-                      </div>
-                      <div class="transaction-history-search-row-group">
-                        <div class="transaction-history-search-row">
-                          <span class="transaction-history-search-label">金額</span>
-                          <input type="text" id="transaction-history-amount-min" class="transaction-history-amount-input" inputmode="numeric" placeholder="最小" aria-label="金額最小" />
-                          <span class="transaction-history-search-sep">～</span>
-                          <input type="text" id="transaction-history-amount-max" class="transaction-history-amount-input" inputmode="numeric" placeholder="最大" aria-label="金額最大" />
-                        </div>
-                        <div class="transaction-history-search-row">
-                          <span class="transaction-history-search-label">任意</span>
-                          <input type="text" id="transaction-history-free-text" class="transaction-history-free-text-input" placeholder="項目名・内容の部分一致" aria-label="任意検索" />
-                        </div>
-                      </div>
-                    </div>
-                  </details>
-                </section>
               </div>
             </div>
 

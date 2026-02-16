@@ -36,43 +36,129 @@ let tagRows: TagRow[] = [];
 let accountRows: AccountRow[] = [];
 let permissionRows: AccountPermissionRow[] = [];
 
-let filterStatus: ("plan" | "actual")[] = ["plan", "actual"];
-let filterType: ("income" | "expense" | "transfer")[] = ["income", "expense", "transfer"];
-let filterCategoryIds: string[] = [];
-let filterTagIds: string[] = [];
-let filterAccountIds: string[] = [];
-let filterDateFrom = "";
-let filterDateTo = "";
-let filterAmountMin = "";
-let filterAmountMax = "";
-let filterFreeText = "";
+/** 収支履歴・スケジュールで検索条件を個別に保持するための型 */
+export interface FilterState {
+  filterStatus: ("plan" | "actual")[];
+  filterType: ("income" | "expense" | "transfer")[];
+  filterCategoryIds: string[];
+  filterTagIds: string[];
+  filterAccountIds: string[];
+  filterDateFrom: string;
+  filterDateTo: string;
+  filterAmountMin: string;
+  filterAmountMax: string;
+  filterFreeText: string;
+}
 
-/** フィルター変更時にカレンダー側で再描画するためのコールバック（calendar-screen が登録） */
-let onFilterChangeCallback: (() => void) | null = null;
+const defaultFilterState = (): FilterState => ({
+  filterStatus: ["plan", "actual"],
+  filterType: ["income", "expense", "transfer"],
+  filterCategoryIds: [],
+  filterTagIds: [],
+  filterAccountIds: [],
+  filterDateFrom: "",
+  filterDateTo: "",
+  filterAmountMin: "",
+  filterAmountMax: "",
+  filterFreeText: "",
+});
+
+/** 収支履歴用の検索条件（一覧・カレンダーで使用） */
+let filterStateHistory: FilterState = defaultFilterState();
+
+/** スケジュール用の検索条件（スケジュール画面で使用、他画面と同期しない） */
+let filterStateSchedule: FilterState = defaultFilterState();
+
+/** カレンダー用の検索条件（週・月カレンダーで使用、他画面と同期しない） */
+let filterStateCalendar: FilterState = defaultFilterState();
+
+/** 現在表示中のビューに応じた検索条件を返す */
+function getActiveFilterState(): FilterState {
+  if (currentView === "schedule") return { ...filterStateSchedule };
+  if (
+    currentView === "transaction-history-weekly" ||
+    currentView === "transaction-history-calendar"
+  ) {
+    return { ...filterStateCalendar };
+  }
+  return { ...filterStateHistory };
+}
+
+/** 現在表示中のビューに応じた検索条件を部分更新する */
+function setActiveFilterState(partial: Partial<FilterState>): void {
+  let target: FilterState;
+  if (currentView === "schedule") target = filterStateSchedule;
+  else if (
+    currentView === "transaction-history-weekly" ||
+    currentView === "transaction-history-calendar"
+  ) {
+    target = filterStateCalendar;
+  } else {
+    target = filterStateHistory;
+  }
+  Object.assign(target, partial);
+}
+
+/** 収支履歴用の検索条件を返す */
+function getHistoryFilterState(): FilterState {
+  return { ...filterStateHistory };
+}
+
+/** スケジュール用の検索条件を返す */
+function getScheduleFilterState(): FilterState {
+  return { ...filterStateSchedule };
+}
+
+/** カレンダー用の検索条件を返す */
+function getCalendarFilterState(): FilterState {
+  return { ...filterStateCalendar };
+}
+
+/** フィルター変更時にカレンダー・スケジュール等で再描画するためのコールバック配列 */
+const onFilterChangeCallbacks: (() => void)[] = [];
 
 /**
- * フィルター変更時のコールバックを登録する。カレンダー表示の再描画用。
+ * フィルター変更時のコールバックを登録する。カレンダー・スケジュール表示の再描画用。
  * @param fn - コールバック関数
  */
 export function registerFilterChangeCallback(fn: () => void): void {
-  onFilterChangeCallback = fn;
+  onFilterChangeCallbacks.push(fn);
 }
 
 /**
- * フィルター適用後の取引一覧を返す。カレンダー画面などから利用する。
+ * フィルター適用後の取引一覧を返す。収支履歴一覧タブでのみ利用する。
  */
 export function getFilteredTransactionList(): TransactionRow[] {
-  return applyFilters(transactionList);
+  return applyFilters(transactionList, getHistoryFilterState());
+}
+
+/**
+ * スケジュール用の検索条件でフィルター適用後の取引一覧を返す。他画面の条件とは同期しない。
+ */
+export function getFilteredTransactionListForSchedule(): TransactionRow[] {
+  return applyFilters(transactionList, getScheduleFilterState());
+}
+
+/**
+ * カレンダー用の検索条件でフィルター適用後の取引一覧を返す。他画面の条件とは同期しない。
+ */
+export function getFilteredTransactionListForCalendar(): TransactionRow[] {
+  return applyFilters(transactionList, getCalendarFilterState());
 }
 
 /**
  * 日付フィルターを指定し、画面上の日付入力欄を同期する。カレンダーで日付セルクリック時に使用。
+ * 表示中ビューがカレンダーのときはカレンダー用条件、それ以外は収支履歴用条件を更新する。
  * @param from - 開始日（YYYY-MM-DD）
  * @param to - 終了日（YYYY-MM-DD）
  */
 export function setFilterDateFromTo(from: string, to: string): void {
-  filterDateFrom = from;
-  filterDateTo = to;
+  const isCalendar =
+    currentView === "transaction-history-weekly" ||
+    currentView === "transaction-history-calendar";
+  const target = isCalendar ? filterStateCalendar : filterStateHistory;
+  target.filterDateFrom = from;
+  target.filterDateTo = to;
   const dateFromEl = document.getElementById("transaction-history-date-from") as HTMLInputElement | null;
   const dateToEl = document.getElementById("transaction-history-date-to") as HTMLInputElement | null;
   if (dateFromEl) {
@@ -83,6 +169,38 @@ export function setFilterDateFromTo(from: string, to: string): void {
     dateToEl.value = to;
     dateToEl.classList.remove("is-empty");
   }
+}
+
+/**
+ * 指定ビュー用の検索条件をフォームに反映する。ビュー切替時に呼ぶ（収支履歴・スケジュール・カレンダーで別々の条件を表示）。
+ * @param viewId - "schedule" ならスケジュール用、"transaction-history-calendar" または "transaction-history-weekly" ならカレンダー用、それ以外は収支履歴用
+ */
+export function loadFormFromFilterState(viewId: string): void {
+  const isCalendar =
+    viewId === "transaction-history-calendar" || viewId === "transaction-history-weekly";
+  const state = viewId === "schedule"
+    ? { ...filterStateSchedule }
+    : isCalendar
+      ? { ...filterStateCalendar }
+      : { ...filterStateHistory };
+  const dateFromEl = document.getElementById("transaction-history-date-from") as HTMLInputElement | null;
+  const dateToEl = document.getElementById("transaction-history-date-to") as HTMLInputElement | null;
+  if (dateFromEl) {
+    dateFromEl.value = state.filterDateFrom;
+    dateFromEl.classList.toggle("is-empty", !state.filterDateFrom);
+  }
+  if (dateToEl) {
+    dateToEl.value = state.filterDateTo;
+    dateToEl.classList.toggle("is-empty", !state.filterDateTo);
+  }
+  const amountMinEl = document.getElementById("transaction-history-amount-min") as HTMLInputElement | null;
+  const amountMaxEl = document.getElementById("transaction-history-amount-max") as HTMLInputElement | null;
+  if (amountMinEl) amountMinEl.value = state.filterAmountMin;
+  if (amountMaxEl) amountMaxEl.value = state.filterAmountMax;
+  const freeTextEl = document.getElementById("transaction-history-free-text") as HTMLInputElement | null;
+  if (freeTextEl) freeTextEl.value = state.filterFreeText;
+  syncFilterButtons();
+  updateChosenDisplays();
 }
 
 /**
@@ -308,43 +426,44 @@ function appendAccountWrap(
 }
 
 /**
- * 画面上のフィルター条件（状態・種別・日付・カテゴリー・タグ・勘定・金額・フリーテキスト）を適用し、ソート済みの配列を返す。
+ * 指定した検索条件を適用し、ソート済みの配列を返す。
  * @param rows - 取引行の配列
+ * @param state - 検索条件（収支履歴用 or スケジュール用）
  * @returns フィルター適用・ソート後の配列
  */
-function applyFilters(rows: TransactionRow[]): TransactionRow[] {
+function applyFilters(rows: TransactionRow[], state: FilterState): TransactionRow[] {
   const filtered = rows.filter((row) => {
-    if (filterStatus.length > 0 && !filterStatus.includes(row.STATUS as "plan" | "actual")) return false;
-    if (filterType.length > 0 && !filterType.includes(row.TYPE as "income" | "expense" | "transfer")) return false;
-    if (filterDateFrom || filterDateTo) {
+    if (state.filterStatus.length > 0 && !state.filterStatus.includes(row.STATUS as "plan" | "actual")) return false;
+    if (state.filterType.length > 0 && !state.filterType.includes(row.TYPE as "income" | "expense" | "transfer")) return false;
+    if (state.filterDateFrom || state.filterDateTo) {
       const from = row.TRANDATE_FROM || "";
       const to = row.TRANDATE_TO || "";
       if (row.STATUS === "actual") {
-        if (filterDateFrom && from < filterDateFrom) return false;
-        if (filterDateTo && from > filterDateTo) return false;
+        if (state.filterDateFrom && from < state.filterDateFrom) return false;
+        if (state.filterDateTo && from > state.filterDateTo) return false;
       } else {
         if (!from || !to) return false;
-        if (filterDateFrom && to < filterDateFrom) return false;
-        if (filterDateTo && from > filterDateTo) return false;
+        if (state.filterDateFrom && to < state.filterDateFrom) return false;
+        if (state.filterDateTo && from > state.filterDateTo) return false;
       }
     }
-    if (filterCategoryIds.length > 0 && !filterCategoryIds.includes(row.CATEGORY_ID)) return false;
+    if (state.filterCategoryIds.length > 0 && !state.filterCategoryIds.includes(row.CATEGORY_ID)) return false;
     const amount = Number(row.AMOUNT) || 0;
-    if (filterAmountMin !== "" && !isNaN(Number(filterAmountMin)) && amount < Number(filterAmountMin)) return false;
-    if (filterAmountMax !== "" && !isNaN(Number(filterAmountMax)) && amount > Number(filterAmountMax)) return false;
-    if (filterFreeText.trim()) {
-      const q = filterFreeText.trim().toLowerCase();
+    if (state.filterAmountMin !== "" && !isNaN(Number(state.filterAmountMin)) && amount < Number(state.filterAmountMin)) return false;
+    if (state.filterAmountMax !== "" && !isNaN(Number(state.filterAmountMax)) && amount > Number(state.filterAmountMax)) return false;
+    if (state.filterFreeText.trim()) {
+      const q = state.filterFreeText.trim().toLowerCase();
       const name = (row.NAME || "").toLowerCase();
       const memo = (row.MEMO || "").toLowerCase();
       if (!name.includes(q) && !memo.includes(q)) return false;
     }
-    if (filterTagIds.length > 0) {
+    if (state.filterTagIds.length > 0) {
       const tagIds = tagManagementList.filter((t) => t.TRANSACTION_ID === row.ID).map((t) => t.TAG_ID);
-      if (!filterTagIds.some((id) => tagIds.includes(id))) return false;
+      if (!state.filterTagIds.some((id) => tagIds.includes(id))) return false;
     }
-    if (filterAccountIds.length > 0) {
-      const inMatch = row.ACCOUNT_ID_IN && filterAccountIds.includes(row.ACCOUNT_ID_IN);
-      const outMatch = row.ACCOUNT_ID_OUT && filterAccountIds.includes(row.ACCOUNT_ID_OUT);
+    if (state.filterAccountIds.length > 0) {
+      const inMatch = row.ACCOUNT_ID_IN && state.filterAccountIds.includes(row.ACCOUNT_ID_IN);
+      const outMatch = row.ACCOUNT_ID_OUT && state.filterAccountIds.includes(row.ACCOUNT_ID_OUT);
       if (!inMatch && !outMatch) return false;
     }
     return true;
@@ -419,7 +538,7 @@ export function renderList(): void {
   const tbody = document.getElementById("transaction-history-tbody");
   if (!tbody) return;
   tbody.innerHTML = "";
-  const filtered = applyFilters(transactionList);
+  const filtered = applyFilters(transactionList, getHistoryFilterState());
   setDisplayedKeys("transaction-history", filtered.map((row) => row.ID));
   filtered.forEach((row) => {
     const tr = document.createElement("tr");
@@ -548,10 +667,18 @@ export function renderList(): void {
  * フィルター変更後に一覧を再描画し、カレンダー表示中ならカレンダー側の再描画も依頼する。
  */
 function notifyFilterChange(): void {
-  renderList();
-  if (currentView === "transaction-history-weekly" || currentView === "transaction-history-calendar") {
-    onFilterChangeCallback?.();
+  if (currentView === "schedule") {
+    onFilterChangeCallbacks.forEach((cb) => cb());
+    return;
   }
+  if (
+    currentView === "transaction-history-weekly" ||
+    currentView === "transaction-history-calendar"
+  ) {
+    onFilterChangeCallbacks.forEach((cb) => cb());
+    return;
+  }
+  renderList();
 }
 
 /**
@@ -578,15 +705,16 @@ export function updateTransactionHistoryTabLayout(): void {
  * @returns なし
  */
 function syncFilterButtons(): void {
+  const state = getActiveFilterState();
   const searchArea = document.getElementById("transaction-history-common");
   if (!searchArea) return;
   searchArea.querySelectorAll(".transaction-history-filter-btn[data-status]").forEach((b) => {
     const s = (b as HTMLButtonElement).dataset.status as "plan" | "actual";
-    b.classList.toggle("is-active", filterStatus.includes(s));
+    b.classList.toggle("is-active", state.filterStatus.includes(s));
   });
   searchArea.querySelectorAll(".transaction-history-filter-btn[data-type]").forEach((b) => {
     const t = (b as HTMLButtonElement).dataset.type as "income" | "expense" | "transfer";
-    b.classList.toggle("is-active", filterType.includes(t));
+    b.classList.toggle("is-active", state.filterType.includes(t));
   });
 }
 
@@ -651,15 +779,18 @@ function setChosenDisplayLabels(
  * @returns なし
  */
 function updateChosenDisplays(): void {
+  const state = getActiveFilterState();
   const categoryEl = document.getElementById("transaction-history-category-display");
   const tagEl = document.getElementById("transaction-history-tag-display");
   const accountEl = document.getElementById("transaction-history-account-display");
   setChosenDisplayLabels(
     categoryEl,
-    filterCategoryIds,
+    state.filterCategoryIds,
     (id) => getCategoryById(id)?.CATEGORY_NAME,
     (id) => {
-      filterCategoryIds = filterCategoryIds.filter((x) => x !== id);
+      setActiveFilterState({
+        filterCategoryIds: state.filterCategoryIds.filter((x) => x !== id),
+      });
       updateChosenDisplays();
       notifyFilterChange();
     },
@@ -667,10 +798,12 @@ function updateChosenDisplays(): void {
   );
   setChosenDisplayLabels(
     tagEl,
-    filterTagIds,
+    state.filterTagIds,
     (id) => tagRows.find((r) => r.ID === id)?.TAG_NAME,
     (id) => {
-      filterTagIds = filterTagIds.filter((x) => x !== id);
+      setActiveFilterState({
+        filterTagIds: state.filterTagIds.filter((x) => x !== id),
+      });
       updateChosenDisplays();
       notifyFilterChange();
     },
@@ -678,10 +811,12 @@ function updateChosenDisplays(): void {
   );
   setChosenDisplayLabels(
     accountEl,
-    filterAccountIds,
+    state.filterAccountIds,
     (id) => getAccountById(id)?.ACCOUNT_NAME,
     (id) => {
-      filterAccountIds = filterAccountIds.filter((x) => x !== id);
+      setActiveFilterState({
+        filterAccountIds: state.filterAccountIds.filter((x) => x !== id),
+      });
       updateChosenDisplays();
       notifyFilterChange();
     },
@@ -807,7 +942,7 @@ function renderCategorySelectList(type: "income" | "expense" | "transfer"): void
  */
 function openCategorySelectModal(): void {
   categorySelectModalType = "expense";
-  categorySelectModalSelectedIds = new Set(filterCategoryIds);
+  categorySelectModalSelectedIds = new Set(getActiveFilterState().filterCategoryIds);
   const tabs = document.querySelectorAll(".transaction-history-category-select-tab");
   tabs.forEach((tab) => {
     const t = tab as HTMLElement;
@@ -828,13 +963,14 @@ function openTagSelectModal(): void {
   if (!listEl) return;
   listEl.innerHTML = "";
   const sorted = tagRows.slice().sort((a, b) => (a.SORT_ORDER || "").localeCompare(b.SORT_ORDER || ""));
+  const state = getActiveFilterState();
   for (const row of sorted) {
     const item = createSelectItemRow(
       row.ID,
       row.TAG_NAME || "—",
       row.COLOR || ICON_DEFAULT_COLOR,
       row.ICON_PATH || "",
-      filterTagIds.includes(row.ID)
+      state.filterTagIds.includes(row.ID)
     );
     listEl.appendChild(item);
   }
@@ -929,27 +1065,30 @@ function formatDateYMD(d: Date): string {
 }
 
 /**
- * 検索条件を初期状態に戻す。フィルター状態・日付・金額・フリーテキスト等をクリアする。
+ * 検索条件を初期状態に戻す。現在表示中のビュー（収支履歴 or スケジュール）の条件のみクリアする。
  * @returns なし
  */
 function resetConditions(): void {
-  filterStatus = ["plan", "actual"];
-  filterType = ["income", "expense", "transfer"];
-  filterCategoryIds = [];
-  filterTagIds = [];
-  filterAccountIds = [];
-  filterAmountMin = "";
-  filterAmountMax = "";
-  filterFreeText = "";
   const today = new Date();
   const fromDate = new Date(today.getFullYear() - 1, today.getMonth(), today.getDate());
-  filterDateFrom = formatDateYMD(fromDate);
-  filterDateTo = "";
+  const defaultDateFrom = formatDateYMD(fromDate);
+  setActiveFilterState({
+    filterStatus: ["plan", "actual"],
+    filterType: ["income", "expense", "transfer"],
+    filterCategoryIds: [],
+    filterTagIds: [],
+    filterAccountIds: [],
+    filterDateFrom: defaultDateFrom,
+    filterDateTo: "",
+    filterAmountMin: "",
+    filterAmountMax: "",
+    filterFreeText: "",
+  });
 
   const dateFromEl = document.getElementById("transaction-history-date-from") as HTMLInputElement | null;
   const dateToEl = document.getElementById("transaction-history-date-to") as HTMLInputElement | null;
   if (dateFromEl) {
-    dateFromEl.value = filterDateFrom;
+    dateFromEl.value = defaultDateFrom;
     dateFromEl.classList.remove("is-empty");
   }
   if (dateToEl) {
@@ -975,16 +1114,16 @@ function resetConditions(): void {
  */
 function loadAndShow(forceReloadFromCsv = false): void {
   updateTransactionHistoryTabLayout();
-  syncFilterButtons();
-  updateChosenDisplays();
+  loadFormFromFilterState("transaction-history");
+  const state = filterStateHistory;
   const dateFromEl = document.getElementById("transaction-history-date-from") as HTMLInputElement | null;
   const dateToEl = document.getElementById("transaction-history-date-to") as HTMLInputElement | null;
-  if (filterDateFrom === "" && filterDateTo === "") {
+  if (state.filterDateFrom === "" && state.filterDateTo === "") {
     const today = new Date();
     const fromDate = new Date(today.getFullYear() - 1, today.getMonth(), today.getDate());
-    filterDateFrom = formatDateYMD(fromDate);
+    state.filterDateFrom = formatDateYMD(fromDate);
     if (dateFromEl) {
-      dateFromEl.value = filterDateFrom;
+      dateFromEl.value = state.filterDateFrom;
       dateFromEl.classList.remove("is-empty");
     }
     if (dateToEl) {
@@ -1032,12 +1171,12 @@ export function initTransactionHistoryView(): void {
   updateDateInputEmptyState(dateFrom);
   updateDateInputEmptyState(dateTo);
   dateFrom?.addEventListener("change", () => {
-    filterDateFrom = dateFrom.value || "";
+    setActiveFilterState({ filterDateFrom: dateFrom.value || "" });
     updateDateInputEmptyState(dateFrom);
     notifyFilterChange();
   });
   dateTo?.addEventListener("change", () => {
-    filterDateTo = dateTo.value || "";
+    setActiveFilterState({ filterDateTo: dateTo.value || "" });
     updateDateInputEmptyState(dateTo);
     notifyFilterChange();
   });
@@ -1045,11 +1184,12 @@ export function initTransactionHistoryView(): void {
   const searchArea = document.getElementById("transaction-history-common");
   searchArea?.querySelectorAll(".transaction-history-filter-btn[data-status]").forEach((btn) => {
     btn.addEventListener("click", () => {
+      const state = getActiveFilterState();
       const status = (btn as HTMLButtonElement).dataset.status as "plan" | "actual";
-      if (filterStatus.includes(status)) {
-        filterStatus = filterStatus.filter((s) => s !== status);
+      if (state.filterStatus.includes(status)) {
+        setActiveFilterState({ filterStatus: state.filterStatus.filter((s) => s !== status) });
       } else {
-        filterStatus = [...filterStatus, status];
+        setActiveFilterState({ filterStatus: [...state.filterStatus, status] });
       }
       syncFilterButtons();
       notifyFilterChange();
@@ -1058,11 +1198,12 @@ export function initTransactionHistoryView(): void {
 
   searchArea?.querySelectorAll(".transaction-history-filter-btn[data-type]").forEach((btn) => {
     btn.addEventListener("click", () => {
+      const state = getActiveFilterState();
       const type = (btn as HTMLButtonElement).dataset.type as "income" | "expense" | "transfer";
-      if (filterType.includes(type)) {
-        filterType = filterType.filter((t) => t !== type);
+      if (state.filterType.includes(type)) {
+        setActiveFilterState({ filterType: state.filterType.filter((t) => t !== type) });
       } else {
-        filterType = [...filterType, type];
+        setActiveFilterState({ filterType: [...state.filterType, type] });
       }
       syncFilterButtons();
       notifyFilterChange();
@@ -1072,17 +1213,17 @@ export function initTransactionHistoryView(): void {
   const amountMin = document.getElementById("transaction-history-amount-min") as HTMLInputElement;
   const amountMax = document.getElementById("transaction-history-amount-max") as HTMLInputElement;
   amountMin?.addEventListener("input", () => {
-    filterAmountMin = amountMin.value.trim();
+    setActiveFilterState({ filterAmountMin: amountMin.value.trim() });
     notifyFilterChange();
   });
   amountMax?.addEventListener("input", () => {
-    filterAmountMax = amountMax.value.trim();
+    setActiveFilterState({ filterAmountMax: amountMax.value.trim() });
     notifyFilterChange();
   });
 
   const freeText = document.getElementById("transaction-history-free-text") as HTMLInputElement;
   freeText?.addEventListener("input", () => {
-    filterFreeText = freeText.value.trim();
+    setActiveFilterState({ filterFreeText: freeText.value.trim() });
     notifyFilterChange();
   });
 
@@ -1110,7 +1251,7 @@ export function initTransactionHistoryView(): void {
     renderCategorySelectList(categorySelectModalType);
   });
   document.getElementById("transaction-history-category-select-apply")?.addEventListener("click", () => {
-    filterCategoryIds = Array.from(categorySelectModalSelectedIds);
+    setActiveFilterState({ filterCategoryIds: Array.from(categorySelectModalSelectedIds) });
     updateChosenDisplays();
     notifyFilterChange();
     closeOverlay("transaction-history-category-select-overlay");
@@ -1128,7 +1269,7 @@ export function initTransactionHistoryView(): void {
     });
   });
   document.getElementById("transaction-history-tag-select-apply")?.addEventListener("click", () => {
-    filterTagIds = getSelectedIdsFromList("transaction-history-tag-select-list");
+    setActiveFilterState({ filterTagIds: getSelectedIdsFromList("transaction-history-tag-select-list") });
     updateChosenDisplays();
     notifyFilterChange();
     closeOverlay("transaction-history-tag-select-overlay");
@@ -1164,7 +1305,7 @@ export function initTransactionHistoryView(): void {
     renderAccountSelectList(accountSelectModalTab);
   });
   document.getElementById("transaction-history-account-select-apply")?.addEventListener("click", () => {
-    filterAccountIds = Array.from(accountSelectModalSelectedIds);
+    setActiveFilterState({ filterAccountIds: Array.from(accountSelectModalSelectedIds) });
     updateChosenDisplays();
     notifyFilterChange();
     closeOverlay("transaction-history-account-select-overlay");

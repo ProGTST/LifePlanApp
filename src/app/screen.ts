@@ -6,6 +6,7 @@ import {
   MASTER_LIST_VIEW_IDS,
 } from "../constants/index";
 import { currentView, setCurrentView, setTransactionHistoryInitialTab } from "../state";
+import { loadFormFromFilterState } from "../screens/transaction-history-screen";
 
 const viewHandlers: Record<string, () => void> = {};
 /** メニューバーの「データ最新化」押下時に呼ぶハンドラ。viewId -> fn（CSV から再取得して再描画） */
@@ -107,10 +108,20 @@ export function showMainView(viewId: string): void {
     v.classList.toggle("main-view--hidden", !isTarget);
   });
 
+  const showSearchCommon =
+    viewId === "transaction-history" || isTransactionHistorySubView || viewId === "schedule";
   const transactionHistoryCommon = document.getElementById("transaction-history-common");
   if (transactionHistoryCommon) {
-    const showCommon = viewId === "transaction-history" || isTransactionHistorySubView;
-    transactionHistoryCommon.classList.toggle("main-view--hidden", !showCommon);
+    transactionHistoryCommon.classList.toggle("main-view--hidden", !showSearchCommon);
+  }
+  if (showSearchCommon) {
+    const formViewId =
+      viewId === "schedule"
+        ? "schedule"
+        : viewId === "transaction-history-weekly" || viewId === "transaction-history-calendar"
+          ? viewId
+          : "transaction-history";
+    loadFormFromFilterState(formViewId);
   }
 
   const menubarTitleEl = document.getElementById("menubar-title");
