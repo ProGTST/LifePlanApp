@@ -301,7 +301,41 @@ function renderCharts(ym: string): void {
   chartInstances.length = 0;
   if (!ym || !/^\d{4}-\d{2}$/.test(ym)) return;
   if (!chartJsRegistered) {
-    Chart.register(...registerables, ChartDataLabels);
+    Chart.register(...registerables, ChartDataLabels, {
+      id: "centerLabelAndHole",
+      afterDraw(chart: Chart) {
+        const centerOpts = (chart.options.plugins as Record<string, { label?: string; total?: number }> | undefined)
+          ?.centerLabel;
+        if (!centerOpts?.label && centerOpts?.total === undefined) return;
+        const meta = chart.getDatasetMeta(0);
+        if (!meta?.data?.length) return;
+        const arc = meta.data[0] as { x: number; y: number; innerRadius: number };
+        const ctx = chart.ctx;
+        const x = arc.x;
+        const y = arc.y;
+        const r = arc.innerRadius;
+        if (r > 0) {
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(x, y, r, 0, Math.PI * 2);
+          ctx.fillStyle = "#ffffff";
+          ctx.fill();
+          ctx.restore();
+        }
+        const label = centerOpts.label ?? "";
+        const total = centerOpts.total ?? 0;
+        const totalStr = total.toLocaleString();
+        ctx.save();
+        ctx.fillStyle = "#333333";
+        ctx.font = "bold 12px sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        if (label) ctx.fillText(label, x, y - 10);
+        ctx.font = "11px sans-serif";
+        ctx.fillText(totalStr, x, y + (label ? 8 : 0));
+        ctx.restore();
+      },
+    });
     chartJsRegistered = true;
   }
   const data = getChartDataForMonth(ym);
@@ -397,8 +431,9 @@ function renderCharts(ym: string): void {
     });
     chartInstances.push(ch);
   }
-  const pieOptions = {
+  const pieOptionsBase = {
     ...chartOptions,
+    cutout: "55%",
     plugins: {
       legend: { position: "bottom" as const },
       datalabels: {
@@ -415,25 +450,33 @@ function renderCharts(ym: string): void {
   };
   const makePie = (
     canvasId: string,
-    items: Array<{ name: string; amount: number; color: string }>
+    items: Array<{ name: string; amount: number; color: string }>,
+    centerLabel: string
   ): void => {
     const el = document.getElementById(canvasId) as HTMLCanvasElement | null;
     if (!el) return;
     const safeItems = items.length > 0 ? items : [{ name: "データなし", amount: 1, color: "#e0e0e0" }];
+    const total = safeItems.reduce((s, i) => s + i.amount, 0);
     const ch = new Chart(el, {
-      type: "pie",
+      type: "doughnut",
       data: {
         labels: safeItems.map((i) => i.name),
         datasets: [{ data: safeItems.map((i) => i.amount), backgroundColor: safeItems.map((i) => i.color) }],
       },
-      options: pieOptions,
+      options: {
+        ...pieOptionsBase,
+        plugins: {
+          ...pieOptionsBase.plugins,
+          centerLabel: { label: centerLabel, total },
+        },
+      },
     });
     chartInstances.push(ch);
   };
-  makePie("transaction-history-chart-plan-income-pie", data.planIncomeByCategory);
-  makePie("transaction-history-chart-plan-expense-pie", data.planExpenseByCategory);
-  makePie("transaction-history-chart-actual-income-pie", data.actualIncomeByCategory);
-  makePie("transaction-history-chart-actual-expense-pie", data.actualExpenseByCategory);
+  makePie("transaction-history-chart-plan-income-pie", data.planIncomeByCategory, "予定収入");
+  makePie("transaction-history-chart-plan-expense-pie", data.planExpenseByCategory, "予定支出");
+  makePie("transaction-history-chart-actual-income-pie", data.actualIncomeByCategory, "実績収入");
+  makePie("transaction-history-chart-actual-expense-pie", data.actualExpenseByCategory, "実績支出");
 }
 
 // ---------------------------------------------------------------------------
