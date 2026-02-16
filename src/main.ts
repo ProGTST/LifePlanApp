@@ -33,6 +33,7 @@ import { initProfileView } from "./screens/profile-screen";
 import { initDesignView } from "./screens/design-screen";
 import { initTransactionHistoryView } from "./screens/transaction-history-screen";
 import { initCalendarView } from "./screens/calendar-screen";
+import { initScheduleView } from "./screens/schedule-screen";
 import { initTransactionEntryView } from "./screens/transaction-entry-screen";
 
 /**
@@ -50,6 +51,7 @@ function initAppScreen(): void {
   initDesignView();
   initTransactionHistoryView();
   initCalendarView();
+  initScheduleView();
   initTransactionEntryView();
 
   /* メニューバー・データ最新化: 常に表示。押下で現在画面の CSV 再取得・再描画 */

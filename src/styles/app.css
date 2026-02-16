@@ -3488,3 +3488,198 @@
 .transaction-history-chart-wrap--diff canvas {
   max-height: 320px;
 }
+
+/* ---------------------------------------------------------------------------
+   スケジュール画面（ガント風）
+   --------------------------------------------------------------------------- */
+.schedule-view-body {
+  padding: 0.75rem;
+}
+.schedule-view-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+.schedule-view-label {
+  font-weight: 500;
+  font-size: 0.9375rem;
+}
+.schedule-view-date-input {
+  padding: 0.35rem 0.5rem;
+  font-size: 0.875rem;
+  border: 1px solid var(--gray-500);
+  border-radius: var(--radius-md);
+}
+.schedule-view-unit {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.schedule-view-unit-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+.schedule-view-grid-wrap {
+  display: flex;
+  overflow: hidden;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius-md);
+  background: var(--color-view-bg, #fff);
+}
+.schedule-fixed-wrap {
+  flex: 0 0 auto;
+  overflow: hidden;
+  border-right: 1px solid var(--gray-200);
+  /* 横スクロールバー分の高さを確保し、日付列側と行の高さを揃える（可動列下の余白を出さないようスクロールバー高さに合わせる） */
+  padding-bottom: 0.75rem;
+  box-sizing: border-box;
+}
+.schedule-scroll-wrap {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow-x: auto;
+  /* 対応ブラウザではスクロールバーを重ねて、可動列下の余分な高さを出さない */
+  overflow-x: overlay;
+}
+.schedule-view-table {
+  border-collapse: collapse;
+  border-spacing: 0;
+  font-size: 0.8125rem;
+  line-height: 1.25;
+  table-layout: fixed;
+  margin: 0;
+  vertical-align: top;
+}
+/* 固定列・日付列でヘッダー・データ行の高さを完全に揃える */
+.schedule-view-table--fixed thead tr,
+.schedule-view-table--dates thead tr {
+  height: 2.75rem;
+}
+.schedule-view-table--fixed thead th,
+.schedule-view-table--dates thead th {
+  height: 2.75rem;
+  max-height: 2.75rem;
+  box-sizing: border-box;
+  vertical-align: middle;
+  overflow: hidden;
+  padding: 0.35rem 0.5rem;
+}
+.schedule-view-table--fixed tbody tr,
+.schedule-view-table--dates tbody tr {
+  height: 2.25rem;
+}
+.schedule-view-table--fixed tbody td,
+.schedule-view-table--dates tbody td {
+  height: 2.25rem;
+  max-height: 2.25rem;
+  box-sizing: border-box;
+  vertical-align: middle;
+  overflow: hidden;
+  padding: 0.35rem 0.5rem;
+}
+.schedule-view-table--fixed {
+  width: auto;
+  table-layout: fixed;
+}
+.schedule-view-table--fixed th,
+.schedule-view-table--fixed td {
+  border: 1px solid var(--gray-200);
+  border-right: none;
+}
+.schedule-view-table--fixed thead th {
+  background: var(--gray-100);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.schedule-view-table--dates {
+  width: max-content;
+  min-width: 100%;
+  table-layout: fixed;
+}
+.schedule-view-table--dates th,
+.schedule-view-table--dates td {
+  border: 1px solid var(--gray-200);
+}
+.schedule-view-table--dates thead th {
+  background: var(--gray-100);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.schedule-col-type {
+  width: 2.5rem;
+  min-width: 2.5rem;
+  text-align: center;
+}
+.schedule-col-type .category-icon-wrap,
+.schedule-col-type .icon-wrap {
+  display: inline-flex;
+  width: 1.25rem;
+  height: 1.25rem;
+}
+.schedule-col-category {
+  width: 2.5rem;
+  min-width: 2.5rem;
+  text-align: center;
+}
+.schedule-col-category .category-icon-wrap,
+.schedule-col-category .icon-wrap {
+  display: inline-flex;
+  width: 1.25rem;
+  height: 1.25rem;
+}
+.schedule-col-name {
+  width: 10rem;
+  min-width: 8rem;
+  max-width: 14rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.schedule-col-status {
+  width: 3.5rem;
+  min-width: 3.5rem;
+}
+
+.schedule-view-yearmonth-col {
+  min-width: 2.25rem;
+  text-align: left;
+  font-size: 0.75rem;
+  color: var(--gray-600);
+  font-weight: normal;
+  padding-left: 0.25rem;
+  vertical-align: bottom;
+}
+.schedule-view-date-col {
+  min-width: 2.25rem;
+  width: 2.25rem;
+  text-align: center;
+  font-weight: 500;
+}
+.schedule-view-date-line1,
+.schedule-view-date-line2 {
+  display: block;
+  line-height: 1.25;
+}
+.schedule-view-date-line2 {
+  font-size: 0.7rem;
+  color: var(--gray-600);
+  font-weight: normal;
+}
+.schedule-view-date-cell {
+  min-width: 2.25rem;
+  width: 2.25rem;
+  text-align: center;
+  background: var(--color-view-bg, #fff);
+}
+.schedule-view-date-cell--active {
+  background: var(--color-button-bg);
+  opacity: 0.5;
+}
+.schedule-view-table tbody tr:hover .schedule-view-date-cell--active {
+  opacity: 0.75;
+}

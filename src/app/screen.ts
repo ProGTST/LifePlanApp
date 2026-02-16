@@ -180,13 +180,15 @@ export function showMainView(viewId: string): void {
   const footerMenuBtn = document.getElementById("footer-menu-btn");
   const footerSettingsBtn = document.getElementById("footer-settings-btn");
   const footerBackBtn = document.getElementById("footer-back-btn");
-  if (footerHomeBtn) footerHomeBtn.classList.toggle("is-visible", showFooterNav || isTransactionView);
+  const isScheduleView = viewId === "schedule";
+  if (footerHomeBtn) footerHomeBtn.classList.toggle("is-visible", showFooterNav || isTransactionView || isScheduleView);
   if (footerScheduleBtn)
-    footerScheduleBtn.classList.toggle("is-visible", isMasterListOnly || isTransactionHistorySubView);
+    footerScheduleBtn.classList.toggle("is-visible", isMasterListOnly || isTransactionHistorySubView || isScheduleView);
   if (footerHistoryBtn)
     footerHistoryBtn.classList.toggle(
       "is-visible",
       isMasterListOnly ||
+        isScheduleView ||
         viewId === "transaction-entry" ||
         viewId === "transaction-analysis" ||
         isTransactionHistorySubView
