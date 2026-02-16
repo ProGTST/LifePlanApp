@@ -2927,9 +2927,9 @@
 
 .transaction-history-week-block-item .transaction-history-type-icon {
   flex-shrink: 0;
-  width: var(--icon-size, 22px);
-  min-width: var(--icon-size, 22px);
-  height: var(--icon-size, 22px);
+  width: 22px;
+  min-width: 22px;
+  height: 22px;
   box-sizing: border-box;
   display: inline-flex;
   align-items: center;
@@ -3207,12 +3207,16 @@
   min-width: 0;
 }
 
+/* 収支種別アイコンは常に 22px（#app 内で優先） */
+#app .transaction-history-type-icon,
 .transaction-history-type-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: var(--icon-size, 22px);
-  height: var(--icon-size, 22px);
+  width: 22px !important;
+  height: 22px !important;
+  min-width: 22px !important;
+  min-height: 22px !important;
   font-size: 0.6875rem;
   font-weight: 600;
   color: #ffffff;
@@ -3376,9 +3380,9 @@
 
 .transaction-history-calendar-day .transaction-history-type-icon {
   flex-shrink: 0;
-  width: 22px;
-  min-width: 22px;
-  height: 22px;
+  width: 22px !important;
+  min-width: 22px !important;
+  height: 22px !important;
   font-size: 0.6rem;
   box-sizing: border-box;
 }
@@ -3807,7 +3811,7 @@
   height: auto;
   min-height: 2.25rem;
   overflow: visible;
-  vertical-align: top;
+  vertical-align: middle;
 }
 .schedule-view-table thead th {
   background: var(--gray-100);
@@ -3896,7 +3900,7 @@
   overflow-wrap: break-word;
   word-break: break-word;
   overflow: visible;
-  vertical-align: top;
+  vertical-align: middle;
 }
 .schedule-col-date-range {
   width: 10rem;
@@ -3913,6 +3917,38 @@
   width: 3.5rem;
   min-width: 3.5rem;
   text-align: center;
+}
+
+/* #app button より優先：実績状況ボタンは BASE/ACCENT で表示、高さ 22px */
+#app .schedule-status-btn,
+.schedule-status-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 22px;
+  min-height: 22px;
+  padding: 0 0.25rem;
+  font-size: 0.5rem !important;
+  border-radius: 6px;
+  border: 0.5px solid transparent;
+  box-sizing: border-box;
+  cursor: default;
+  white-space: nowrap;
+  line-height: 1;
+}
+#app .schedule-status-btn--no-actual {
+  background: var(--color-base-bg) !important;
+  color: var(--color-base-fg) !important;
+  border-color: color-mix(in srgb, var(--color-base-fg) 50%, transparent) !important;
+}
+#app .schedule-status-btn--has-actual {
+  background: var(--color-accent-bg) !important;
+  color: var(--color-accent-fg) !important;
+  border-color: color-mix(in srgb, var(--color-accent-bg) 75%, transparent) !important;
+  cursor: pointer;
+}
+#app .schedule-status-btn--has-actual:hover {
+  opacity: 0.9;
 }
 
 .schedule-view-yearmonth-col {
@@ -3992,4 +4028,50 @@
 .schedule-view-table tbody td.schedule-col-date-range:focus,
 .schedule-view-table tbody td.schedule-col-status:focus {
   background: var(--gray-50) !important;
+}
+
+/* スケジュール：取引実績確認ポップアップ */
+.schedule-actual-list-modal {
+  max-width:  min(90vw, 720px);
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+}
+.schedule-actual-list-title {
+  margin: 0 0 1rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+.schedule-actual-list-body {
+  overflow: auto;
+  flex: 1;
+  min-height: 0;
+  margin-bottom: 1rem;
+}
+.schedule-actual-list-empty {
+  margin: 0;
+  color: var(--gray-600);
+}
+.schedule-actual-list-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+.schedule-actual-list-table th,
+.schedule-actual-list-table td {
+  padding: 0.5rem 0.5rem;
+  text-align: left;
+  border-bottom: 1px solid var(--gray-200);
+}
+.schedule-actual-list-table th {
+  font-weight: 600;
+  background: var(--gray-50);
+}
+.schedule-actual-list-table td:nth-child(5) {
+  text-align: right;
+}
+.schedule-actual-list-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
 }

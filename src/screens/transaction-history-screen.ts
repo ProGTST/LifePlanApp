@@ -5,6 +5,7 @@ import type {
   AccountPermissionRow,
   TagRow,
   TagManagementRow,
+  TransactionManagementRow,
 } from "../types";
 import {
   currentUserId,
@@ -218,7 +219,8 @@ export function loadTransactionData(noCache = false): Promise<void> {
     fetchAccountList(noCache),
     fetchAccountPermissionList(noCache),
     fetchTagManagementList(noCache),
-  ]).then(([txList, catList, tagList, accList, permList, tagMgmt]) => {
+    fetchTransactionManagementList(noCache),
+  ]).then(([txList, catList, tagList, accList, permList, tagMgmt, txMgmt]) => {
     const visibleIds = getVisibleAccountIds(accList, permList);
     const filteredTx = filterTransactionsByVisibleAccounts(txList, visibleIds);
     setTransactionList(filteredTx);
@@ -227,6 +229,7 @@ export function loadTransactionData(noCache = false): Promise<void> {
     accountRows = accList;
     permissionRows = permList;
     setTagManagementList(tagMgmt);
+    transactionManagementRows = txMgmt;
   });
 }
 
@@ -369,6 +372,24 @@ async function fetchTagManagementList(noCache = false): Promise<TagManagementRow
   return list;
 }
 
+let transactionManagementRows: TransactionManagementRow[] = [];
+
+/**
+ * TRANSACTION_MANAGEMENT.csv を取得し、紐付け行の配列に変換して返す。
+ * @param noCache - true のときキャッシュを使わない
+ */
+async function fetchTransactionManagementList(noCache = false): Promise<TransactionManagementRow[]> {
+  const init = noCache ? CSV_NO_CACHE : undefined;
+  const { header, rows } = await fetchCsv("/data/TRANSACTION_MANAGEMENT.csv", init);
+  if (header.length === 0) return [];
+  const list: TransactionManagementRow[] = [];
+  for (const cells of rows) {
+    if (cells.length === 0 || cells.every((c) => !c.trim())) continue;
+    list.push(rowToObject(header, cells) as unknown as TransactionManagementRow);
+  }
+  return list;
+}
+
 /**
  * ID でカテゴリー行を検索する。
  * @param id - カテゴリー ID
@@ -385,6 +406,30 @@ export function getCategoryById(id: string): CategoryRow | undefined {
  */
 export function getAccountById(id: string): AccountRow | undefined {
   return accountRows.find((a) => a.ID === id);
+}
+
+/**
+ * 取引予定に紐づく取引実績の ID 一覧を返す（TRANSACTION_MANAGEMENT から取得）。
+ * @param planId - 取引予定の ID
+ * @returns 取引実績 ID の配列
+ */
+export function getActualIdsForPlanId(planId: string): string[] {
+  return transactionManagementRows
+    .filter((r) => (r.TRAN_PLAN_ID || "").trim() === String(planId).trim())
+    .map((r) => (r.TRAN_ACTUAL_ID || "").trim())
+    .filter((id) => id !== "");
+}
+
+/**
+ * 取引予定に紐づく取引実績の取引行一覧を返す。
+ * @param planId - 取引予定の ID
+ * @returns 取引実績の TransactionRow 配列
+ */
+export function getActualTransactionsForPlan(planId: string): TransactionRow[] {
+  const actualIds = getActualIdsForPlanId(planId);
+  if (actualIds.length === 0) return [];
+  const idSet = new Set(actualIds);
+  return transactionList.filter((r) => (r.STATUS || "").toLowerCase() === "actual" && idSet.has(r.ID));
 }
 
 /**

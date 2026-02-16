@@ -3,9 +3,13 @@ import {
   loadTransactionData,
   getFilteredTransactionListForSchedule,
   getCategoryById,
+  getAccountById,
   getRowPermissionType,
+  getActualIdsForPlanId,
+  getActualTransactionsForPlan,
   registerFilterChangeCallback,
 } from "./transaction-history-screen";
+import { openOverlay, closeOverlay } from "../utils/overlay";
 import { registerViewHandler, registerRefreshHandler } from "../app/screen";
 import { setDisplayedKeys } from "../utils/csvWatch";
 import { createIconWrap } from "../utils/iconWrap";
@@ -300,6 +304,68 @@ function getTypeLabel(type: string): string {
   return "支出";
 }
 
+/**
+ * 取引予定に紐づく取引実績一覧をポップアップで表示する。
+ */
+function openScheduleActualListPopup(planId: string, planName: string): void {
+  const bodyEl = document.getElementById("schedule-actual-list-body");
+  const titleEl = document.getElementById("schedule-actual-list-title");
+  if (!bodyEl) return;
+  if (titleEl) titleEl.textContent = `取引実績${planName ? `：${planName}` : ""}`;
+
+  const actuals = getActualTransactionsForPlan(planId);
+  bodyEl.innerHTML = "";
+
+  if (actuals.length === 0) {
+    const p = document.createElement("p");
+    p.className = "schedule-actual-list-empty";
+    p.textContent = "表示できる取引実績がありません。";
+    bodyEl.appendChild(p);
+  } else {
+    const table = document.createElement("table");
+    table.className = "schedule-actual-list-table";
+    table.setAttribute("aria-label", "取引実績一覧");
+    const thead = document.createElement("thead");
+    const headerRow = document.createElement("tr");
+    ["取引日", "取引名", "種類", "カテゴリ", "金額", "勘定（入）", "勘定（出）", "メモ"].forEach((text) => {
+      const th = document.createElement("th");
+      th.scope = "col";
+      th.textContent = text;
+      headerRow.appendChild(th);
+    });
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+    const tbody = document.createElement("tbody");
+    for (const row of actuals) {
+      const tr = document.createElement("tr");
+      const from = (row.TRANDATE_FROM || "").slice(0, 10).replace(/-/g, "/");
+      const cat = getCategoryById(row.CATEGORY_ID);
+      const accIn = row.ACCOUNT_ID_IN ? getAccountById(row.ACCOUNT_ID_IN) : undefined;
+      const accOut = row.ACCOUNT_ID_OUT ? getAccountById(row.ACCOUNT_ID_OUT) : undefined;
+      const cells = [
+        from,
+        (row.NAME || "").trim() || "—",
+        getTypeLabel(row.TYPE || "expense"),
+        cat?.CATEGORY_NAME || "—",
+        row.AMOUNT ? Number(row.AMOUNT).toLocaleString() : "—",
+        accIn?.ACCOUNT_NAME || "—",
+        accOut?.ACCOUNT_NAME || "—",
+        (row.MEMO || "").trim() || "—",
+      ];
+      cells.forEach((text) => {
+        const td = document.createElement("td");
+        td.textContent = text;
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    }
+    table.appendChild(tbody);
+    bodyEl.appendChild(table);
+  }
+
+  openOverlay("schedule-actual-list-overlay");
+}
+
 function renderScheduleGrid(): void {
   const startInput = document.getElementById("schedule-start-date") as HTMLInputElement | null;
   const unitRadios = document.querySelectorAll<HTMLInputElement>('input[name="schedule-unit"]');
@@ -463,7 +529,17 @@ function renderScheduleGrid(): void {
     dateRangeTd.textContent = from && to ? (from === to ? fromFmt : `${fromFmt}～${toFmt}`) : "—";
     const statusTd = document.createElement("td");
     statusTd.className = "schedule-col-status";
-    statusTd.textContent = "予定";
+    const actualIds = getActualIdsForPlanId(row.ID);
+    const hasActual = actualIds.length > 0;
+    const statusBtn = document.createElement("button");
+    statusBtn.type = "button";
+    statusBtn.className = hasActual ? "schedule-status-btn schedule-status-btn--has-actual" : "schedule-status-btn schedule-status-btn--no-actual";
+    statusBtn.textContent = hasActual ? "実績あり" : "実績なし";
+    statusBtn.setAttribute("aria-label", hasActual ? "取引実績を確認" : "取引実績なし");
+    if (hasActual) {
+      statusBtn.addEventListener("click", () => openScheduleActualListPopup(row.ID, row.NAME || ""));
+    }
+    statusTd.appendChild(statusBtn);
     tr.appendChild(typeTd);
     tr.appendChild(catTd);
     tr.appendChild(nameTd);
@@ -518,7 +594,7 @@ export function initScheduleView(): void {
       }
       renderScheduleGrid();
     });
-    setDisplayedKeys("schedule", ["TRANSACTION.csv", "CATEGORY.csv"]);
+    setDisplayedKeys("schedule", ["TRANSACTION.csv", "CATEGORY.csv", "TRANSACTION_MANAGEMENT.csv"]);
   });
 
   registerRefreshHandler("schedule", () => {
@@ -542,4 +618,13 @@ export function initScheduleView(): void {
   const futureSelect = document.getElementById("schedule-future-months") as HTMLSelectElement | null;
   pastSelect?.addEventListener("change", () => renderScheduleGrid());
   futureSelect?.addEventListener("change", () => renderScheduleGrid());
+
+  document.getElementById("schedule-actual-list-close")?.addEventListener("click", () => {
+    closeOverlay("schedule-actual-list-overlay");
+  });
+  document.getElementById("schedule-actual-list-overlay")?.addEventListener("click", (e) => {
+    if (e.target instanceof HTMLElement && e.target.id === "schedule-actual-list-overlay") {
+      closeOverlay("schedule-actual-list-overlay");
+    }
+  });
 }
