@@ -1508,6 +1508,19 @@
   max-width: 520px;
 }
 
+/* 収支記録：全行でラベル幅を統一し、入力欄の開始位置を縦に揃える */
+#transaction-entry-form .form-row .transaction-entry-buttons-label,
+#transaction-entry-form .form-row .transaction-entry-inline-label,
+#transaction-entry-form .form-row .transaction-entry-category-label {
+  flex: 0 0 4.5rem;
+  min-width: 4.5rem;
+}
+
+/* 計画が実績のとき頻度・間隔・繰り返し・ステータス行を非表示（JSで hidden 属性を付与） */
+#transaction-entry-form .transaction-entry-plan-only[hidden] {
+  display: none !important;
+}
+
 .data-form .form-row {
   margin-bottom: 1rem;
 }
@@ -1518,20 +1531,47 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 0.5rem;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0rem;
 }
 .data-form .transaction-entry-buttons-row .transaction-entry-buttons-label {
   margin-bottom: 0;
   font-weight: 500;
   font-size: 0.9375rem;
 }
-.data-form .transaction-entry-buttons-row:first-of-type .transaction-entry-buttons-label {
-  flex: 0 0 4.5rem;
-}
-.data-form .transaction-entry-buttons-row:nth-of-type(2) .transaction-entry-buttons-label {
-  flex: 0 0 4.5rem;
-}
 .data-form .transaction-entry-buttons {
+  display: flex;
+  gap: 0.35rem;
+}
+
+/* 収支記録：頻度欄ブロック＝上段ブロック（ラベル「頻度」＋1日・日ごと・週ごと）＋下段ブロック（空ラベル＋月ごと・年ごと） */
+.data-form .transaction-entry-frequency-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 0.5rem;
+}
+.data-form .transaction-entry-frequency-block {
+  display: flex;
+  flex-direction: column;
+}
+.data-form .transaction-entry-frequency-line {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.data-form .transaction-entry-frequency-line .transaction-entry-buttons-label {
+  margin-bottom: 0;
+  font-weight: 500;
+  font-size: 0.9375rem;
+  flex: 0 0 4.5rem;
+  min-width: 4.5rem;
+}
+.data-form .transaction-entry-frequency-label-spacer {
+  flex: 0 0 4.5rem;
+  min-width: 4.5rem;
+  display: block;
+}
+.data-form .transaction-entry-frequency-line .transaction-entry-buttons {
   display: flex;
   gap: 0.35rem;
 }
@@ -1542,7 +1582,7 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 0.5rem;
-  margin-bottom: 1rem;
+  margin-bottom: 0.5rem;
 }
 .data-form .transaction-entry-category-row .transaction-entry-category-label {
   margin-bottom: 0;
@@ -1563,7 +1603,7 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 0.5rem;
-  margin-bottom: 1rem;
+  margin-bottom: 0.5rem;
 }
 .data-form .transaction-entry-inline-row .transaction-entry-inline-label {
   margin-bottom: 0;
@@ -1593,7 +1633,7 @@
 }
 .data-form .transaction-entry-amount-row .transaction-entry-amount-input {
   flex: 1;
-  min-width: 0;
+  min-width: 12rem;
   max-width: 12rem;
   padding: 0.6rem 0.75rem;
   font-size: 1rem;
@@ -1646,6 +1686,105 @@
   flex-shrink: 0;
   color: var(--gray-600);
   font-size: 0.9375rem;
+}
+/* 間隔入力＋頻度単位表示のラップ */
+.data-form .transaction-entry-interval-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex: 1;
+  min-width: 0;
+}
+/* 間隔入力は幅を4remに固定（inline-row内のinline-inputより優先）。右寄せ・最大3桁 */
+.data-form .transaction-entry-inline-row .transaction-entry-interval-input {
+  flex: 0 0 4rem;
+  width: 4rem;
+  min-width: 4rem;
+  max-width: 4rem;
+  text-align: right;
+}
+.data-form .transaction-entry-interval-frequency-label {
+  flex-shrink: 0;
+  color: var(--gray-600);
+  font-size: 0.9375rem;
+}
+.data-form .transaction-entry-cycle-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+.data-form .transaction-entry-cycle-row .transaction-entry-cycle-label-block {
+  flex: 0 0 4.5rem;
+  min-width: 4.5rem;
+}
+.data-form .transaction-entry-cycle-row .transaction-entry-cycle-label-block .transaction-entry-buttons-label {
+  margin-bottom: 0;
+  font-weight: 500;
+  font-size: 0.9375rem;
+  align-self: flex-start;
+  padding-top: 0.35rem;
+}
+.data-form .transaction-entry-cycle-row .transaction-entry-cycle-input-block {
+  flex: 1;
+  min-width: 0;
+}
+.data-form .transaction-entry-cycle-content {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.data-form .transaction-entry-cycle-content .transaction-history-filter-btn {
+  margin: 0;
+}
+.data-form .transaction-entry-cycle-month-day {
+  min-width: 2rem;
+  padding: 0.25rem 0.35rem;
+}
+.data-form .transaction-entry-cycle-yearly-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.data-form .transaction-entry-cycle-yearly-add {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+.data-form .transaction-entry-cycle-yearly-month,
+.data-form .transaction-entry-cycle-yearly-day {
+  width: 3rem;
+  padding: 0.35rem;
+  border: 1px solid var(--gray-500);
+  border-radius: var(--radius-md);
+  font-size: 0.9375rem;
+}
+.data-form .transaction-entry-cycle-yearly-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.data-form .transaction-entry-cycle-yearly-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.2rem 0.4rem;
+  font-size: 0.875rem;
+  background: var(--gray-200);
+  border-radius: var(--radius-sm);
+}
+.data-form .transaction-entry-cycle-yearly-remove {
+  padding: 0 0.2rem;
+  font-size: 1rem;
+  line-height: 1;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--gray-600);
+}
+.data-form .transaction-entry-cycle-yearly-remove:hover {
+  color: var(--gray-800);
 }
 /* カテゴリー選択ボタンは BASE_BG / BASE_FG（#app button より優先） */
 #app .data-form .transaction-entry-category-trigger {
@@ -1744,7 +1883,7 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 0.5rem;
-  margin-bottom: 1rem;
+  margin-bottom: 0.5rem;
 }
 .data-form .transaction-entry-account-row[hidden] {
   display: none;
@@ -1854,7 +1993,7 @@
   align-items: center;
   gap: 0.5rem;
   flex-wrap: wrap;
-  margin-bottom: 0;
+  margin-bottom: 0.5rem;
 }
 .data-form .transaction-entry-tag-row .transaction-entry-buttons-label {
   margin-bottom: 0;
@@ -1909,7 +2048,7 @@
   align-items: center;
   gap: 0.5rem;
   flex-wrap: wrap;
-  margin-bottom: 0;
+  margin-bottom: 0.5rem;
 }
 .data-form #transaction-entry-actual-row[hidden] {
   display: none !important;

@@ -861,11 +861,276 @@ function setStatusAndSync(status: string): void {
     const s = (btn as HTMLElement).getAttribute("data-status");
     btn.classList.toggle("is-active", s === normalized);
   });
+  if (normalized === "actual") {
+    setFrequency("day");
+    setInterval(0);
+    setCycleUnit("");
+    setPlanStatus("complete");
+  } else {
+    setPlanStatus("planning");
+  }
   updateDateRowsVisibility(normalized);
+  updatePlanOnlyRowsVisibility(normalized);
   updateActualRowVisibility();
 }
 
 const todayYMD = (): string => new Date().toISOString().slice(0, 10);
+
+const WEEKDAY_CODES = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"] as const;
+const WEEKDAY_LABELS = ["日", "月", "火", "水", "木", "金", "土"];
+
+function getFrequency(): string {
+  const btn = document.querySelector("#transaction-entry-frequency-buttons .transaction-history-filter-btn.is-active");
+  return (btn as HTMLElement)?.getAttribute("data-frequency") ?? "day";
+}
+
+function setFrequency(frequency: string): void {
+  const normalized = ["day", "daily", "weekly", "monthly", "yearly"].includes(frequency) ? frequency : "day";
+  document.querySelectorAll("#transaction-entry-frequency-buttons .transaction-history-filter-btn").forEach((b) => {
+    const el = b as HTMLElement;
+    el.classList.toggle("is-active", el.getAttribute("data-frequency") === normalized);
+  });
+  updateFrequencyDependentVisibility(normalized);
+}
+
+function getInterval(): string {
+  const el = document.getElementById("transaction-entry-interval") as HTMLInputElement | null;
+  const v = el?.value?.trim() ?? "1";
+  const n = parseInt(v, 10);
+  return Number.isNaN(n) || n < 0 ? "1" : String(n);
+}
+
+function setInterval(value: number): void {
+  const el = document.getElementById("transaction-entry-interval") as HTMLInputElement | null;
+  if (el) el.value = String(Math.max(0, value));
+}
+
+function getCycleUnit(): string {
+  const freq = getFrequency();
+  if (freq === "day" || freq === "daily") return "";
+  if (freq === "weekly") {
+    const selected = Array.from(document.querySelectorAll("#transaction-entry-cycle-content .transaction-history-filter-btn.is-active"))
+      .map((b) => (b as HTMLElement).getAttribute("data-weekday"))
+      .filter((s): s is string => !!s);
+    return selected.sort((a, b) => WEEKDAY_CODES.indexOf(a as typeof WEEKDAY_CODES[number]) - WEEKDAY_CODES.indexOf(b as typeof WEEKDAY_CODES[number])).join(",");
+  }
+  if (freq === "monthly") {
+    const selected = Array.from(document.querySelectorAll("#transaction-entry-cycle-content .transaction-history-filter-btn.is-active"))
+      .map((b) => (b as HTMLElement).getAttribute("data-monthday"))
+      .filter((s): s is string => !!s)
+      .map((s) => parseInt(s, 10))
+      .sort((a, b) => a - b)
+      .map((n) => String(n));
+    return selected.join(",");
+  }
+  if (freq === "yearly") {
+    const items = document.querySelectorAll("#transaction-entry-cycle-yearly-list [data-mmdd]");
+    return Array.from(items)
+      .map((el) => (el as HTMLElement).getAttribute("data-mmdd"))
+      .filter((s): s is string => !!s)
+      .sort()
+      .join(",");
+  }
+  return "";
+}
+
+function setCycleUnit(cycleUnit: string): void {
+  const freq = getFrequency();
+  if (freq === "day" || freq === "daily") return;
+  const parts = cycleUnit ? cycleUnit.split(",").map((s) => s.trim()).filter(Boolean) : [];
+  if (freq === "weekly") {
+    const set = new Set(parts);
+    document.querySelectorAll("#transaction-entry-cycle-content .transaction-history-filter-btn").forEach((b) => {
+      const el = b as HTMLElement;
+      el.classList.toggle("is-active", set.has(el.getAttribute("data-weekday") ?? ""));
+    });
+    return;
+  }
+  if (freq === "monthly") {
+    const set = new Set(parts);
+    document.querySelectorAll("#transaction-entry-cycle-content .transaction-history-filter-btn").forEach((b) => {
+      const el = b as HTMLElement;
+      el.classList.toggle("is-active", set.has(el.getAttribute("data-monthday") ?? ""));
+    });
+    return;
+  }
+  if (freq === "yearly") {
+    const listEl = document.getElementById("transaction-entry-cycle-yearly-list");
+    if (!listEl) return;
+    listEl.innerHTML = "";
+    parts.forEach((mmdd) => {
+      if (mmdd.length === 4) {
+        const m = mmdd.slice(0, 2);
+        const d = mmdd.slice(2, 4);
+        const li = document.createElement("span");
+        li.className = "transaction-entry-cycle-yearly-chip";
+        li.setAttribute("data-mmdd", mmdd);
+        li.textContent = `${m}月${d}日`;
+        const rm = document.createElement("button");
+        rm.type = "button";
+        rm.className = "transaction-entry-cycle-yearly-remove";
+        rm.setAttribute("aria-label", "削除");
+        rm.textContent = "×";
+        rm.addEventListener("click", () => {
+          li.remove();
+        });
+        li.appendChild(rm);
+        listEl.appendChild(li);
+      }
+    });
+  }
+}
+
+function getPlanStatus(): string {
+  const btn = document.querySelector("#transaction-entry-plan-status-buttons .transaction-history-filter-btn.is-active");
+  const v = (btn as HTMLElement)?.getAttribute("data-plan-status") ?? "planning";
+  return ["planning", "complete", "canceled"].includes(v) ? v : "planning";
+}
+
+function setPlanStatus(planStatus: string): void {
+  const normalized = ["planning", "complete", "canceled"].includes(planStatus) ? planStatus : "planning";
+  document.querySelectorAll("#transaction-entry-plan-status-buttons .transaction-history-filter-btn").forEach((b) => {
+    const el = b as HTMLElement;
+    el.classList.toggle("is-active", el.getAttribute("data-plan-status") === normalized);
+  });
+}
+
+const FREQUENCY_LABELS: Record<string, string> = {
+  day: "1日",
+  daily: "日ごと",
+  weekly: "週ごと",
+  monthly: "月ごと",
+  yearly: "年ごと",
+};
+
+function updateIntervalFrequencyLabel(frequency: string): void {
+  const el = document.getElementById("transaction-entry-interval-frequency-label");
+  if (el) el.textContent = FREQUENCY_LABELS[frequency] ?? "";
+}
+
+function updateFrequencyDependentVisibility(frequency: string): void {
+  const intervalRow = document.getElementById("transaction-entry-interval-row");
+  const cycleRow = document.getElementById("transaction-entry-cycle-row");
+  const intervalInput = document.getElementById("transaction-entry-interval") as HTMLInputElement | null;
+  if (intervalRow) intervalRow.hidden = frequency === "day";
+  if (frequency === "day" && intervalInput) intervalInput.value = "0";
+  if (cycleRow) cycleRow.hidden = frequency === "day" || frequency === "daily";
+  updateIntervalFrequencyLabel(frequency);
+  if (!cycleRow?.hidden) renderCycleContent(frequency);
+}
+
+function renderCycleContent(frequency: string): void {
+  const container = document.getElementById("transaction-entry-cycle-content");
+  if (!container) return;
+  container.innerHTML = "";
+  if (frequency === "weekly") {
+    WEEKDAY_CODES.forEach((code, i) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "btn-secondary transaction-history-filter-btn";
+      btn.setAttribute("data-weekday", code);
+      btn.textContent = WEEKDAY_LABELS[i];
+      btn.addEventListener("click", () => {
+        btn.classList.toggle("is-active", !btn.classList.contains("is-active"));
+      });
+      container.appendChild(btn);
+    });
+    return;
+  }
+  if (frequency === "monthly") {
+    for (let d = 1; d <= 31; d++) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "btn-secondary transaction-history-filter-btn transaction-entry-cycle-month-day";
+      btn.setAttribute("data-monthday", String(d));
+      btn.textContent = String(d);
+      btn.addEventListener("click", () => {
+        btn.classList.toggle("is-active", !btn.classList.contains("is-active"));
+      });
+      container.appendChild(btn);
+    }
+    ["月末", "月末の1日前", "月末の2日前"].forEach((label, i) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "btn-secondary transaction-history-filter-btn";
+      btn.setAttribute("data-monthday", String(-1 - i));
+      btn.textContent = label;
+      btn.addEventListener("click", () => {
+        btn.classList.toggle("is-active", !btn.classList.contains("is-active"));
+      });
+      container.appendChild(btn);
+    });
+    return;
+  }
+  if (frequency === "yearly") {
+    const wrap = document.createElement("div");
+    wrap.className = "transaction-entry-cycle-yearly-wrap";
+    const addRow = document.createElement("div");
+    addRow.className = "transaction-entry-cycle-yearly-add";
+    const monthInput = document.createElement("input");
+    monthInput.type = "number";
+    monthInput.min = "1";
+    monthInput.max = "12";
+    monthInput.placeholder = "月";
+    monthInput.className = "transaction-entry-cycle-yearly-month";
+    monthInput.setAttribute("aria-label", "月");
+    const dayInput = document.createElement("input");
+    dayInput.type = "number";
+    dayInput.min = "1";
+    dayInput.max = "31";
+    dayInput.placeholder = "日";
+    dayInput.className = "transaction-entry-cycle-yearly-day";
+    dayInput.setAttribute("aria-label", "日");
+    const addBtn = document.createElement("button");
+    addBtn.type = "button";
+    addBtn.className = "btn-secondary";
+    addBtn.textContent = "追加";
+    addBtn.addEventListener("click", () => {
+      const m = parseInt(monthInput.value, 10);
+      const d = parseInt(dayInput.value, 10);
+      if (Number.isNaN(m) || m < 1 || m > 12 || Number.isNaN(d) || d < 1 || d > 31) return;
+      const mmdd = `${String(m).padStart(2, "0")}${String(d).padStart(2, "0")}`;
+      if (document.querySelector(`#transaction-entry-cycle-yearly-list [data-mmdd="${mmdd}"]`)) return;
+      const li = document.createElement("span");
+      li.className = "transaction-entry-cycle-yearly-chip";
+      li.setAttribute("data-mmdd", mmdd);
+      li.textContent = `${m}月${d}日`;
+      const rm = document.createElement("button");
+      rm.type = "button";
+      rm.className = "transaction-entry-cycle-yearly-remove";
+      rm.setAttribute("aria-label", "削除");
+      rm.textContent = "×";
+      rm.addEventListener("click", () => li.remove());
+      li.appendChild(rm);
+      listEl.appendChild(li);
+      monthInput.value = "";
+      dayInput.value = "";
+    });
+    addRow.appendChild(monthInput);
+    addRow.appendChild(dayInput);
+    addRow.appendChild(addBtn);
+    wrap.appendChild(addRow);
+    const listEl = document.createElement("div");
+    listEl.id = "transaction-entry-cycle-yearly-list";
+    listEl.className = "transaction-entry-cycle-yearly-list";
+    wrap.appendChild(listEl);
+    container.appendChild(wrap);
+  }
+}
+
+function updatePlanOnlyRowsVisibility(status: string): void {
+  const isPlan = status === "plan";
+  const form = document.getElementById("transaction-entry-form");
+  form?.querySelectorAll(".transaction-entry-plan-only").forEach((el) => {
+    const htmlEl = el as HTMLElement;
+    if (isPlan) {
+      htmlEl.removeAttribute("hidden");
+    } else {
+      htmlEl.setAttribute("hidden", "");
+    }
+  });
+  if (isPlan) updateFrequencyDependentVisibility(getFrequency());
+}
 
 function updateDateRowsVisibility(status: string): void {
   const actualWrap = document.getElementById("transaction-entry-date-actual-wrap");
@@ -886,6 +1151,7 @@ function updateDateRowsVisibility(status: string): void {
     if (!dateToInput.value) dateToInput.value = d;
   }
   if (!isPlan && dateInput && !dateInput.value) dateInput.value = todayYMD();
+  updatePlanOnlyRowsVisibility(status);
   updateActualRowVisibility();
 }
 
@@ -921,6 +1187,10 @@ function resetForm(): void {
   if (accountInEl) accountInEl.value = "";
   setTypeAndSync("expense");
   setStatusAndSync("actual");
+  setPlanStatus("planning");
+  setFrequency("day");
+  setInterval(1);
+  setCycleUnit("");
   setTodayToAllDateInputs();
   updateAccountTriggerDisplay("out", getAccountOutValueEl()?.value ?? "");
   updateAccountTriggerDisplay("in", getAccountInValueEl()?.value ?? "");
@@ -1036,6 +1306,11 @@ async function loadFormForEdit(transactionId: string): Promise<void> {
     if (dateFromEl) dateFromEl.value = from;
     if (dateToEl) dateToEl.value = to;
     if (dateEl) dateEl.value = from;
+    setPlanStatus(row.PLAN_STATUS ?? "planning");
+    setFrequency(row.FREQUENCY ?? "day");
+    const intervalNum = parseInt(row.INTERVAL ?? "1", 10);
+    setInterval(Number.isNaN(intervalNum) || intervalNum < 0 ? 1 : intervalNum);
+    setCycleUnit(row.CYCLE_UNIT ?? "");
   } else {
     if (dateEl) dateEl.value = from;
     if (dateFromEl) dateFromEl.value = from;
@@ -1121,6 +1396,10 @@ function buildNewRow(form: HTMLFormElement, nextId: number): Record<string, stri
   const userId = currentUserId ?? "";
   const trFrom = status === "plan" ? dateFrom : date;
   const trTo = status === "plan" ? dateTo : date;
+  const frequency = status === "plan" ? getFrequency() : "day";
+  const interval = status === "plan" ? (frequency === "day" ? "0" : getInterval()) : "1";
+  const cycleUnit = status === "plan" ? getCycleUnit() : "";
+  const planStatus = status === "plan" ? getPlanStatus() : "complete";
   const row: Record<string, string> = {
     ID: String(nextId),
     REGIST_DATETIME: "",
@@ -1133,14 +1412,14 @@ function buildNewRow(form: HTMLFormElement, nextId: number): Record<string, stri
     NAME: name,
     TRANDATE_FROM: trFrom,
     TRANDATE_TO: trTo,
-    FREQUENCY: "day",
-    INTERVAL: "1",
-    CYCLE_UNIT: "",
+    FREQUENCY: frequency,
+    INTERVAL: interval,
+    CYCLE_UNIT: cycleUnit,
     AMOUNT: amount,
     MEMO: memo,
     ACCOUNT_ID_IN: type === "income" || type === "transfer" ? accountIn : "",
     ACCOUNT_ID_OUT: type === "expense" || type === "transfer" ? accountOut : "",
-    PLAN_STATUS: status === "plan" ? "planning" : "complete",
+    PLAN_STATUS: planStatus,
     DLT_FLG: "0",
   };
   setNewRowAudit(row, userId, String(nextId));
@@ -1162,6 +1441,10 @@ function buildUpdatedRow(form: HTMLFormElement, existing: TransactionRow): Recor
   const userId = currentUserId ?? "";
   const trFrom = status === "plan" ? dateFrom : date;
   const trTo = status === "plan" ? dateTo : date;
+  const frequency = status === "plan" ? getFrequency() : "day";
+  const interval = status === "plan" ? (frequency === "day" ? "0" : getInterval()) : "1";
+  const cycleUnit = status === "plan" ? getCycleUnit() : "";
+  const planStatus = status === "plan" ? getPlanStatus() : "complete";
   const row: Record<string, string> = {
     ID: existing.ID,
     VERSION: existing.VERSION ?? "0",
@@ -1175,14 +1458,14 @@ function buildUpdatedRow(form: HTMLFormElement, existing: TransactionRow): Recor
     NAME: name,
     TRANDATE_FROM: trFrom,
     TRANDATE_TO: trTo,
-    FREQUENCY: existing.FREQUENCY ?? "day",
-    INTERVAL: existing.INTERVAL ?? "1",
-    CYCLE_UNIT: existing.CYCLE_UNIT ?? "",
+    FREQUENCY: frequency,
+    INTERVAL: interval,
+    CYCLE_UNIT: cycleUnit,
     AMOUNT: amount,
     MEMO: memo,
     ACCOUNT_ID_IN: type === "income" || type === "transfer" ? accountIn : "",
     ACCOUNT_ID_OUT: type === "expense" || type === "transfer" ? accountOut : "",
-    PLAN_STATUS: existing.PLAN_STATUS ?? (existing.PROJECT_TYPE === "plan" ? "planning" : "complete"),
+    PLAN_STATUS: planStatus,
     DLT_FLG: existing.DLT_FLG ?? "0",
   };
   setUpdateAudit(row, userId);
@@ -1225,6 +1508,7 @@ export function initTransactionEntryView(): void {
       updateTransactionEntrySubmitButtonVisibility();
       updateTransactionEntryContinuousButtonVisibility();
       updateTransactionEntryCopyAsNewButtonVisibility();
+      updatePlanOnlyRowsVisibility(getStatusInput()?.value ?? "actual");
       updateActualRowVisibility();
       setTransactionEntryReadonly(transactionEntryViewOnly);
     })();
@@ -1243,6 +1527,32 @@ export function initTransactionEntryView(): void {
       if (!status || (getStatusInput()?.value === status)) return;
       setStatusAndSync(status);
     });
+  });
+  document.getElementById("transaction-entry-plan-status-buttons")?.querySelectorAll(".transaction-history-filter-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const planStatus = (btn as HTMLElement).getAttribute("data-plan-status");
+      if (!planStatus) return;
+      setPlanStatus(planStatus);
+    });
+  });
+  document.getElementById("transaction-entry-frequency-buttons")?.querySelectorAll(".transaction-history-filter-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const frequency = (btn as HTMLElement).getAttribute("data-frequency");
+      if (!frequency) return;
+      setFrequency(frequency);
+    });
+  });
+
+  const intervalEl = document.getElementById("transaction-entry-interval") as HTMLInputElement | null;
+  intervalEl?.addEventListener("input", () => {
+    const n = parseInt(intervalEl.value, 10);
+    if (Number.isNaN(n) || n < 0) intervalEl.value = "0";
+    else if (n > 999) intervalEl.value = "999";
+  });
+  const amountEl = document.getElementById("transaction-entry-amount") as HTMLInputElement | null;
+  amountEl?.addEventListener("input", () => {
+    const n = parseFloat(amountEl.value);
+    if (!Number.isNaN(n) && n < 0) amountEl.value = "0";
   });
 
   const dateFromEl = document.getElementById("transaction-entry-date-from") as HTMLInputElement | null;
