@@ -19,6 +19,7 @@ const WATCHED_FILES = [
   "COLOR_PALETTE.csv",
   "ACCOUNT.csv",
   "ACCOUNT_PERMISSION.csv",
+  "ACCOUNT_HISTORY.csv",
   "CATEGORY.csv",
   "TAG.csv",
   "TRANSACTION.csv",
@@ -32,6 +33,7 @@ const FILE_TO_VIEW: Record<string, string> = {
   "COLOR_PALETTE.csv": "design",
   "ACCOUNT.csv": "account",
   "ACCOUNT_PERMISSION.csv": "account",
+  "ACCOUNT_HISTORY.csv": "account",
   "CATEGORY.csv": "category",
   "TAG.csv": "tag",
   "TRANSACTION.csv": "transaction-history",
@@ -146,6 +148,7 @@ function getDisplayKeyForUpdate(
     case "account":
       if (fileName === "ACCOUNT.csv") return id(row.ID);
       if (fileName === "ACCOUNT_PERMISSION.csv") return id(row.ACCOUNT_ID);
+      if (fileName === "ACCOUNT_HISTORY.csv") return id(row.ID);
       return "";
     case "category":
       return fileName === "CATEGORY.csv" ? id(row.ID) : "";

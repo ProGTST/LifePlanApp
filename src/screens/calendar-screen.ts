@@ -123,10 +123,10 @@ function getCalendarDaySummary(
   for (const row of filtered) {
     const from = row.TRANDATE_FROM || "";
     const to = row.TRANDATE_TO || "";
-    if (row.STATUS === "actual") {
+    if (row.PROJECT_TYPE === "actual") {
       if (from === dateStr) {
         actualCount += 1;
-        const type = (row.TYPE || "expense").toLowerCase();
+        const type = (row.TRANSACTION_TYPE || "expense").toLowerCase();
         if (type === "income") incomeAmount += Number(row.AMOUNT) || 0;
         else if (type === "expense") expenseAmount += Number(row.AMOUNT) || 0;
         else if (type === "transfer") transferAmount += Number(row.AMOUNT) || 0;
@@ -137,7 +137,7 @@ function getCalendarDaySummary(
     const inPlanRange = from <= dateStr && dateStr <= to;
     if (inPlanRange) planCount += 1;
     if (dateStr === to) {
-      const type = (row.TYPE || "").toLowerCase();
+      const type = (row.TRANSACTION_TYPE || "").toLowerCase();
       if (type === "income") incomeAmount += Number(row.AMOUNT) || 0;
       else if (type === "expense") expenseAmount += Number(row.AMOUNT) || 0;
       else if (type === "transfer") transferAmount += Number(row.AMOUNT) || 0;
@@ -162,16 +162,16 @@ function getCalendarMonthTotals(
   for (const row of filtered) {
     const from = row.TRANDATE_FROM || "";
     const to = row.TRANDATE_TO || "";
-    if (row.STATUS === "actual") {
+    if (row.PROJECT_TYPE === "actual") {
       if (from < firstDay || from > lastDay) continue;
-      const type = (row.TYPE || "expense").toLowerCase();
+      const type = (row.TRANSACTION_TYPE || "expense").toLowerCase();
       const amount = Number(row.AMOUNT) || 0;
       if (type === "income") actualIncome += amount;
       else if (type === "expense") actualExpense += amount;
       continue;
     }
     if (!to || to < firstDay || to > lastDay) continue;
-    const type = (row.TYPE || "").toLowerCase();
+    const type = (row.TRANSACTION_TYPE || "").toLowerCase();
     const amount = Number(row.AMOUNT) || 0;
     if (type === "income") planIncome += amount;
     else if (type === "expense") planExpense += amount;
@@ -184,7 +184,7 @@ function getTransactionsInRange(from: string, to: string): TransactionRow[] {
   return filtered.filter((row) => {
     const trFrom = row.TRANDATE_FROM || "";
     const trTo = row.TRANDATE_TO || "";
-    if (row.STATUS === "actual") {
+    if (row.PROJECT_TYPE === "actual") {
       return trFrom >= from && trFrom <= to;
     }
     if (!trFrom || !trTo) return false;
@@ -241,12 +241,12 @@ function getChartDataForMonth(ym: string): {
   const actualExpenseCat: Record<string, number> = {};
   const filtered = getFilteredTransactionListForCalendar();
   for (const row of filtered) {
-    const type = (row.TYPE || "expense").toLowerCase();
+    const type = (row.TRANSACTION_TYPE || "expense").toLowerCase();
     const amount = Number(row.AMOUNT) || 0;
     const catId = row.CATEGORY_ID || "";
     const from = row.TRANDATE_FROM || "";
     const to = row.TRANDATE_TO || "";
-    if (row.STATUS === "actual") {
+    if (row.PROJECT_TYPE === "actual") {
       if (from < firstDay || from > lastDay) continue;
       const dayIdx = parseInt(from.slice(8, 10), 10) - 1;
       if (dayIdx < 0 || dayIdx >= labels.length) continue;
@@ -521,7 +521,7 @@ function renderWeeklyPanel(): void {
     for (const row of rows) {
       const planFrom = row.TRANDATE_FROM || "";
       const planTo = row.TRANDATE_TO || "";
-      if (row.STATUS === "actual") {
+      if (row.PROJECT_TYPE === "actual") {
         if (!planFrom) continue;
         push(planFrom, row, true);
       } else {
@@ -548,8 +548,8 @@ function renderWeeklyPanel(): void {
       for (const { row, showAmount } of items) {
         if (!showAmount) continue;
         const amount = Number(row.AMOUNT) || 0;
-        const type = (row.TYPE || "expense") as "income" | "expense" | "transfer";
-        const isPlan = row.STATUS === "plan";
+        const type = (row.TRANSACTION_TYPE || "expense") as "income" | "expense" | "transfer";
+        const isPlan = row.PROJECT_TYPE === "plan";
         if (type === "income") {
           if (isPlan) planIncome += amount;
           else actualIncome += amount;
@@ -584,7 +584,7 @@ function renderWeeklyPanel(): void {
         item.setAttribute("aria-label", `${row.NAME || "取引"}を編集`);
         const typeIcon = document.createElement("span");
         typeIcon.className = "transaction-history-type-icon";
-        const txType = (row.TYPE || "expense") as "income" | "expense" | "transfer";
+        const txType = (row.TRANSACTION_TYPE || "expense") as "income" | "expense" | "transfer";
         typeIcon.classList.add(`transaction-history-type-icon--${txType}`);
         typeIcon.textContent = txType === "income" ? "収" : txType === "expense" ? "支" : "振";
         typeIcon.setAttribute("aria-label", txType === "income" ? "収入" : txType === "expense" ? "支出" : "振替");

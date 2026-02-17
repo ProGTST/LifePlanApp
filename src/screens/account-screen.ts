@@ -72,6 +72,7 @@ async function fetchAccountList(noCache = false): Promise<AccountRow[]> {
     if (row.SORT_ORDER === undefined || row.SORT_ORDER === "") row.SORT_ORDER = String(list.length);
     if (row.COLOR === undefined) row.COLOR = "";
     if (row.ICON_PATH === undefined) row.ICON_PATH = "";
+    if (row.BALANCE === undefined || row.BALANCE === "") row.BALANCE = "0";
     list.push(row);
   }
   return list;
@@ -821,6 +822,7 @@ function saveAccountFormFromModal(): void {
     ACCOUNT_NAME: name,
     COLOR: formColor || "",
     ICON_PATH: formIconPath || "",
+    BALANCE: "0",
     SORT_ORDER: String(maxOrder + 1),
   };
   setNewRowAudit(newAccount as unknown as Record<string, string>, userId, newAccountId);

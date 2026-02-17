@@ -26,6 +26,8 @@ export interface AccountRow {
   COLOR?: string;
   /** アイコンパス（例: /icon/xxx.svg） */
   ICON_PATH?: string;
+  /** 残高。初期値 0 */
+  BALANCE?: string;
   SORT_ORDER?: string;
 }
 
@@ -40,6 +42,21 @@ export interface AccountPermissionRow {
   ACCOUNT_ID: string;
   USER_ID: string;
   PERMISSION_TYPE: string;
+}
+
+/** 勘定項目履歴（ACCOUNT_HISTORY）の1行 */
+export interface AccountHistoryRow {
+  ID: string;
+  VERSION: string;
+  REGIST_DATETIME: string;
+  REGIST_USER: string;
+  UPDATE_DATETIME: string;
+  UPDATE_USER: string;
+  ACCOUNT_ID: string;
+  TRANSACTION_ID: string;
+  BALANCE: string;
+  /** 取引ステータス: regist / update / delete */
+  TRANSACTION_STATUS: string;
 }
 
 /** カテゴリー（CATEGORY）の1行 */
@@ -84,16 +101,26 @@ export interface TransactionRow {
   REGIST_USER: string;
   UPDATE_DATETIME: string;
   UPDATE_USER: string;
-  TYPE: string;
-  STATUS: string;
+  TRANSACTION_TYPE: string;
+  PROJECT_TYPE: string;
   CATEGORY_ID: string;
   NAME: string;
   TRANDATE_FROM: string;
   TRANDATE_TO: string;
+  /** 頻度: day / daily / weekly / monthly / yearly */
+  FREQUENCY?: string;
+  /** 間隔（day のとき 0、それ以外は 1 以上） */
+  INTERVAL?: string;
+  /** 繰り返し単位（週・日・年指定の結合。day/daily のとき空） */
+  CYCLE_UNIT?: string;
   AMOUNT: string;
   MEMO: string;
   ACCOUNT_ID_IN: string;
   ACCOUNT_ID_OUT: string;
+  /** 予定状況: planning（計画中） / complete（完了） / canceled（中止） */
+  PLAN_STATUS?: string;
+  /** 削除フラグ: 0＝有効、1＝削除扱い（論理削除） */
+  DLT_FLG?: string;
 }
 
 /** タグ管理（TAG_MANAGEMENT）の1行 */

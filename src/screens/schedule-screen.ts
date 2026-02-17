@@ -281,7 +281,7 @@ function overlaps(rowFrom: string, rowTo: string, colFrom: string, colTo: string
 
 function getPlanRows(): TransactionRow[] {
   const list = getFilteredTransactionListForSchedule();
-  const planOnly = list.filter((r) => (r.STATUS || "").toLowerCase() === "plan");
+  const planOnly = list.filter((r) => (r.PROJECT_TYPE || "").toLowerCase() === "plan");
   return planOnly.slice().sort((a, b) => {
     const af = a.TRANDATE_FROM || "";
     const bf = b.TRANDATE_FROM || "";
@@ -345,7 +345,7 @@ function openScheduleActualListPopup(planId: string, planName: string): void {
       const cells = [
         from,
         (row.NAME || "").trim() || "—",
-        getTypeLabel(row.TYPE || "expense"),
+        getTypeLabel(row.TRANSACTION_TYPE || "expense"),
         cat?.CATEGORY_NAME || "—",
         row.AMOUNT ? Number(row.AMOUNT).toLocaleString() : "—",
         accIn?.ACCOUNT_NAME || "—",
@@ -508,13 +508,13 @@ function renderScheduleGrid(): void {
     else if (permType === "edit") tr.classList.add("transaction-history-row--permission-edit");
     const typeTd = document.createElement("td");
     typeTd.className = "schedule-col-type";
-    const txType = (row.TYPE || "expense") as "income" | "expense" | "transfer";
+    const txType = (row.TRANSACTION_TYPE || "expense") as "income" | "expense" | "transfer";
     const typeIcon = document.createElement("span");
     typeIcon.className = "transaction-history-type-icon transaction-history-type-icon--" + txType;
     typeIcon.setAttribute("aria-label", txType === "income" ? "収入" : txType === "expense" ? "支出" : "振替");
     typeIcon.textContent = txType === "income" ? "収" : txType === "expense" ? "支" : "振";
     typeTd.appendChild(typeIcon);
-    typeTd.title = getTypeLabel(row.TYPE || "expense");
+    typeTd.title = getTypeLabel(row.TRANSACTION_TYPE || "expense");
     const catTd = document.createElement("td");
     catTd.className = "schedule-col-category";
     const catIcon = createIconWrap(cat?.COLOR || ICON_DEFAULT_COLOR, cat?.ICON_PATH, { tag: "span" });

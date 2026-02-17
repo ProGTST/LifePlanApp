@@ -2406,10 +2406,6 @@
 #view-transaction-history .view-body + .view-body {
   margin-top: 1rem;
 }
-
-.transaction-history-search {
-  /* 検索エリアは1つ目の view-body 内のため、下線・下余白は view-body 間の余白で代替 */
-}
 /* 収支検索の view-body：スケジュール・収支履歴などとの間に余白 */
 #transaction-history-common .view-body {
   margin-bottom: 0.75rem;

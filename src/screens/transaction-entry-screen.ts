@@ -677,8 +677,8 @@ function openTransactionEntryActualModal(): void {
     const txRows = filterTransactionsByVisibleAccounts(txResult.rows, visibleIds);
     const actualRows = txRows.filter(
       (r) =>
-        (r.STATUS || "").toLowerCase() === "actual" &&
-        (r.TYPE || "").toLowerCase() === planType &&
+        (r.PROJECT_TYPE || "").toLowerCase() === "actual" &&
+        (r.TRANSACTION_TYPE || "").toLowerCase() === planType &&
         r.ID !== editingTransactionId
     );
     actualSelectAllRows = actualRows;
@@ -1016,8 +1016,8 @@ async function loadFormForEdit(transactionId: string): Promise<void> {
   const txRows = txResult.rows;
   const row = txRows.find((r) => r.ID === transactionId);
   if (!row) return;
-  const type = row.TYPE || "expense";
-  const status = row.STATUS || "actual";
+  const type = row.TRANSACTION_TYPE || "expense";
+  const status = row.PROJECT_TYPE || "actual";
   setTypeAndSync(type);
   setStatusAndSync(status);
   const categoryEl = getCategoryValueEl();
@@ -1127,16 +1127,21 @@ function buildNewRow(form: HTMLFormElement, nextId: number): Record<string, stri
     REGIST_USER: "",
     UPDATE_DATETIME: "",
     UPDATE_USER: "",
-    TYPE: type,
-    STATUS: status,
+    TRANSACTION_TYPE: type,
+    PROJECT_TYPE: status,
     CATEGORY_ID: categoryId,
     NAME: name,
     TRANDATE_FROM: trFrom,
     TRANDATE_TO: trTo,
+    FREQUENCY: "day",
+    INTERVAL: "1",
+    CYCLE_UNIT: "",
     AMOUNT: amount,
     MEMO: memo,
     ACCOUNT_ID_IN: type === "income" || type === "transfer" ? accountIn : "",
     ACCOUNT_ID_OUT: type === "expense" || type === "transfer" ? accountOut : "",
+    PLAN_STATUS: status === "plan" ? "planning" : "complete",
+    DLT_FLG: "0",
   };
   setNewRowAudit(row, userId, String(nextId));
   return row;
@@ -1164,16 +1169,21 @@ function buildUpdatedRow(form: HTMLFormElement, existing: TransactionRow): Recor
     REGIST_USER: existing.REGIST_USER ?? "",
     UPDATE_DATETIME: "",
     UPDATE_USER: "",
-    TYPE: type,
-    STATUS: status,
+    TRANSACTION_TYPE: type,
+    PROJECT_TYPE: status,
     CATEGORY_ID: categoryId,
     NAME: name,
     TRANDATE_FROM: trFrom,
     TRANDATE_TO: trTo,
+    FREQUENCY: existing.FREQUENCY ?? "day",
+    INTERVAL: existing.INTERVAL ?? "1",
+    CYCLE_UNIT: existing.CYCLE_UNIT ?? "",
     AMOUNT: amount,
     MEMO: memo,
     ACCOUNT_ID_IN: type === "income" || type === "transfer" ? accountIn : "",
     ACCOUNT_ID_OUT: type === "expense" || type === "transfer" ? accountOut : "",
+    PLAN_STATUS: existing.PLAN_STATUS ?? (existing.PROJECT_TYPE === "plan" ? "planning" : "complete"),
+    DLT_FLG: existing.DLT_FLG ?? "0",
   };
   setUpdateAudit(row, userId);
   return row;
@@ -1300,7 +1310,7 @@ export function initTransactionEntryView(): void {
           (r) => r.TRAN_PLAN_ID !== editingTransactionId && (r.ID ?? "").trim() !== ""
         );
         const newTxMgmtRows = othersTxMgmt.map((r) => ({ ...r } as Record<string, string>));
-        const savedStatus = (updatedRow as Record<string, string>).STATUS ?? "";
+        const savedStatus = (updatedRow as Record<string, string>).PROJECT_TYPE ?? "";
         if (savedStatus.toLowerCase() === "plan") {
           let txMgmtId = nextTxMgmtId;
           for (const actualId of selectedActualIds) {
@@ -1411,8 +1421,17 @@ export function initTransactionEntryView(): void {
         await loadFormForEdit(editingTransactionId);
         return;
       }
-      const newTxRows = txRows.filter((r) => r.ID !== editingTransactionId);
-      const csv = transactionListToCsv(newTxRows.map((r) => ({ ...r } as Record<string, string>)));
+      const userId = currentUserId ?? "";
+      const newTxRows = txRows.map((r) => {
+        const rec = { ...r } as Record<string, string>;
+        if (r.ID === editingTransactionId) {
+          rec.DLT_FLG = "1";
+          rec.VERSION = String(Number(r.VERSION || "0") + 1);
+          setUpdateAudit(rec, userId);
+        }
+        return rec;
+      });
+      const csv = transactionListToCsv(newTxRows);
       await saveTransactionCsv(csv);
       const { rows: mgmtRows } = await fetchTagManagementRows(true);
       const newMgmtRows = mgmtRows

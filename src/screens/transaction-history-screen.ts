@@ -222,7 +222,8 @@ export function loadTransactionData(noCache = false): Promise<void> {
     fetchTransactionManagementList(noCache),
   ]).then(([txList, catList, tagList, accList, permList, tagMgmt, txMgmt]) => {
     const visibleIds = getVisibleAccountIds(accList, permList);
-    const filteredTx = filterTransactionsByVisibleAccounts(txList, visibleIds);
+    const notDeleted = txList.filter((r) => (r.DLT_FLG || "0") !== "1");
+    const filteredTx = filterTransactionsByVisibleAccounts(notDeleted, visibleIds);
     setTransactionList(filteredTx);
     categoryRows = catList;
     tagRows = tagList;
@@ -429,7 +430,7 @@ export function getActualTransactionsForPlan(planId: string): TransactionRow[] {
   const actualIds = getActualIdsForPlanId(planId);
   if (actualIds.length === 0) return [];
   const idSet = new Set(actualIds);
-  return transactionList.filter((r) => (r.STATUS || "").toLowerCase() === "actual" && idSet.has(r.ID));
+  return transactionList.filter((r) => (r.PROJECT_TYPE || "").toLowerCase() === "actual" && idSet.has(r.ID));
 }
 
 /**
@@ -480,12 +481,12 @@ function appendAccountWrap(
  */
 function applyFilters(rows: TransactionRow[], state: FilterState): TransactionRow[] {
   const filtered = rows.filter((row) => {
-    if (state.filterStatus.length > 0 && !state.filterStatus.includes(row.STATUS as "plan" | "actual")) return false;
-    if (state.filterType.length > 0 && !state.filterType.includes(row.TYPE as "income" | "expense" | "transfer")) return false;
+    if (state.filterStatus.length > 0 && !state.filterStatus.includes(row.PROJECT_TYPE as "plan" | "actual")) return false;
+    if (state.filterType.length > 0 && !state.filterType.includes(row.TRANSACTION_TYPE as "income" | "expense" | "transfer")) return false;
     if (state.filterDateFrom || state.filterDateTo) {
       const from = row.TRANDATE_FROM || "";
       const to = row.TRANDATE_TO || "";
-      if (row.STATUS === "actual") {
+      if (row.PROJECT_TYPE === "actual") {
         if (state.filterDateFrom && from < state.filterDateFrom) return false;
         if (state.filterDateTo && from > state.filterDateTo) return false;
       } else {
@@ -561,7 +562,7 @@ export function getRowPermissionType(row: TransactionRow): "view" | "edit" | nul
  * @returns 過去の予定なら true
  */
 function isPlanDateToPast(row: TransactionRow): boolean {
-  if (row.STATUS !== "plan" || !row.TRANDATE_TO?.trim()) return false;
+  if (row.PROJECT_TYPE !== "plan" || !row.TRANDATE_TO?.trim()) return false;
   const s = row.TRANDATE_TO.trim();
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
   if (!m) return false;
@@ -614,8 +615,8 @@ export function renderList(): void {
     tdPlan.className = "transaction-history-plan-cell";
     const planIcon = document.createElement("span");
     planIcon.className = "transaction-history-plan-icon";
-    planIcon.setAttribute("aria-label", row.STATUS === "actual" ? "実績" : "予定");
-    planIcon.textContent = row.STATUS === "actual" ? "実" : "予";
+    planIcon.setAttribute("aria-label", row.PROJECT_TYPE === "actual" ? "実績" : "予定");
+    planIcon.textContent = row.PROJECT_TYPE === "actual" ? "実" : "予";
     tdPlan.appendChild(planIcon);
     const tdData = document.createElement("td");
     const dataWrap = document.createElement("div");
@@ -634,7 +635,7 @@ export function renderList(): void {
     nameWrap.className = "transaction-history-name-cell-inner";
     const typeIcon = document.createElement("span");
     typeIcon.className = "transaction-history-type-icon";
-    const txType = (row.TYPE || "expense") as "income" | "expense" | "transfer";
+    const txType = (row.TRANSACTION_TYPE || "expense") as "income" | "expense" | "transfer";
     typeIcon.classList.add(`transaction-history-type-icon--${txType}`);
     typeIcon.setAttribute("aria-label", txType === "income" ? "収入" : txType === "expense" ? "支出" : "振替");
     typeIcon.textContent = txType === "income" ? "収" : txType === "expense" ? "支" : "振";
@@ -665,7 +666,7 @@ export function renderList(): void {
     }
     const tdAccount = document.createElement("td");
     tdAccount.className = "transaction-history-account-cell";
-    const type = row.TYPE as "income" | "expense" | "transfer";
+    const type = row.TRANSACTION_TYPE as "income" | "expense" | "transfer";
     if (type === "income" && row.ACCOUNT_ID_IN) {
       const acc = getAccountById(row.ACCOUNT_ID_IN);
       if (acc) appendAccountWrap(tdAccount, acc, "div");
@@ -687,7 +688,7 @@ export function renderList(): void {
     }
     const tdPlanDateTo = document.createElement("td");
     tdPlanDateTo.textContent =
-      row.STATUS === "plan" ? (row.TRANDATE_TO || "—") : "—";
+      row.PROJECT_TYPE === "plan" ? (row.TRANDATE_TO || "—") : "—";
     tr.appendChild(tdDate);
     tr.appendChild(tdCat);
     tr.appendChild(tdPlan);

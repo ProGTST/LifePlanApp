@@ -136,16 +136,21 @@ LifePlanGant で扱う収支・タグ・勘定項目のデータは、`data/` �
 | REGIST_USER | 登録ユーザーID | USER.ID への参照 |
 | UPDATE_DATETIME | 更新日時 | 共通 |
 | UPDATE_USER | 更新ユーザーID | USER.ID への参照 |
-| TYPE | 収支種別 | `income`（収入） / `expense`（支出） / `transfer`（振替） |
-| STATUS | 計画 | `plan`（予定） / `actual`（実績） |
+| TRANSACTION_TYPE | 収支種別 | `income`（収入） / `expense`（支出） / `transfer`（振替） |
+| PROJECT_TYPE | 計画 | `plan`（予定） / `actual`（実績） |
 | CATEGORY_ID | カテゴリID | CATEGORY.ID への参照 |
 | NAME | 項目名 | 例: 給与, スーパー買い物 |
 | TRANDATE_FROM | 取引日（開始） | 日付（YYYY-MM-DD）。実績の場合は 1 日のみ入力可能で TRANDATE_TO と同一日を設定。予定の場合は範囲の開始日 |
 | TRANDATE_TO | 取引日（終了） | 日付（YYYY-MM-DD）。実績の場合は TRANDATE_FROM と同一日。予定の場合は範囲の終了日 |
+| FREQUENCY | 頻度 | `day` / `daily` / `weekly` / `monthly` / `yearly` |
+| INTERVAL | 間隔 | 数値。2 のとき「2日ごと」「2週間ごと」「2か月ごと」「2年ごと」など。`day` の場合は 0、それ以外は 1 以上 |
+| CYCLE_UNIT | 繰り返し単位 | 週・日・年単位の指定を結合した文字列。`day` / `daily` の場合は空。`weekly` の場合は SU,MO,TU,WE,TH,FR,SA のいずれか複数をカンマ区切り（例: MO,WE,FR）。`monthly` の場合は 1～31（固定日）、-1（月末）、-2（月末の前日）、-3（月末の2日前）のいずれか複数をカンマ区切り（例: 1,15,-1）。`yearly` の場合は MMDD 形式の日付を複数カンマ区切り（例: 0320,1225） |
 | AMOUNT | 金額 | 数値（円など単位はアプリ側で統一） |
 | MEMO | メモ | 任意 |
 | ACCOUNT_ID_IN | 勘定項目ID（収入、振替） | ACCOUNT.ID への参照。収益や振替の入金先を指定 |
 | ACCOUNT_ID_OUT | 勘定項目ID（支出、振替） | ACCOUNT.ID への参照。費用や振替の出金元を指定。 |
+| PLAN_STATUS | 予定状況 | `planning`（計画中） / `complete`（完了） / `canceled`（中止）。PROJECT_TYPE が plan のときは planning、actual のときは complete を初期値とする。 |
+| DLT_FLG | 削除フラグ | 0＝有効、1＝削除扱い。初期値 0。取引削除時は物理削除せず 1 にして論理削除する。 |
 
 ---
 
@@ -167,6 +172,7 @@ LifePlanGant で扱う収支・タグ・勘定項目のデータは、`data/` �
 | ACCOUNT_NAME | 勘定項目名 | 例: 現金, 銀行口座, クレジットカード |
 | COLOR | 色 | 例: #ff0000 やカラーコード。任意。一覧・ピッカーで変更可 |
 | ICON_PATH | アイコンパス | 例: /icon/custom/xxx.svg。任意。一覧・ピッカーで変更可 |
+| BALANCE | 残高 | 初期値 0。数値。勘定の残高を保持 |
 | SORT_ORDER | 表示順 | ユーザー内の並び順（数値）。ドラッグで変更可 |
 
 ---
@@ -188,6 +194,27 @@ LifePlanGant で扱う収支・タグ・勘定項目のデータは、`data/` �
 | ACCOUNT_ID | 勘定項目ID | ACCOUNT.ID |
 | USER_ID | 参照を許可するユーザーID | USER.ID |
 | PERMISSION_TYPE | 権限種別 | `view`（参照） / `edit`（編集） |
+
+---
+
+## 9. 勘定項目履歴テーブル（ACCOUNT_HISTORY）
+
+**ファイル**: `data/ACCOUNT_HISTORY.csv`
+
+勘定項目ごとの取引に紐づく残高履歴を表すテーブルです。取引の登録・更新・削除時の残高を記録します。
+
+| 列名 | 説明 | 備考 |
+|------|------|------|
+| ID | 勘定項目履歴の一意識別子 | 数値 |
+| VERSION | 楽観的ロック用 | 初期値 0。更新時に 1 増やす |
+| REGIST_DATETIME | 登録日時 | 省略可 |
+| REGIST_USER | 登録ユーザーID | USER.ID への参照。省略可 |
+| UPDATE_DATETIME | 更新日時 | 省略可 |
+| UPDATE_USER | 更新ユーザーID | USER.ID への参照。省略可 |
+| ACCOUNT_ID | 勘定項目ID | ACCOUNT.ID への参照 |
+| TRANSACTION_ID | 取引ID | TRANSACTION.ID への参照 |
+| BALANCE | 残高 | 当該取引時点の勘定残高（数値） |
+| TRANSACTION_STATUS | 取引ステータス | `regist`（登録） / `update`（更新） / `delete`（削除） |
 
 ---
 
@@ -226,6 +253,7 @@ TAG (1) ----< TAG_MANAGEMENT >---- (N) TRANSACTION
 | `data/TRANSACTION.csv` | TRANSACTION | 収支（計画・実績） |
 | `data/ACCOUNT.csv` | ACCOUNT | 勘定項目マスタ |
 | `data/ACCOUNT_PERMISSION.csv` | ACCOUNT_PERMISSION | 勘定項目参照権限 |
+| `data/ACCOUNT_HISTORY.csv` | ACCOUNT_HISTORY | 勘定項目履歴 |
 | `data/COLOR_PALETTE.csv` | COLOR_PALETTE | カラーパレット（ユーザー別色設定） |
 
 ---

@@ -33,6 +33,7 @@ const ACCOUNT_HEADER = [
   "ACCOUNT_NAME",
   "COLOR",
   "ICON_PATH",
+  "BALANCE",
   "SORT_ORDER",
 ] as const;
 
@@ -112,6 +113,28 @@ export function accountPermissionListToCsv(rows: Record<string, string>[]): stri
   return toCsvString([...ACCOUNT_PERMISSION_HEADER], rows);
 }
 
+const ACCOUNT_HISTORY_HEADER = [
+  "ID",
+  "VERSION",
+  "REGIST_DATETIME",
+  "REGIST_USER",
+  "UPDATE_DATETIME",
+  "UPDATE_USER",
+  "ACCOUNT_ID",
+  "TRANSACTION_ID",
+  "BALANCE",
+  "TRANSACTION_STATUS",
+] as const;
+
+/**
+ * 勘定項目履歴一覧を ACCOUNT_HISTORY.csv 形式の CSV 文字列に変換する。
+ * @param rows - 勘定項目履歴行のオブジェクト配列
+ * @returns CSV 文字列
+ */
+export function accountHistoryListToCsv(rows: Record<string, string>[]): string {
+  return toCsvString([...ACCOUNT_HISTORY_HEADER], rows);
+}
+
 const TRANSACTION_HEADER = [
   "ID",
   "VERSION",
@@ -119,16 +142,21 @@ const TRANSACTION_HEADER = [
   "REGIST_USER",
   "UPDATE_DATETIME",
   "UPDATE_USER",
-  "TYPE",
-  "STATUS",
+  "TRANSACTION_TYPE",
+  "PROJECT_TYPE",
   "CATEGORY_ID",
   "NAME",
   "TRANDATE_FROM",
   "TRANDATE_TO",
+  "FREQUENCY",
+  "INTERVAL",
+  "CYCLE_UNIT",
   "AMOUNT",
   "MEMO",
   "ACCOUNT_ID_IN",
   "ACCOUNT_ID_OUT",
+  "PLAN_STATUS",
+  "DLT_FLG",
 ] as const;
 
 /**
