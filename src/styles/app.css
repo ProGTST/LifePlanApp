@@ -1071,6 +1071,14 @@
   margin: -1px 0;
 }
 
+#account-table .account-table-balance-col,
+#account-shared-table .account-table-balance-col {
+  text-align: right !important;
+  white-space: nowrap;
+  width: 6rem;
+  min-width: 6rem;
+  max-width: 6rem;
+}
 .account-table-permission-col {
   width: 20rem;
   max-width: 20rem;
@@ -1540,7 +1548,7 @@
 }
 .data-form .transaction-entry-buttons {
   display: flex;
-  gap: 0.35rem;
+  gap: 0.2rem;
 }
 
 /* 収支記録：頻度欄ブロック＝上段ブロック（ラベル「頻度」＋1日・日ごと・週ごと）＋下段ブロック（空ラベル＋月ごと・年ごと） */
@@ -1573,7 +1581,7 @@
 }
 .data-form .transaction-entry-frequency-line .transaction-entry-buttons {
   display: flex;
-  gap: 0.35rem;
+  gap: 0.2rem;
 }
 
 /* 収支記録：カテゴリー行はラベル横にプルダウン */
@@ -1697,10 +1705,10 @@
 }
 /* 間隔入力は幅を4remに固定（inline-row内のinline-inputより優先）。右寄せ・最大3桁 */
 .data-form .transaction-entry-inline-row .transaction-entry-interval-input {
-  flex: 0 0 4rem;
-  width: 4rem;
-  min-width: 4rem;
-  max-width: 4rem;
+  flex: 0 0 5rem;
+  width: 5rem;
+  min-width: 5rem;
+  max-width: 5rem;
   text-align: right;
 }
 .data-form .transaction-entry-interval-frequency-label {
@@ -1737,28 +1745,62 @@
 .data-form .transaction-entry-cycle-content .transaction-history-filter-btn {
   margin: 0;
 }
+/* 月ごと：1～31をカレンダー風グリッド、その下に月末系ボタン */
+.data-form .transaction-entry-cycle-month-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+.data-form .transaction-entry-cycle-month-days-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.2rem;
+}
 .data-form .transaction-entry-cycle-month-day {
-  min-width: 2rem;
-  padding: 0.25rem 0.35rem;
+  min-width: 0;
+  width: 2.5rem;
+  min-width: 2.5rem;
+  max-width: 2.5rem;
+  aspect-ratio: 1;
+  padding: 0.35rem;
+  font-size: 0.8125rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.data-form .transaction-entry-cycle-month-special {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+}
+.data-form .transaction-entry-cycle-month-special .transaction-history-filter-btn {
+  margin: 0;
 }
 .data-form .transaction-entry-cycle-yearly-wrap {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.2rem;
 }
 .data-form .transaction-entry-cycle-yearly-add {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.2rem;
 }
 .data-form .transaction-entry-cycle-yearly-month,
 .data-form .transaction-entry-cycle-yearly-day {
-  width: 3rem;
-  padding: 0.35rem;
+  width: 5rem;
+  min-width: 5rem;
+  max-width: 5rem;
+  padding: 0.35rem 0.5rem;
+  margin: 0.25rem;
   border: 1px solid var(--gray-500);
   border-radius: var(--radius-md);
   font-size: 0.9375rem;
+  background: var(--color-base-bg);
+  color: var(--color-base-fg);
+  cursor: pointer;
+  text-align: right;
 }
 .data-form .transaction-entry-cycle-yearly-list {
   display: flex;

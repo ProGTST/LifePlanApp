@@ -13,17 +13,26 @@ const dataDir = join(projectRoot, "public", "data");
 
 const ALLOWED_NAMES = new Set([
   "ACCOUNT",
+  "ACCOUNT_HISTORY",
   "ACCOUNT_PERMISSION",
   "CATEGORY",
   "COLOR_PALETTE",
   "TAG",
   "TAG_MANAGEMENT",
   "TRANSACTION",
+  "TRANSACTION_MANAGEMENT",
   "USER",
 ]);
 
+function normalizeName(name) {
+  if (typeof name !== "string") return "";
+  const s = name.trim().toUpperCase();
+  return s.endsWith(".CSV") ? s.slice(0, -4) : s;
+}
+
 function isValidName(name) {
-  return typeof name === "string" && /^[A-Z_]+$/.test(name) && ALLOWED_NAMES.has(name);
+  const base = normalizeName(name);
+  return base !== "" && /^[A-Z_]+$/.test(base) && ALLOWED_NAMES.has(base);
 }
 
 const fastify = Fastify({ logger: true });
@@ -45,10 +54,11 @@ fastify.addHook("preHandler", async (request, reply) => {
 
 fastify.get("/api/data/:name", async (request, reply) => {
   const { name } = request.params;
-  if (!isValidName(name)) {
+  const baseName = normalizeName(name);
+  if (!baseName || !ALLOWED_NAMES.has(baseName)) {
     return reply.code(400).send({ error: "Invalid name" });
   }
-  const filePath = join(dataDir, `${name}.csv`);
+  const filePath = join(dataDir, `${baseName}.csv`);
   try {
     const text = await readFile(filePath, "utf8");
     reply.header("Content-Type", "text/csv; charset=utf-8");
@@ -64,12 +74,13 @@ fastify.get("/api/data/:name", async (request, reply) => {
 
 fastify.post("/api/data/:name", async (request, reply) => {
   const { name } = request.params;
-  if (!isValidName(name)) {
+  const baseName = normalizeName(name);
+  if (!baseName || !ALLOWED_NAMES.has(baseName)) {
     return reply.code(400).send({ error: "Invalid name" });
   }
   const body = request.body;
   const csv = body && typeof body.csv === "string" ? body.csv : "";
-  const filePath = join(dataDir, `${name}.csv`);
+  const filePath = join(dataDir, `${baseName}.csv`);
   try {
     await writeFile(filePath, csv, "utf8");
     return reply.code(204).send();

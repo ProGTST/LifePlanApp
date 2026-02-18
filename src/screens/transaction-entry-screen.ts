@@ -4,7 +4,7 @@ import { createIconWrap } from "../utils/iconWrap";
 import { openOverlay, closeOverlay } from "../utils/overlay";
 import { ICON_DEFAULT_COLOR } from "../constants/colorPresets";
 import { fetchCsv, rowToObject } from "../utils/csv";
-import { transactionListToCsv, tagManagementListToCsv, transactionManagementListToCsv } from "../utils/csvExport";
+import { transactionListToCsv, tagManagementListToCsv, transactionManagementListToCsv, accountListToCsv } from "../utils/csvExport";
 import { saveCsvViaApi } from "../utils/dataApi";
 import { registerViewHandler, showMainView } from "../app/screen";
 import { setNewRowAudit, setUpdateAudit } from "../utils/auditFields";
@@ -1038,6 +1038,10 @@ function renderCycleContent(frequency: string): void {
     return;
   }
   if (frequency === "monthly") {
+    const monthWrap = document.createElement("div");
+    monthWrap.className = "transaction-entry-cycle-month-wrap";
+    const daysGrid = document.createElement("div");
+    daysGrid.className = "transaction-entry-cycle-month-days-grid";
     for (let d = 1; d <= 31; d++) {
       const btn = document.createElement("button");
       btn.type = "button";
@@ -1047,8 +1051,11 @@ function renderCycleContent(frequency: string): void {
       btn.addEventListener("click", () => {
         btn.classList.toggle("is-active", !btn.classList.contains("is-active"));
       });
-      container.appendChild(btn);
+      daysGrid.appendChild(btn);
     }
+    monthWrap.appendChild(daysGrid);
+    const specialRow = document.createElement("div");
+    specialRow.className = "transaction-entry-cycle-month-special";
     ["月末", "月末の1日前", "月末の2日前"].forEach((label, i) => {
       const btn = document.createElement("button");
       btn.type = "button";
@@ -1058,8 +1065,10 @@ function renderCycleContent(frequency: string): void {
       btn.addEventListener("click", () => {
         btn.classList.toggle("is-active", !btn.classList.contains("is-active"));
       });
-      container.appendChild(btn);
+      specialRow.appendChild(btn);
     });
+    monthWrap.appendChild(specialRow);
+    container.appendChild(monthWrap);
     return;
   }
   if (frequency === "yearly") {
@@ -1067,27 +1076,39 @@ function renderCycleContent(frequency: string): void {
     wrap.className = "transaction-entry-cycle-yearly-wrap";
     const addRow = document.createElement("div");
     addRow.className = "transaction-entry-cycle-yearly-add";
-    const monthInput = document.createElement("input");
-    monthInput.type = "number";
-    monthInput.min = "1";
-    monthInput.max = "12";
-    monthInput.placeholder = "月";
-    monthInput.className = "transaction-entry-cycle-yearly-month";
-    monthInput.setAttribute("aria-label", "月");
-    const dayInput = document.createElement("input");
-    dayInput.type = "number";
-    dayInput.min = "1";
-    dayInput.max = "31";
-    dayInput.placeholder = "日";
-    dayInput.className = "transaction-entry-cycle-yearly-day";
-    dayInput.setAttribute("aria-label", "日");
+    const monthSelect = document.createElement("select");
+    monthSelect.className = "transaction-entry-cycle-yearly-month";
+    monthSelect.setAttribute("aria-label", "月");
+    const monthPlaceholder = document.createElement("option");
+    monthPlaceholder.value = "";
+    monthPlaceholder.textContent = "月";
+    monthSelect.appendChild(monthPlaceholder);
+    for (let m = 1; m <= 12; m++) {
+      const opt = document.createElement("option");
+      opt.value = String(m);
+      opt.textContent = `${m}月`;
+      monthSelect.appendChild(opt);
+    }
+    const daySelect = document.createElement("select");
+    daySelect.className = "transaction-entry-cycle-yearly-day";
+    daySelect.setAttribute("aria-label", "日");
+    const dayPlaceholder = document.createElement("option");
+    dayPlaceholder.value = "";
+    dayPlaceholder.textContent = "日";
+    daySelect.appendChild(dayPlaceholder);
+    for (let d = 1; d <= 31; d++) {
+      const opt = document.createElement("option");
+      opt.value = String(d);
+      opt.textContent = `${d}日`;
+      daySelect.appendChild(opt);
+    }
     const addBtn = document.createElement("button");
     addBtn.type = "button";
     addBtn.className = "btn-secondary";
     addBtn.textContent = "追加";
     addBtn.addEventListener("click", () => {
-      const m = parseInt(monthInput.value, 10);
-      const d = parseInt(dayInput.value, 10);
+      const m = parseInt(monthSelect.value, 10);
+      const d = parseInt(daySelect.value, 10);
       if (Number.isNaN(m) || m < 1 || m > 12 || Number.isNaN(d) || d < 1 || d > 31) return;
       const mmdd = `${String(m).padStart(2, "0")}${String(d).padStart(2, "0")}`;
       if (document.querySelector(`#transaction-entry-cycle-yearly-list [data-mmdd="${mmdd}"]`)) return;
@@ -1103,11 +1124,11 @@ function renderCycleContent(frequency: string): void {
       rm.addEventListener("click", () => li.remove());
       li.appendChild(rm);
       listEl.appendChild(li);
-      monthInput.value = "";
-      dayInput.value = "";
+      monthSelect.value = "";
+      daySelect.value = "";
     });
-    addRow.appendChild(monthInput);
-    addRow.appendChild(dayInput);
+    addRow.appendChild(monthSelect);
+    addRow.appendChild(daySelect);
     addRow.appendChild(addBtn);
     wrap.appendChild(addRow);
     const listEl = document.createElement("div");
@@ -1307,10 +1328,15 @@ async function loadFormForEdit(transactionId: string): Promise<void> {
     if (dateToEl) dateToEl.value = to;
     if (dateEl) dateEl.value = from;
     setPlanStatus(row.PLAN_STATUS ?? "planning");
-    setFrequency(row.FREQUENCY ?? "day");
+    const frequency = (row.FREQUENCY ?? "day").toLowerCase();
+    setFrequency(frequency);
     const intervalNum = parseInt(row.INTERVAL ?? "1", 10);
     setInterval(Number.isNaN(intervalNum) || intervalNum < 0 ? 1 : intervalNum);
     setCycleUnit(row.CYCLE_UNIT ?? "");
+    requestAnimationFrame(() => {
+      updateFrequencyDependentVisibility(getFrequency());
+      setCycleUnit(row.CYCLE_UNIT ?? "");
+    });
   } else {
     if (dateEl) dateEl.value = from;
     if (dateFromEl) dateFromEl.value = from;
@@ -1485,6 +1511,87 @@ async function saveTransactionManagementCsv(csv: string): Promise<void> {
 }
 
 /**
+ * 実績取引の登録・更新・削除に応じて ACCOUNT.csv の残高（BALANCE）を更新する。
+ * 予定取引の場合は何もしない。
+ * @param operation - "register" | "update" | "delete"
+ * @param transactionType - "expense" | "income" | "transfer"
+ * @param accountOutId - 出金元勘定ID（支出・振替で使用）
+ * @param accountInId - 入金先勘定ID（収入・振替で使用）
+ * @param amount - 金額（登録・削除時はそのまま、更新時は新金額）
+ * @param oldAmount - 更新時のみ。更新前の金額
+ */
+async function updateAccountBalancesForActual(
+  operation: "register" | "update" | "delete",
+  transactionType: string,
+  accountOutId: string,
+  accountInId: string,
+  amount: number,
+  oldAmount?: number
+): Promise<void> {
+  const type = (transactionType || "expense").toLowerCase();
+  const accounts = await fetchAccountList(true);
+  const userId = currentUserId ?? "";
+
+  const toRecord = (a: AccountRow): Record<string, string> => ({
+    ID: a.ID ?? "",
+    VERSION: a.VERSION ?? "0",
+    REGIST_DATETIME: a.REGIST_DATETIME ?? "",
+    REGIST_USER: a.REGIST_USER ?? "",
+    UPDATE_DATETIME: a.UPDATE_DATETIME ?? "",
+    UPDATE_USER: a.UPDATE_USER ?? "",
+    USER_ID: a.USER_ID ?? "",
+    ACCOUNT_NAME: a.ACCOUNT_NAME ?? "",
+    COLOR: a.COLOR ?? "",
+    ICON_PATH: a.ICON_PATH ?? "",
+    BALANCE: a.BALANCE ?? "0",
+    SORT_ORDER: a.SORT_ORDER ?? "",
+  });
+
+  const records = accounts.map(toRecord);
+
+  const parseBal = (s: string): number => {
+    const n = parseFloat(String(s).trim());
+    return Number.isNaN(n) ? 0 : n;
+  };
+
+  const applyDelta = (id: string, delta: number): void => {
+    const r = records.find((row) => row.ID === id);
+    if (!r) return;
+    const cur = parseBal(r.BALANCE ?? "0");
+    r.BALANCE = String(cur + delta);
+    r.VERSION = String(Number(r.VERSION || "0") + 1);
+    setUpdateAudit(r, userId);
+  };
+
+  if (operation === "register") {
+    if (type === "expense" && accountOutId) applyDelta(accountOutId, -amount);
+    else if (type === "income" && accountInId) applyDelta(accountInId, amount);
+    else if (type === "transfer") {
+      if (accountOutId) applyDelta(accountOutId, -amount);
+      if (accountInId) applyDelta(accountInId, amount);
+    }
+  } else if (operation === "update" && oldAmount !== undefined) {
+    const diff = amount - oldAmount;
+    if (type === "expense" && accountOutId) applyDelta(accountOutId, -diff);
+    else if (type === "income" && accountInId) applyDelta(accountInId, diff);
+    else if (type === "transfer") {
+      if (accountOutId) applyDelta(accountOutId, -diff);
+      if (accountInId) applyDelta(accountInId, diff);
+    }
+  } else if (operation === "delete") {
+    if (type === "expense" && accountOutId) applyDelta(accountOutId, amount);
+    else if (type === "income" && accountInId) applyDelta(accountInId, -amount);
+    else if (type === "transfer") {
+      if (accountOutId) applyDelta(accountOutId, amount);
+      if (accountInId) applyDelta(accountInId, -amount);
+    }
+  }
+
+  const csv = accountListToCsv(records);
+  await saveCsvViaApi("ACCOUNT.csv", csv);
+}
+
+/**
  * 収支記録画面の初期化を行う。「transaction-entry」ビュー表示ハンドラとフォーム送信・削除・連続入力等のイベントを登録する。
  * @returns なし
  */
@@ -1599,6 +1706,15 @@ export function initTransactionEntryView(): void {
         );
         const csv = transactionListToCsv(allRows);
         await saveTransactionCsv(csv);
+        const savedStatusRow = (updatedRow as Record<string, string>).PROJECT_TYPE ?? "";
+        if (savedStatusRow.toLowerCase() === "actual") {
+          const typeRow = (updatedRow as Record<string, string>).TRANSACTION_TYPE ?? "expense";
+          const outId = (updatedRow as Record<string, string>).ACCOUNT_ID_OUT ?? "";
+          const inId = (updatedRow as Record<string, string>).ACCOUNT_ID_IN ?? "";
+          const newAmt = parseFloat(String((updatedRow as Record<string, string>).AMOUNT ?? "0")) || 0;
+          const oldAmt = parseFloat(String(existing.AMOUNT ?? "0")) || 0;
+          await updateAccountBalancesForActual("update", typeRow, outId, inId, newAmt, oldAmt);
+        }
         const { nextId: nextMgmtId, rows: mgmtRows } = await fetchTagManagementRows(true);
         const userId = currentUserId ?? "";
         const others = mgmtRows.filter((r) => r.TRANSACTION_ID !== editingTransactionId);
@@ -1646,6 +1762,13 @@ export function initTransactionEntryView(): void {
         const csv = transactionListToCsv(allRows);
         await saveTransactionCsv(csv);
         const newTransactionId = String(nextId);
+        if ((newRow as Record<string, string>).PROJECT_TYPE?.toLowerCase() === "actual") {
+          const typeNew = (newRow as Record<string, string>).TRANSACTION_TYPE ?? "expense";
+          const outIdNew = (newRow as Record<string, string>).ACCOUNT_ID_OUT ?? "";
+          const inIdNew = (newRow as Record<string, string>).ACCOUNT_ID_IN ?? "";
+          const amt = parseFloat(String((newRow as Record<string, string>).AMOUNT ?? "0")) || 0;
+          await updateAccountBalancesForActual("register", typeNew, outIdNew, inIdNew, amt);
+        }
         if (selectedTagIds.size > 0) {
           const { nextId: nextMgmtId, rows: mgmtRows } = await fetchTagManagementRows(true);
           const userId = currentUserId ?? "";
@@ -1743,6 +1866,13 @@ export function initTransactionEntryView(): void {
       });
       const csv = transactionListToCsv(newTxRows);
       await saveTransactionCsv(csv);
+      if ((row.PROJECT_TYPE ?? "").toLowerCase() === "actual") {
+        const typeDel = (row.TRANSACTION_TYPE ?? "expense").toLowerCase();
+        const outIdDel = row.ACCOUNT_ID_OUT ?? "";
+        const inIdDel = row.ACCOUNT_ID_IN ?? "";
+        const amtDel = parseFloat(String(row.AMOUNT ?? "0")) || 0;
+        await updateAccountBalancesForActual("delete", typeDel, outIdDel, inIdDel, amtDel);
+      }
       const { rows: mgmtRows } = await fetchTagManagementRows(true);
       const newMgmtRows = mgmtRows
         .filter((r) => r.TRANSACTION_ID !== editingTransactionId)
@@ -1778,6 +1908,13 @@ export function initTransactionEntryView(): void {
       const csv = transactionListToCsv(allRows);
       await saveTransactionCsv(csv);
       const newTransactionId = String(nextId);
+      if ((newRow as Record<string, string>).PROJECT_TYPE?.toLowerCase() === "actual") {
+        const typeCopy = (newRow as Record<string, string>).TRANSACTION_TYPE ?? "expense";
+        const outIdCopy = (newRow as Record<string, string>).ACCOUNT_ID_OUT ?? "";
+        const inIdCopy = (newRow as Record<string, string>).ACCOUNT_ID_IN ?? "";
+        const amtCopy = parseFloat(String((newRow as Record<string, string>).AMOUNT ?? "0")) || 0;
+        await updateAccountBalancesForActual("register", typeCopy, outIdCopy, inIdCopy, amtCopy);
+      }
       if (selectedTagIds.size > 0) {
         const { nextId: nextMgmtId, rows: mgmtRows } = await fetchTagManagementRows(true);
         const userId = currentUserId ?? "";

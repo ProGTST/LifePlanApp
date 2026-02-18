@@ -42,7 +42,7 @@ import { ICON_DEFAULT_COLOR } from "../constants/colorPresets.ts";
 // 定数
 // ---------------------------------------------------------------------------
 
-const ACCOUNT_TABLE_COL_COUNT = 5;
+const ACCOUNT_TABLE_COL_COUNT = 6;
 const ICON_DELETE = "/icon/circle-minus-solid-full.svg";
 
 // ---------------------------------------------------------------------------
@@ -227,7 +227,7 @@ async function renderSharedWithMeAccountTable(): Promise<void> {
   if (shared.length === 0) {
     const tr = document.createElement("tr");
     const td = document.createElement("td");
-    td.colSpan = 4;
+    td.colSpan = 5;
     td.className = "account-shared-empty";
     td.textContent = "参照可能な勘定はありません";
     tr.appendChild(td);
@@ -237,10 +237,17 @@ async function renderSharedWithMeAccountTable(): Promise<void> {
   const userList = await fetchUserList();
   const userMap = new Map<string, string>();
   userList.forEach((u) => userMap.set(u.ID, (u.NAME || u.ID || "—").trim()));
+  const userIdsInOrder = userList
+    .slice()
+    .sort((a, b) => (a.ID || "").localeCompare(b.ID || ""))
+    .map((u) => u.ID);
   const sorted = shared.slice().sort((a, b) => {
-    const nameA = userMap.get(a.USER_ID) ?? a.USER_ID;
-    const nameB = userMap.get(b.USER_ID) ?? b.USER_ID;
-    return nameA.localeCompare(nameB) || (a.ACCOUNT_NAME || "").localeCompare(b.ACCOUNT_NAME || "");
+    const indexA = userIdsInOrder.indexOf(a.USER_ID);
+    const indexB = userIdsInOrder.indexOf(b.USER_ID);
+    if (indexA !== indexB) return indexA - indexB;
+    const orderA = parseInt(String(a.SORT_ORDER ?? "0"), 10) || 0;
+    const orderB = parseInt(String(b.SORT_ORDER ?? "0"), 10) || 0;
+    return orderA - orderB;
   });
   sorted.forEach((row) => {
     const perm = permissionList.find((p) => p.ACCOUNT_ID === row.ID && p.USER_ID === currentUserId);
@@ -252,6 +259,10 @@ async function renderSharedWithMeAccountTable(): Promise<void> {
     tdIcon.appendChild(createIconWrap(row.COLOR ?? "", row.ICON_PATH ?? ""));
     const tdName = document.createElement("td");
     tdName.textContent = row.ACCOUNT_NAME || "—";
+    const tdBalanceShared = document.createElement("td");
+    tdBalanceShared.className = "account-table-balance-col";
+    const balShared = parseFloat(String(row.BALANCE ?? "0").trim());
+    tdBalanceShared.textContent = Number.isNaN(balShared) ? "0" : balShared.toLocaleString();
     const tdUser = document.createElement("td");
     tdUser.className = "account-shared-user-name account-shared-user-col";
     tdUser.textContent = userMap.get(row.USER_ID) ?? row.USER_ID;
@@ -263,6 +274,7 @@ async function renderSharedWithMeAccountTable(): Promise<void> {
     tdPermission.appendChild(permSpan);
     tr.appendChild(tdIcon);
     tr.appendChild(tdName);
+    tr.appendChild(tdBalanceShared);
     tr.appendChild(tdUser);
     tr.appendChild(tdPermission);
     tbody.appendChild(tr);
@@ -317,6 +329,10 @@ function renderAccountTable(): void {
     attachNameCellBehavior(tdName, () => {
       saveAccountNameFromCell(row.ID, tdName.textContent ?? "").catch((e) => console.error(e));
     });
+    const tdBalance = document.createElement("td");
+    tdBalance.className = "account-table-balance-col";
+    const bal = parseFloat(String(row.BALANCE ?? "0").trim());
+    tdBalance.textContent = Number.isNaN(bal) ? "0" : bal.toLocaleString();
     const tdPermission = document.createElement("td");
     tdPermission.className = "account-table-permission-col";
     const permCount = getPermissionCountForAccount(row.ID);
@@ -372,6 +388,7 @@ function renderAccountTable(): void {
     tr.appendChild(tdDrag);
     tr.appendChild(tdIcon);
     tr.appendChild(tdName);
+    tr.appendChild(tdBalance);
     tr.appendChild(tdPermission);
     tr.appendChild(tdDel);
     tbody.appendChild(tr);

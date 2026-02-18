@@ -8,7 +8,7 @@
     "dev:host": "node scripts/generate-custom-icons-json.js && vite --host",
     "build": "node scripts/generate-custom-icons-json.js && tsc && vite build",
     "preview": "vite preview",
-    "server": "node server/index.js",
+    "server": "node server/index.mjs",
     "tauri": "set \"CARGO_BUILD_JOBS=1\" && set \"PATH=%USERPROFILE%\\.cargo\\bin;%PATH%\" && tauri"
   },
   "dependencies": {
