@@ -357,9 +357,10 @@
               </div>
             </div>
 
-            <!-- ビュー: 収支記録 -->
+            <!-- ビュー: 収支記録（メイン） -->
             <div id="view-transaction-entry" class="main-view main-view--hidden" data-view="transaction-entry">
-              <div class="view-body view-body--form">
+              <div class="view-body transaction-entry-view-body">
+                <div class="transaction-entry-main view-body--form">
                 <form id="transaction-entry-form" class="data-form">
                   <input type="hidden" id="transaction-entry-type" name="type" value="expense" />
                   <input type="hidden" id="transaction-entry-status" name="status" value="actual" />
@@ -404,40 +405,6 @@
                       <input id="transaction-entry-date-to" type="date" aria-label="取引日TO" class="transaction-entry-inline-input" />
                     </div>
                   </div>
-                  <div class="form-row transaction-entry-frequency-row transaction-entry-plan-only" id="transaction-entry-frequency-row" hidden>
-                    <div id="transaction-entry-frequency-buttons" class="transaction-entry-frequency-block" role="group" aria-label="頻度">
-                      <div class="transaction-entry-frequency-upper transaction-entry-frequency-line">
-                        <label class="transaction-entry-buttons-label">頻度</label>
-                        <div class="transaction-entry-buttons">
-                          <button type="button" class="btn-secondary transaction-history-filter-btn is-active" data-frequency="day" id="transaction-entry-frequency-day">1日</button>
-                          <button type="button" class="btn-secondary transaction-history-filter-btn" data-frequency="daily" id="transaction-entry-frequency-daily">日ごと</button>
-                          <button type="button" class="btn-secondary transaction-history-filter-btn" data-frequency="weekly" id="transaction-entry-frequency-weekly">週ごと</button>
-                        </div>
-                      </div>
-                      <div class="transaction-entry-frequency-lower transaction-entry-frequency-line">
-                        <span class="transaction-entry-frequency-label-spacer transaction-entry-buttons-label" aria-hidden="true"></span>
-                        <div class="transaction-entry-buttons">
-                          <button type="button" class="btn-secondary transaction-history-filter-btn" data-frequency="monthly" id="transaction-entry-frequency-monthly">月ごと</button>
-                          <button type="button" class="btn-secondary transaction-history-filter-btn" data-frequency="yearly" id="transaction-entry-frequency-yearly">年ごと</button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="form-row transaction-entry-inline-row transaction-entry-plan-only" id="transaction-entry-interval-row" hidden>
-                    <label for="transaction-entry-interval" class="transaction-entry-inline-label">間隔</label>
-                    <div class="transaction-entry-interval-wrap">
-                      <input id="transaction-entry-interval" type="number" min="0" max="999" step="1" value="1" aria-label="間隔" class="transaction-entry-inline-input transaction-entry-interval-input" />
-                      <span id="transaction-entry-interval-frequency-label" class="transaction-entry-interval-frequency-label" aria-hidden="true"></span>
-                    </div>
-                  </div>
-                  <div class="form-row transaction-entry-cycle-row transaction-entry-plan-only" id="transaction-entry-cycle-row" hidden>
-                    <div class="transaction-entry-cycle-label-block">
-                      <label class="transaction-entry-buttons-label">繰り返し</label>
-                    </div>
-                    <div class="transaction-entry-cycle-input-block">
-                      <div id="transaction-entry-cycle-content" class="transaction-entry-cycle-content"></div>
-                    </div>
-                  </div>
                   <div class="form-row transaction-entry-inline-row transaction-entry-amount-row">
                     <label for="transaction-entry-amount" class="transaction-entry-inline-label">金額</label>
                     <input id="transaction-entry-amount" type="number" required min="0" step="1" placeholder="0" aria-label="金額" class="transaction-entry-amount-input" />
@@ -475,13 +442,6 @@
                       <button type="button" class="btn-secondary transaction-entry-tag-open-btn" id="transaction-entry-tag-open-btn">タグを選択</button>
                     </div>
                   </div>
-                  <div class="form-row transaction-entry-actual-row" id="transaction-entry-actual-row" hidden>
-                    <label class="transaction-entry-buttons-label">実績</label>
-                    <div id="transaction-entry-actual-chosen" class="transaction-entry-tag-chosen" aria-live="polite"></div>
-                    <div class="transaction-entry-actual-area">
-                      <button type="button" class="btn-secondary transaction-entry-actual-open-btn" id="transaction-entry-actual-open-btn">取引実績を選択</button>
-                    </div>
-                  </div>
                   <div class="form-row transaction-entry-buttons-row transaction-entry-plan-only" id="transaction-entry-plan-status-row" hidden>
                     <label class="transaction-entry-buttons-label">ステータス</label>
                     <div id="transaction-entry-plan-status-buttons" class="transaction-entry-buttons" role="group" aria-label="予定状況">
@@ -515,7 +475,68 @@
                       </div>
                     </div>
                   </div>
+                  <div id="transaction-entry-cycle-monthly-select-overlay" class="modal-overlay" aria-hidden="true">
+                    <div class="modal-content transaction-entry-cycle-monthly-select-modal" role="dialog" aria-labelledby="transaction-entry-cycle-monthly-select-title" aria-modal="true">
+                      <h2 id="transaction-entry-cycle-monthly-select-title" class="transaction-history-select-title">対象日を選択</h2>
+                      <div id="transaction-entry-cycle-monthly-select-grid" class="transaction-entry-cycle-monthly-select-grid"></div>
+                      <div class="transaction-history-select-actions">
+                        <button type="button" class="btn-secondary" id="transaction-entry-cycle-monthly-select-cancel">キャンセル</button>
+                        <button type="button" class="btn-primary" id="transaction-entry-cycle-monthly-select-apply">設定</button>
+                      </div>
+                    </div>
+                  </div>
                 </form>
+                </div>
+              </div>
+              <!-- ビュー: 収支記録（予定取引オプション） -->
+              <div class="view-body transaction-entry-plan-options-view-body transaction-entry-plan-options-view transaction-entry-plan-only" id="transaction-entry-plan-options-view" aria-label="予定取引オプション" hidden>
+                <div class="transaction-entry-plan-options-inner">
+                  <div class="form-row transaction-entry-frequency-row" id="transaction-entry-frequency-row">
+                    <div id="transaction-entry-frequency-buttons" class="transaction-entry-frequency-block" role="group" aria-label="頻度">
+                      <div class="transaction-entry-frequency-upper transaction-entry-frequency-line">
+                        <label class="transaction-entry-buttons-label">頻度</label>
+                        <div class="transaction-entry-buttons">
+                          <button type="button" class="btn-secondary transaction-history-filter-btn is-active" data-frequency="day" id="transaction-entry-frequency-day">1日</button>
+                          <button type="button" class="btn-secondary transaction-history-filter-btn" data-frequency="daily" id="transaction-entry-frequency-daily">日ごと</button>
+                          <button type="button" class="btn-secondary transaction-history-filter-btn" data-frequency="weekly" id="transaction-entry-frequency-weekly">週ごと</button>
+                        </div>
+                      </div>
+                      <div class="transaction-entry-frequency-lower transaction-entry-frequency-line">
+                        <span class="transaction-entry-frequency-label-spacer transaction-entry-buttons-label" aria-hidden="true"></span>
+                        <div class="transaction-entry-buttons">
+                          <button type="button" class="btn-secondary transaction-history-filter-btn" data-frequency="monthly" id="transaction-entry-frequency-monthly">月ごと</button>
+                          <button type="button" class="btn-secondary transaction-history-filter-btn" data-frequency="yearly" id="transaction-entry-frequency-yearly">年ごと</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="form-row transaction-entry-inline-row" id="transaction-entry-interval-row" hidden>
+                    <label for="transaction-entry-interval" class="transaction-entry-inline-label">間隔</label>
+                    <div class="transaction-entry-interval-wrap">
+                      <input id="transaction-entry-interval" type="number" min="0" max="999" step="1" value="1" aria-label="間隔" class="transaction-entry-inline-input transaction-entry-interval-input" />
+                      <span id="transaction-entry-interval-frequency-label" class="transaction-entry-interval-frequency-label" aria-hidden="true"></span>
+                    </div>
+                  </div>
+                  <div class="form-row transaction-entry-cycle-row" id="transaction-entry-cycle-row" hidden>
+                    <div class="transaction-entry-cycle-label-block">
+                      <label class="transaction-entry-buttons-label">繰り返し</label>
+                    </div>
+                    <div class="transaction-entry-cycle-input-block">
+                      <div id="transaction-entry-cycle-content" class="transaction-entry-cycle-content"></div>
+                    </div>
+                  </div>
+                  <div class="form-row transaction-entry-actual-row" id="transaction-entry-actual-row">
+                    <div class="transaction-entry-actual-label-block">
+                      <label for="transaction-entry-actual-open-btn" class="transaction-entry-buttons-label">実績</label>
+                    </div>
+                    <div class="transaction-entry-actual-right">
+                      <div class="transaction-entry-actual-area">
+                        <button type="button" class="btn-secondary transaction-entry-actual-open-btn" id="transaction-entry-actual-open-btn">取引実績を選択</button>
+                      </div>
+                      <div id="transaction-entry-actual-chosen" class="transaction-entry-tag-chosen" aria-live="polite"></div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 

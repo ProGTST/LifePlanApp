@@ -1,12 +1,13 @@
-import type { TransactionRow, CategoryRow, AccountRow, AccountPermissionRow, TagRow, TagManagementRow, TransactionManagementRow } from "../types";
+import type { TransactionRow, CategoryRow, AccountRow, AccountPermissionRow, TagRow, TagManagementRow, TransactionManagementRow, AccountHistoryRow } from "../types";
 import { currentUserId, transactionEntryEditId, setTransactionEntryEditId, transactionEntryViewOnly, pushNavigation } from "../state";
 import { createIconWrap } from "../utils/iconWrap";
 import { openOverlay, closeOverlay } from "../utils/overlay";
 import { ICON_DEFAULT_COLOR } from "../constants/colorPresets";
 import { fetchCsv, rowToObject } from "../utils/csv";
-import { transactionListToCsv, tagManagementListToCsv, transactionManagementListToCsv, accountListToCsv } from "../utils/csvExport";
+import { transactionListToCsv, tagManagementListToCsv, transactionManagementListToCsv, accountListToCsv, accountHistoryListToCsv } from "../utils/csvExport";
 import { saveCsvViaApi } from "../utils/dataApi";
 import { registerViewHandler, showMainView } from "../app/screen";
+import { updateCurrentMenuItem } from "../app/sidebar";
 import { setNewRowAudit, setUpdateAudit } from "../utils/auditFields";
 import {
   checkVersionBeforeUpdate,
@@ -32,6 +33,9 @@ let actualSelectAllRows: TransactionRow[] = [];
 /** 実績選択モーダル用: 現在表示している週範囲 */
 let actualSelectWeek: { start: string; end: string } | null = null;
 let editingTransactionId: string | null = null;
+
+/** 月ごとの繰り返しで選択した対象日（1～31, -1=月末, -2=月末の1日前, -3=月末の2日前） */
+let selectedMonthlyDays: Set<string> = new Set();
 
 /** 連続モード（新規登録時のみ有効。ONだと保存後に画面遷移せず連続登録） */
 let continuousMode = false;
@@ -239,6 +243,26 @@ async function fetchTransactionManagementRows(noCache = false): Promise<{ nextId
   for (const cells of rows) {
     if (cells.length === 0 || cells.every((c) => !c.trim())) continue;
     const row = rowToObject(header, cells) as unknown as TransactionManagementRow;
+    const n = parseInt(row.ID ?? "0", 10);
+    if (!Number.isNaN(n) && n > maxId) maxId = n;
+    list.push(row);
+  }
+  return { nextId: maxId + 1, rows: list };
+}
+
+/**
+ * ACCOUNT_HISTORY.csv を取得し、勘定項目履歴行の配列と次に使う ID を返す。
+ * @param noCache - true のときキャッシュを使わない
+ * @returns Promise。nextId と勘定項目履歴行の配列
+ */
+async function fetchAccountHistoryRows(noCache = false): Promise<{ nextId: number; rows: AccountHistoryRow[] }> {
+  const init = noCache ? CSV_NO_CACHE : undefined;
+  const { header, rows } = await fetchCsv("/data/ACCOUNT_HISTORY.csv", init);
+  const list: AccountHistoryRow[] = [];
+  let maxId = 0;
+  for (const cells of rows) {
+    if (cells.length === 0 || cells.every((c) => !c.trim())) continue;
+    const row = rowToObject(header, cells) as unknown as AccountHistoryRow;
     const n = parseInt(row.ID ?? "0", 10);
     if (!Number.isNaN(n) && n > maxId) maxId = n;
     list.push(row);
@@ -915,13 +939,11 @@ function getCycleUnit(): string {
     return selected.sort((a, b) => WEEKDAY_CODES.indexOf(a as typeof WEEKDAY_CODES[number]) - WEEKDAY_CODES.indexOf(b as typeof WEEKDAY_CODES[number])).join(",");
   }
   if (freq === "monthly") {
-    const selected = Array.from(document.querySelectorAll("#transaction-entry-cycle-content .transaction-history-filter-btn.is-active"))
-      .map((b) => (b as HTMLElement).getAttribute("data-monthday"))
-      .filter((s): s is string => !!s)
+    const arr = Array.from(selectedMonthlyDays)
       .map((s) => parseInt(s, 10))
       .sort((a, b) => a - b)
       .map((n) => String(n));
-    return selected.join(",");
+    return arr.join(",");
   }
   if (freq === "yearly") {
     const items = document.querySelectorAll("#transaction-entry-cycle-yearly-list [data-mmdd]");
@@ -947,11 +969,8 @@ function setCycleUnit(cycleUnit: string): void {
     return;
   }
   if (freq === "monthly") {
-    const set = new Set(parts);
-    document.querySelectorAll("#transaction-entry-cycle-content .transaction-history-filter-btn").forEach((b) => {
-      const el = b as HTMLElement;
-      el.classList.toggle("is-active", set.has(el.getAttribute("data-monthday") ?? ""));
-    });
+    selectedMonthlyDays = new Set(parts);
+    updateMonthlyChipsDisplay();
     return;
   }
   if (freq === "yearly") {
@@ -1003,11 +1022,24 @@ const FREQUENCY_LABELS: Record<string, string> = {
   yearly: "年ごと",
 };
 
+const MONTHLY_SPECIAL_LABELS: Record<string, string> = {
+  "-1": "月末",
+  "-2": "月末の1日前",
+  "-3": "月末の2日前",
+};
+
+function getMonthlyDayLabel(value: string): string {
+  const n = parseInt(value, 10);
+  if (n >= 1 && n <= 31) return `${n}日`;
+  return MONTHLY_SPECIAL_LABELS[value] ?? value;
+}
+
 function updateIntervalFrequencyLabel(frequency: string): void {
   const el = document.getElementById("transaction-entry-interval-frequency-label");
   if (el) el.textContent = FREQUENCY_LABELS[frequency] ?? "";
 }
 
+/** 間隔欄は頻度が1日以外のとき表示、繰り返し欄は1日・日ごと以外のとき表示 */
 function updateFrequencyDependentVisibility(frequency: string): void {
   const intervalRow = document.getElementById("transaction-entry-interval-row");
   const cycleRow = document.getElementById("transaction-entry-cycle-row");
@@ -1017,6 +1049,93 @@ function updateFrequencyDependentVisibility(frequency: string): void {
   if (cycleRow) cycleRow.hidden = frequency === "day" || frequency === "daily";
   updateIntervalFrequencyLabel(frequency);
   if (!cycleRow?.hidden) renderCycleContent(frequency);
+}
+
+/** 月ごとの繰り返しで選択した対象日のチップ表示を更新する。 */
+function updateMonthlyChipsDisplay(): void {
+  const chipsEl = document.getElementById("transaction-entry-cycle-monthly-chips");
+  if (!chipsEl) return;
+  chipsEl.innerHTML = "";
+  const sorted = Array.from(selectedMonthlyDays)
+    .map((s) => parseInt(s, 10))
+    .sort((a, b) => a - b)
+    .map((n) => String(n));
+  if (sorted.length === 0) {
+    const empty = document.createElement("span");
+    empty.className = "transaction-entry-cycle-monthly-chips-empty";
+    empty.textContent = "対象日なし";
+    chipsEl.appendChild(empty);
+    return;
+  }
+  sorted.forEach((value) => {
+    const chip = document.createElement("span");
+    chip.className = "transaction-entry-cycle-monthly-chip";
+    chip.setAttribute("data-monthday", value);
+    chip.textContent = getMonthlyDayLabel(value);
+    const rm = document.createElement("button");
+    rm.type = "button";
+    rm.className = "transaction-entry-cycle-monthly-remove";
+    rm.setAttribute("aria-label", "削除");
+    rm.textContent = "×";
+    rm.addEventListener("click", () => {
+      selectedMonthlyDays.delete(value);
+      updateMonthlyChipsDisplay();
+    });
+    chip.appendChild(rm);
+    chipsEl.appendChild(chip);
+  });
+}
+
+const TRANSACTION_ENTRY_CYCLE_MONTHLY_OVERLAY_ID = "transaction-entry-cycle-monthly-select-overlay";
+
+/** 月ごと「対象日を選択」ポップアップのグリッドを組み立てて表示する。 */
+function openTransactionEntryCycleMonthlySelectOverlay(): void {
+  const gridEl = document.getElementById("transaction-entry-cycle-monthly-select-grid");
+  if (!gridEl) return;
+  gridEl.innerHTML = "";
+  const wrap = document.createElement("div");
+  wrap.className = "transaction-entry-cycle-month-select-inner";
+  const daysGrid = document.createElement("div");
+  daysGrid.className = "transaction-entry-cycle-month-days-grid";
+  for (let d = 1; d <= 31; d++) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "btn-secondary transaction-history-filter-btn transaction-entry-cycle-month-day";
+    btn.setAttribute("data-monthday", String(d));
+    btn.textContent = String(d);
+    btn.classList.toggle("is-active", selectedMonthlyDays.has(String(d)));
+    btn.addEventListener("click", () => btn.classList.toggle("is-active", !btn.classList.contains("is-active")));
+    daysGrid.appendChild(btn);
+  }
+  wrap.appendChild(daysGrid);
+  const specialRow = document.createElement("div");
+  specialRow.className = "transaction-entry-cycle-month-special";
+  ["月末", "月末の1日前", "月末の2日前"].forEach((label, i) => {
+    const value = String(-1 - i);
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "btn-secondary transaction-history-filter-btn";
+    btn.setAttribute("data-monthday", value);
+    btn.textContent = label;
+    btn.classList.toggle("is-active", selectedMonthlyDays.has(value));
+    btn.addEventListener("click", () => btn.classList.toggle("is-active", !btn.classList.contains("is-active")));
+    specialRow.appendChild(btn);
+  });
+  wrap.appendChild(specialRow);
+  gridEl.appendChild(wrap);
+  openOverlay(TRANSACTION_ENTRY_CYCLE_MONTHLY_OVERLAY_ID);
+}
+
+/** 月ごと対象日選択ポップアップで「設定」を押したときの処理。 */
+function applyTransactionEntryCycleMonthlySelect(): void {
+  const gridEl = document.getElementById("transaction-entry-cycle-monthly-select-grid");
+  if (!gridEl) return;
+  const selected = Array.from(gridEl.querySelectorAll<HTMLElement>(".transaction-history-filter-btn.is-active"))
+    .map((el) => el.getAttribute("data-monthday"))
+    .filter((s): s is string => !!s);
+  selectedMonthlyDays = new Set(selected);
+  updateMonthlyChipsDisplay();
+  closeOverlay(TRANSACTION_ENTRY_CYCLE_MONTHLY_OVERLAY_ID);
 }
 
 function renderCycleContent(frequency: string): void {
@@ -1039,36 +1158,19 @@ function renderCycleContent(frequency: string): void {
   }
   if (frequency === "monthly") {
     const monthWrap = document.createElement("div");
-    monthWrap.className = "transaction-entry-cycle-month-wrap";
-    const daysGrid = document.createElement("div");
-    daysGrid.className = "transaction-entry-cycle-month-days-grid";
-    for (let d = 1; d <= 31; d++) {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "btn-secondary transaction-history-filter-btn transaction-entry-cycle-month-day";
-      btn.setAttribute("data-monthday", String(d));
-      btn.textContent = String(d);
-      btn.addEventListener("click", () => {
-        btn.classList.toggle("is-active", !btn.classList.contains("is-active"));
-      });
-      daysGrid.appendChild(btn);
-    }
-    monthWrap.appendChild(daysGrid);
-    const specialRow = document.createElement("div");
-    specialRow.className = "transaction-entry-cycle-month-special";
-    ["月末", "月末の1日前", "月末の2日前"].forEach((label, i) => {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "btn-secondary transaction-history-filter-btn";
-      btn.setAttribute("data-monthday", String(-1 - i));
-      btn.textContent = label;
-      btn.addEventListener("click", () => {
-        btn.classList.toggle("is-active", !btn.classList.contains("is-active"));
-      });
-      specialRow.appendChild(btn);
-    });
-    monthWrap.appendChild(specialRow);
+    monthWrap.className = "transaction-entry-cycle-month-wrap transaction-entry-cycle-month-wrap--button";
+    const openBtn = document.createElement("button");
+    openBtn.type = "button";
+    openBtn.className = "btn-secondary transaction-entry-cycle-monthly-open-btn";
+    openBtn.textContent = "対象日を選択";
+    openBtn.addEventListener("click", () => openTransactionEntryCycleMonthlySelectOverlay());
+    monthWrap.appendChild(openBtn);
+    const chipsWrap = document.createElement("div");
+    chipsWrap.id = "transaction-entry-cycle-monthly-chips";
+    chipsWrap.className = "transaction-entry-cycle-monthly-chips";
+    monthWrap.appendChild(chipsWrap);
     container.appendChild(monthWrap);
+    updateMonthlyChipsDisplay();
     return;
   }
   if (frequency === "yearly") {
@@ -1141,8 +1243,8 @@ function renderCycleContent(frequency: string): void {
 
 function updatePlanOnlyRowsVisibility(status: string): void {
   const isPlan = status === "plan";
-  const form = document.getElementById("transaction-entry-form");
-  form?.querySelectorAll(".transaction-entry-plan-only").forEach((el) => {
+  const view = document.getElementById("view-transaction-entry");
+  view?.querySelectorAll(".transaction-entry-plan-only").forEach((el) => {
     const htmlEl = el as HTMLElement;
     if (isPlan) {
       htmlEl.removeAttribute("hidden");
@@ -1510,9 +1612,14 @@ async function saveTransactionManagementCsv(csv: string): Promise<void> {
   await saveCsvViaApi("TRANSACTION_MANAGEMENT.csv", csv);
 }
 
+async function saveAccountHistoryCsv(csv: string): Promise<void> {
+  await saveCsvViaApi("ACCOUNT_HISTORY.csv", csv);
+}
+
 /**
- * 実績取引の登録・更新・削除に応じて ACCOUNT.csv の残高（BALANCE）を更新する。
- * 予定取引の場合は何もしない。
+ * 実績取引の登録・更新・削除に応じて ACCOUNT.csv の残高（BALANCE）を更新し、
+ * ACCOUNT_HISTORY.csv に当該取引時点の残高履歴を追記する。予定取引の場合は何もしない。
+ * @param transactionId - 取引ID（TRANSACTION.ID）
  * @param operation - "register" | "update" | "delete"
  * @param transactionType - "expense" | "income" | "transfer"
  * @param accountOutId - 出金元勘定ID（支出・振替で使用）
@@ -1521,6 +1628,7 @@ async function saveTransactionManagementCsv(csv: string): Promise<void> {
  * @param oldAmount - 更新時のみ。更新前の金額
  */
 async function updateAccountBalancesForActual(
+  transactionId: string,
   operation: "register" | "update" | "delete",
   transactionType: string,
   accountOutId: string,
@@ -1528,6 +1636,9 @@ async function updateAccountBalancesForActual(
   amount: number,
   oldAmount?: number
 ): Promise<void> {
+  if (operation === "update" && oldAmount !== undefined && amount === oldAmount) {
+    return;
+  }
   const type = (transactionType || "expense").toLowerCase();
   const accounts = await fetchAccountList(true);
   const userId = currentUserId ?? "";
@@ -1563,32 +1674,90 @@ async function updateAccountBalancesForActual(
     setUpdateAudit(r, userId);
   };
 
+  const affectedAccountIds: string[] = [];
   if (operation === "register") {
-    if (type === "expense" && accountOutId) applyDelta(accountOutId, -amount);
-    else if (type === "income" && accountInId) applyDelta(accountInId, amount);
-    else if (type === "transfer") {
-      if (accountOutId) applyDelta(accountOutId, -amount);
-      if (accountInId) applyDelta(accountInId, amount);
+    if (type === "expense" && accountOutId) {
+      affectedAccountIds.push(accountOutId);
+      applyDelta(accountOutId, -amount);
+    } else if (type === "income" && accountInId) {
+      affectedAccountIds.push(accountInId);
+      applyDelta(accountInId, amount);
+    } else if (type === "transfer") {
+      if (accountOutId) {
+        affectedAccountIds.push(accountOutId);
+        applyDelta(accountOutId, -amount);
+      }
+      if (accountInId) {
+        affectedAccountIds.push(accountInId);
+        applyDelta(accountInId, amount);
+      }
     }
   } else if (operation === "update" && oldAmount !== undefined) {
     const diff = amount - oldAmount;
-    if (type === "expense" && accountOutId) applyDelta(accountOutId, -diff);
-    else if (type === "income" && accountInId) applyDelta(accountInId, diff);
-    else if (type === "transfer") {
-      if (accountOutId) applyDelta(accountOutId, -diff);
-      if (accountInId) applyDelta(accountInId, diff);
+    if (type === "expense" && accountOutId) {
+      affectedAccountIds.push(accountOutId);
+      applyDelta(accountOutId, -diff);
+    } else if (type === "income" && accountInId) {
+      affectedAccountIds.push(accountInId);
+      applyDelta(accountInId, diff);
+    } else if (type === "transfer") {
+      if (accountOutId) {
+        affectedAccountIds.push(accountOutId);
+        applyDelta(accountOutId, -diff);
+      }
+      if (accountInId) {
+        affectedAccountIds.push(accountInId);
+        applyDelta(accountInId, diff);
+      }
     }
   } else if (operation === "delete") {
-    if (type === "expense" && accountOutId) applyDelta(accountOutId, amount);
-    else if (type === "income" && accountInId) applyDelta(accountInId, -amount);
-    else if (type === "transfer") {
-      if (accountOutId) applyDelta(accountOutId, amount);
-      if (accountInId) applyDelta(accountInId, -amount);
+    if (type === "expense" && accountOutId) {
+      affectedAccountIds.push(accountOutId);
+      applyDelta(accountOutId, amount);
+    } else if (type === "income" && accountInId) {
+      affectedAccountIds.push(accountInId);
+      applyDelta(accountInId, -amount);
+    } else if (type === "transfer") {
+      if (accountOutId) {
+        affectedAccountIds.push(accountOutId);
+        applyDelta(accountOutId, amount);
+      }
+      if (accountInId) {
+        affectedAccountIds.push(accountInId);
+        applyDelta(accountInId, -amount);
+      }
     }
   }
 
   const csv = accountListToCsv(records);
   await saveCsvViaApi("ACCOUNT.csv", csv);
+
+  if (affectedAccountIds.length === 0) return;
+  const statusForHistory = operation === "register" ? "regist" : operation;
+  const { nextId, rows: historyRows } = await fetchAccountHistoryRows(true);
+  const newHistoryRows = historyRows.map((r) => ({ ...r } as Record<string, string>));
+  let historyId = nextId;
+  for (const accountId of affectedAccountIds) {
+    const rec = records.find((row) => row.ID === accountId);
+    const balance = rec ? String(parseBal(rec.BALANCE ?? "0")) : "0";
+    const row: Record<string, string> = {
+      ID: String(historyId),
+      VERSION: "0",
+      REGIST_DATETIME: "",
+      REGIST_USER: userId,
+      UPDATE_DATETIME: "",
+      UPDATE_USER: userId,
+      ACCOUNT_ID: accountId,
+      TRANSACTION_ID: transactionId,
+      BALANCE: balance,
+      TRANSACTION_STATUS: statusForHistory,
+    };
+    setNewRowAudit(row, userId, String(historyId));
+    newHistoryRows.push(row);
+    historyId += 1;
+  }
+  const historyCsv = accountHistoryListToCsv(newHistoryRows);
+  await saveAccountHistoryCsv(historyCsv);
 }
 
 /**
@@ -1688,6 +1857,7 @@ export function initTransactionEntryView(): void {
           resetForm();
           pushNavigation("transaction-history");
           showMainView("transaction-history");
+          updateCurrentMenuItem();
           return;
         }
         const check = await checkVersionBeforeUpdate(
@@ -1713,7 +1883,7 @@ export function initTransactionEntryView(): void {
           const inId = (updatedRow as Record<string, string>).ACCOUNT_ID_IN ?? "";
           const newAmt = parseFloat(String((updatedRow as Record<string, string>).AMOUNT ?? "0")) || 0;
           const oldAmt = parseFloat(String(existing.AMOUNT ?? "0")) || 0;
-          await updateAccountBalancesForActual("update", typeRow, outId, inId, newAmt, oldAmt);
+          await updateAccountBalancesForActual(editingTransactionId!, "update", typeRow, outId, inId, newAmt, oldAmt);
         }
         const { nextId: nextMgmtId, rows: mgmtRows } = await fetchTagManagementRows(true);
         const userId = currentUserId ?? "";
@@ -1755,6 +1925,7 @@ export function initTransactionEntryView(): void {
         resetForm();
         pushNavigation("transaction-history");
         showMainView("transaction-history");
+        updateCurrentMenuItem();
       } else {
         const { nextId, rows } = await fetchTransactionRows(true);
         const newRow = buildNewRow(form, nextId);
@@ -1767,7 +1938,7 @@ export function initTransactionEntryView(): void {
           const outIdNew = (newRow as Record<string, string>).ACCOUNT_ID_OUT ?? "";
           const inIdNew = (newRow as Record<string, string>).ACCOUNT_ID_IN ?? "";
           const amt = parseFloat(String((newRow as Record<string, string>).AMOUNT ?? "0")) || 0;
-          await updateAccountBalancesForActual("register", typeNew, outIdNew, inIdNew, amt);
+          await updateAccountBalancesForActual(newTransactionId, "register", typeNew, outIdNew, inIdNew, amt);
         }
         if (selectedTagIds.size > 0) {
           const { nextId: nextMgmtId, rows: mgmtRows } = await fetchTagManagementRows(true);
@@ -1807,6 +1978,7 @@ export function initTransactionEntryView(): void {
         if (!continuousMode) {
           pushNavigation("transaction-history");
           showMainView("transaction-history");
+          updateCurrentMenuItem();
         }
       }
     } catch (err) {
@@ -1842,6 +2014,7 @@ export function initTransactionEntryView(): void {
         resetForm();
         pushNavigation("transaction-history");
         showMainView("transaction-history");
+        updateCurrentMenuItem();
         return;
       }
       const check = await checkVersionBeforeUpdate(
@@ -1871,7 +2044,7 @@ export function initTransactionEntryView(): void {
         const outIdDel = row.ACCOUNT_ID_OUT ?? "";
         const inIdDel = row.ACCOUNT_ID_IN ?? "";
         const amtDel = parseFloat(String(row.AMOUNT ?? "0")) || 0;
-        await updateAccountBalancesForActual("delete", typeDel, outIdDel, inIdDel, amtDel);
+        await updateAccountBalancesForActual(editingTransactionId!, "delete", typeDel, outIdDel, inIdDel, amtDel);
       }
       const { rows: mgmtRows } = await fetchTagManagementRows(true);
       const newMgmtRows = mgmtRows
@@ -1892,6 +2065,7 @@ export function initTransactionEntryView(): void {
       updateTransactionEntryContinuousButtonVisibility();
       pushNavigation("transaction-history");
       showMainView("transaction-history");
+      updateCurrentMenuItem();
     } catch (err) {
       console.error(err);
       alert("削除に失敗しました。");
@@ -1913,7 +2087,7 @@ export function initTransactionEntryView(): void {
         const outIdCopy = (newRow as Record<string, string>).ACCOUNT_ID_OUT ?? "";
         const inIdCopy = (newRow as Record<string, string>).ACCOUNT_ID_IN ?? "";
         const amtCopy = parseFloat(String((newRow as Record<string, string>).AMOUNT ?? "0")) || 0;
-        await updateAccountBalancesForActual("register", typeCopy, outIdCopy, inIdCopy, amtCopy);
+        await updateAccountBalancesForActual(newTransactionId, "register", typeCopy, outIdCopy, inIdCopy, amtCopy);
       }
       if (selectedTagIds.size > 0) {
         const { nextId: nextMgmtId, rows: mgmtRows } = await fetchTagManagementRows(true);
@@ -1956,6 +2130,7 @@ export function initTransactionEntryView(): void {
       updateTransactionEntryCopyAsNewButtonVisibility();
       pushNavigation("transaction-history");
       showMainView("transaction-history");
+      updateCurrentMenuItem();
     } catch (err) {
       console.error(err);
       alert("参照登録に失敗しました。");
@@ -2027,6 +2202,17 @@ export function initTransactionEntryView(): void {
   document.getElementById("transaction-entry-tag-select-overlay")?.addEventListener("click", (e) => {
     if (e.target instanceof HTMLElement && e.target.id === "transaction-entry-tag-select-overlay") {
       closeTransactionEntryTagModal();
+    }
+  });
+  document.getElementById("transaction-entry-cycle-monthly-select-apply")?.addEventListener("click", () => {
+    applyTransactionEntryCycleMonthlySelect();
+  });
+  document.getElementById("transaction-entry-cycle-monthly-select-cancel")?.addEventListener("click", () => {
+    closeOverlay(TRANSACTION_ENTRY_CYCLE_MONTHLY_OVERLAY_ID);
+  });
+  document.getElementById("transaction-entry-cycle-monthly-select-overlay")?.addEventListener("click", (e) => {
+    if (e.target instanceof HTMLElement && e.target.id === "transaction-entry-cycle-monthly-select-overlay") {
+      closeOverlay(TRANSACTION_ENTRY_CYCLE_MONTHLY_OVERLAY_ID);
     }
   });
 
