@@ -175,9 +175,10 @@ async function fetchAccountPermissionList(noCache = false): Promise<AccountPermi
 }
 
 /**
- * TRANSACTION.csv を取得し、取引行の配列と次に使う ID を返す。
+ * TRANSACTION.csv を取得し、未削除の取引行の配列と次に使う ID を返す。
+ * 論理削除（DLT_FLG=1）の行は返却対象に含めない。
  * @param noCache - true のときキャッシュを使わない
- * @returns Promise。nextId と取引行の配列
+ * @returns Promise。nextId と取引行の配列（未削除のみ）
  */
 async function fetchTransactionRows(noCache = false): Promise<{ nextId: number; rows: TransactionRow[] }> {
   const init = noCache ? CSV_NO_CACHE : undefined;
@@ -188,7 +189,7 @@ async function fetchTransactionRows(noCache = false): Promise<{ nextId: number; 
     const row = rowToObject(header, cells) as unknown as TransactionRow;
     const n = parseInt(row.ID ?? "0", 10);
     if (!Number.isNaN(n) && n > maxId) maxId = n;
-    list.push(row);
+    if ((row.DLT_FLG || "0") !== "1") list.push(row);
   }
   return { nextId: maxId + 1, rows: list };
 }

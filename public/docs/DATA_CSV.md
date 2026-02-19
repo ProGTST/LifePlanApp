@@ -3,18 +3,37 @@
 LifePlanGant で扱う収支・タグ・勘定項目のデータは、`data/` フォルダ内の CSV ファイルで管理します。  
 いずれも **1行目はヘッダー**、2行目以降がデータです。文字コードは **UTF-8** を想定しています。
 
-**全テーブル共通**  
-- **VERSION** … 楽観的ロック用。初期値は `0`。データ更新のたびに 1 増やす。取得時に CSV から読み取り、更新・削除前に CSV の対象行の最新 VERSION と比較する。  
-- **監査項目**（VERSION の次に配置。COLOR_PALETTE のみ VERSION の次に以下 4 列を追加）  
-  - **REGIST_DATETIME** … 登録日時（YYYY-MM-DD HH:MM:SS 推奨）  
-  - **REGIST_USER** … 登録ユーザーID（USER.ID への参照）  
-  - **UPDATE_DATETIME** … 更新日時  
+---
+
+## 全テーブル共通
+
+- **VERSION** … 楽観的ロック用。初期値は `0`。データ更新のたびに 1 増やす。取得時に CSV から読み取り、更新・削除前に CSV の対象行の最新 VERSION と比較する。
+- **監査項目**（VERSION の次に配置。COLOR_PALETTE のみ VERSION の次に以下 4 列を追加）
+  - **REGIST_DATETIME** … 登録日時（YYYY-MM-DD HH:MM:SS 推奨）
+  - **REGIST_USER** … 登録ユーザーID（USER.ID への参照）
+  - **UPDATE_DATETIME** … 更新日時
   - **UPDATE_USER** … 更新ユーザーID（USER.ID への参照）
 
-**更新・削除時のバージョンチェック**  
-- 更新または削除実行前に、対象データだけ CSV から最新を取得し、編集中の VERSION と比較する。  
-- 最新の VERSION と異なる場合: 「他のユーザーが更新しました。最新のデータを取得するので、確認してください。」と表示し、最新データを取得して画面に再表示する。  
+**更新・削除時のバージョンチェック**
+- 更新または削除実行前に、対象データだけ CSV から最新を取得し、編集中の VERSION と比較する。
+- 最新の VERSION と異なる場合: 「他のユーザーが更新しました。最新のデータを取得するので、確認してください。」と表示し、最新データを取得して画面に再表示する。
 - 対象データが CSV に存在しない場合: 「他のユーザーが更新しました。該当のデータはありません。」と表示し、最新データを取得して画面に再表示する。
+
+---
+
+## ID 採番ルール
+
+- **新規 ID**: 当該テーブル内の既存行の ID の最大値 + 1 で付与する（数値の場合は数値比較、文字列の場合は USER.ID など仕様に従う）。
+- **削除された ID は再利用しない**。論理削除（DLT_FLG=1）した行の ID も、物理削除した行の ID も再利用しない。これにより履歴・参照の一意性を保つ。
+- **並行登録**: CSV 運用では同時に複数クライアントが同一テーブルに新規行を追加した場合、最大 ID + 1 の計算が競合し得る。アプリ側では保存前に再取得して最大 ID を確定するなど、重複しないようにする。将来 SQLite に移行する場合は、ID を `INTEGER PRIMARY KEY`（または AUTOINCREMENT）相当で管理すると移行が容易である。
+
+---
+
+## 論理削除（DLT_FLG）の扱い
+
+- **TRANSACTION** には **DLT_FLG** がある。`0`＝有効、`1`＝削除扱い。取引の「削除」は物理削除せず DLT_FLG を `1` にする。
+- **通常の検索・一覧・集計は DLT_FLG = 0 の行のみを対象とする**。アプリ側の取得処理で `(DLT_FLG || "0") !== "1"` により除外する。
+- **ACCOUNT_HISTORY**: 取引削除時も、当該取引に紐づく履歴レコードは削除せず残す（TRANSACTION_STATUS = `delete` のレコードとして残すか、または履歴として参照のみに使う）。残高の巻き戻しは ACCOUNT.BALANCE と ACCOUNT_HISTORY の整合性ポリシーに従う。
 
 ---
 
@@ -35,6 +54,9 @@ LifePlanGant で扱う収支・タグ・勘定項目のデータは、`data/` �
 | NAME | ユーザー名 | 表示名 |
 | COLOR | プロフィール用の色 | 例: #f09a9f。任意 |
 | ICON_PATH | アイコン画像のパス | 任意。ファイルパスまたはURL（例: /icon/profile/xxx.png） |
+
+**一意制約**
+- **ID** は一意。同一 USER 内で重複しない。
 
 ---
 
@@ -57,6 +79,9 @@ LifePlanGant で扱う収支・タグ・勘定項目のデータは、`data/` �
 | ICON_PATH | アイコンパス | 例: /icon/custom/xxx.svg。任意。一覧・ピッカーで変更可 |
 | SORT_ORDER | 表示順 | 同テーブル内の並び順（数値）。ドラッグで変更可 |
 
+**一意制約**
+- **ID** は一意。
+
 ---
 
 ## 3. タグ管理テーブル（TAG_MANAGEMENT）
@@ -77,6 +102,9 @@ LifePlanGant で扱う収支・タグ・勘定項目のデータは、`data/` �
 | TRANSACTION_ID | 収支ID | TRANSACTION.ID への参照 |
 | TAG_ID | タグID | TAG.ID への参照 |
 
+**一意制約**
+- **(TRANSACTION_ID, TAG_ID)** は一意。同一の「取引・タグ」の組み合わせは1行のみ登録する。アプリ側で重複登録しないようにする。
+
 ---
 
 ## 4. 取引予定-実績紐付けテーブル（TRANSACTION_MANAGEMENT）
@@ -94,8 +122,12 @@ LifePlanGant で扱う収支・タグ・勘定項目のデータは、`data/` �
 | REGIST_USER | 登録ユーザーID | USER.ID への参照 |
 | UPDATE_DATETIME | 更新日時 | 共通 |
 | UPDATE_USER | 更新ユーザーID | USER.ID への参照 |
-| TRAN_PLAN_ID | 取引予定ID | TRANSACTION.ID（STATUS=plan）への参照 |
-| TRAN_ACTUAL_ID | 取引実績ID | TRANSACTION.ID（STATUS=actual）への参照 |
+| TRAN_PLAN_ID | 取引予定ID | TRANSACTION.ID（PROJECT_TYPE=plan）への参照 |
+| TRAN_ACTUAL_ID | 取引実績ID | TRANSACTION.ID（PROJECT_TYPE=actual）への参照 |
+
+**一意制約**
+- **(TRAN_PLAN_ID, TRAN_ACTUAL_ID)** は一意。同一の「予定・実績」ペアの重複登録は禁止。
+- **TRAN_ACTUAL_ID** は一意とする（1件の実績は1つの予定にのみ紐づける。同一実績を複数予定に紐づけることはできない）。アプリ側で強制する。
 
 ---
 
@@ -119,6 +151,10 @@ LifePlanGant で扱う収支・タグ・勘定項目のデータは、`data/` �
 | COLOR | 色 | 例: #ff0000 やカラーコード。任意。一覧・ピッカーで変更可 |
 | ICON_PATH | アイコンパス | 例: /icon/custom/xxx.svg。任意。一覧・ピッカーで変更可 |
 | SORT_ORDER | 表示順 | 同種別内の並び順（数値）。ドラッグで変更可 |
+
+**一意制約**
+- **ID** は一意。
+- **PARENT_ID** は自己参照のため、同一 ID の行は1つの親のみ持つ（ツリー構造）。
 
 ---
 
@@ -152,6 +188,16 @@ LifePlanGant で扱う収支・タグ・勘定項目のデータは、`data/` �
 | PLAN_STATUS | 予定状況 | `planning`（計画中） / `complete`（完了） / `canceled`（中止）。PROJECT_TYPE が plan のときは planning、actual のときは complete を初期値とする。 |
 | DLT_FLG | 削除フラグ | 0＝有効、1＝削除扱い。初期値 0。取引削除時は物理削除せず 1 にして論理削除する。 |
 
+**一意制約**
+- **ID** は一意。
+
+**業務制約（PLAN_STATUS）**
+- **PROJECT_TYPE = actual（実績）の場合、PLAN_STATUS は `complete` 固定**とする。実績取引に `planning` や `canceled` は設定しない。アプリ側で実績登録・更新時に complete 以外を設定しないようにする。
+- PROJECT_TYPE = plan（予定）の場合は planning / complete / canceled のいずれかを設定可能。
+
+**将来拡張のメモ**
+- TRANSACTION は「予定・実績・繰り返しルール・単発・振替・残高影響」を一テーブルで持つ。現状は問題ないが、将来パフォーマンスや保守性の観点で次の分離を検討し得る：繰り返し設定（FREQUENCY / INTERVAL / CYCLE_UNIT）を別テーブルに分離、実績生成済フラグの追加など。SQLite 移行時に正規化の余地として記載する。
+
 ---
 
 ## 7. 勘定項目テーブル（ACCOUNT）
@@ -175,6 +221,13 @@ LifePlanGant で扱う収支・タグ・勘定項目のデータは、`data/` �
 | BALANCE | 残高 | 初期値 0。数値。勘定の残高を保持 |
 | SORT_ORDER | 表示順 | ユーザー内の並び順（数値）。ドラッグで変更可 |
 
+**一意制約**
+- **ID** は一意。
+
+**残高の整合性（ACCOUNT.BALANCE と ACCOUNT_HISTORY）**
+- **ACCOUNT.BALANCE は、当該勘定の ACCOUNT_HISTORY の最新レコード（同一 ACCOUNT_ID で TRANSACTION_ID が最も新しい取引時点）の BALANCE と一致すること**を仕様とする。実績取引の登録・更新・削除時に、勘定残高を増減させると同時に ACCOUNT_HISTORY に履歴を追加し、ACCOUNT.BALANCE を更新する。
+- 取引削除時は、当該取引による残高変動を巻き戻す（逆方向の変動を ACCOUNT に反映し、ACCOUNT_HISTORY に TRANSACTION_STATUS = `delete` のレコードを追加する）。再計算が必要な場合は、当該勘定の ACCOUNT_HISTORY を TRANSACTION_ID 順にたどって残高を再構築できるようにする。
+
 ---
 
 ## 8. 勘定項目参照権限テーブル（ACCOUNT_PERMISSION）
@@ -194,6 +247,9 @@ LifePlanGant で扱う収支・タグ・勘定項目のデータは、`data/` �
 | ACCOUNT_ID | 勘定項目ID | ACCOUNT.ID |
 | USER_ID | 参照を許可するユーザーID | USER.ID |
 | PERMISSION_TYPE | 権限種別 | `view`（参照） / `edit`（編集） |
+
+**一意制約**
+- **(ACCOUNT_ID, USER_ID)** は一意。同一の「勘定・ユーザー」の組み合わせは1行のみ登録する。同一ユーザーに同一勘定の権限を複数回付与することはできない。アプリ側で重複登録しないようにする。
 
 ---
 
@@ -215,6 +271,9 @@ LifePlanGant で扱う収支・タグ・勘定項目のデータは、`data/` �
 | TRANSACTION_ID | 取引ID | TRANSACTION.ID への参照 |
 | BALANCE | 残高 | 当該取引時点の勘定残高（数値） |
 | TRANSACTION_STATUS | 取引ステータス | `regist`（登録） / `update`（更新） / `delete`（削除） |
+
+**一意制約**
+- **ID** は一意。同一 (ACCOUNT_ID, TRANSACTION_ID) で複数レコードが存在し得るのは、同一取引の「更新」で複数回履歴が書かれる場合（regist → update など）。通常は「1取引1勘定あたり、登録・更新・削除それぞれで1レコード」を想定。同一取引の同一勘定に対する履歴は時系列で複数になる。
 
 ---
 
@@ -290,7 +349,25 @@ TAG (1) ----< TAG_MANAGEMENT >---- (N) TRANSACTION
 | ACCENT_BG | 強調背景色（選択中メニュー等） | 例: #646cff |
 | ACCENT_FG | 強調文字色（選択中メニュー等） | 例: #fff |
 
+**一意制約**
+- **(USER_ID, SEQ_NO)** は一意。同一ユーザー内で SEQ_NO が重複しない。ユーザーごとに複数パレットを持てるが、SEQ_NO で区別する。
+
 ※ 色は空欄の場合はアプリのデフォルトを使用。必要に応じて列を追加して管理します。
+
+---
+
+## データ整合性ポリシー
+
+- **参照整合性はアプリ側で保証する**。存在しない ID を他テーブルから参照しない。REGIST_USER / UPDATE_USER には存在する USER.ID を設定する。CATEGORY_ID, ACCOUNT_ID_IN, ACCOUNT_ID_OUT, TRANSACTION_ID, TAG_ID 等も、参照先テーブルに存在する ID のみを設定する。
+- **削除時は参照の有無をチェックする**。勘定を削除する場合は、当該勘定を参照する TRANSACTION や ACCOUNT_PERMISSION の扱いを決める（禁止するか、参照をクリアするか）。タグ・カテゴリ削除時も、参照している取引や TAG_MANAGEMENT の扱いをアプリ側で一貫して行う。
+- **残高は履歴から再構築可能であること**。ACCOUNT.BALANCE と ACCOUNT_HISTORY の整合性を保ち、不整合が生じた場合は当該勘定の ACCOUNT_HISTORY を先頭から適用して BALANCE を再計算できるようにする。
+
+---
+
+## パフォーマンス・CSV 運用の注意
+
+- **CSV ではテーブル全体を読み書きする**。TRANSACTION の件数が増えると、一覧取得やバージョンチェック時の走査コストが増える。**おおよそ 5000 件を超える規模になったら SQLite 等への移行を推奨する**。移行時は ID を INTEGER PRIMARY KEY 相当で管理し、一意制約・参照整合性を DB 側でも定義するとよい。
+- バージョンチェック時は、更新対象行の VERSION を確認するために、現状は CSV を再取得するか対象行だけを特定する必要がある。CSV のままでは「単一キー検索」が線形探索になる点に注意する。
 
 ---
 
@@ -304,10 +381,10 @@ TAG (1) ----< TAG_MANAGEMENT >---- (N) TRANSACTION
 
 ## 運用上の注意
 
-- 新規IDは、既存の最大ID + 1 などで重複しないように付与してください。
+- **新規 ID** は、当該テーブルの既存行の最大 ID + 1 で付与する。**削除した行の ID は再利用しない**（「ID 採番ルール」を参照）。
 - 日付は **YYYY-MM-DD**、日時は **YYYY-MM-DD HH:MM:SS** 形式を推奨します。
 - 金額は整数または小数で統一し、単位（円など）はアプリ側で固定する想定です。
 - **REGIST_USER** / **UPDATE_USER** には存在する USER.ID を設定してください。
-- 参照整合性（存在しない ID を参照しない）はアプリ側でチェックすることを推奨します。
+- **参照整合性**はアプリ側で保証する（「データ整合性ポリシー」を参照）。存在しない ID を他テーブルから参照しない。
 - **COLOR** は16進カラーコード（例: #646cff）を推奨。アプリの色・アイコンピッカーでプリセットまたはカスタム色を選択できます。
 - **ICON_PATH** は `/icon/custom/ファイル名.svg` 形式。`public/icon/custom/` に配置した SVG は、ビルド時に `icons.json` に列挙され、ピッカーで選択できます。

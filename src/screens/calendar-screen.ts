@@ -112,9 +112,10 @@ function getMonthCalendarInfo(year: number, month: number): { firstDay: number; 
 // ---------------------------------------------------------------------------
 
 function getCalendarDaySummary(
-  dateStr: string
+  dateStr: string,
+  ym?: string
 ): { planCount: number; actualCount: number; incomeAmount: number; expenseAmount: number; transferAmount: number } {
-  const filtered = getFilteredTransactionListForCalendar();
+  const filtered = getFilteredTransactionListForCalendar(ym);
   let planCount = 0;
   let actualCount = 0;
   let incomeAmount = 0;
@@ -154,7 +155,7 @@ function getCalendarMonthTotals(
   const firstDay = monthStr + "-01";
   const lastDate = new Date(year, month, 0).getDate();
   const lastDay = monthStr + "-" + String(lastDate).padStart(2, "0");
-  const filtered = getFilteredTransactionListForCalendar();
+  const filtered = getFilteredTransactionListForCalendar(monthStr);
   let planIncome = 0;
   let planExpense = 0;
   let actualIncome = 0;
@@ -179,8 +180,8 @@ function getCalendarMonthTotals(
   return { planIncome, planExpense, actualIncome, actualExpense };
 }
 
-function getTransactionsInRange(from: string, to: string): TransactionRow[] {
-  const filtered = getFilteredTransactionListForCalendar();
+function getTransactionsInRange(from: string, to: string, ym?: string): TransactionRow[] {
+  const filtered = getFilteredTransactionListForCalendar(ym);
   return filtered.filter((row) => {
     const trFrom = row.TRANDATE_FROM || "";
     const trTo = row.TRANDATE_TO || "";
@@ -239,7 +240,7 @@ function getChartDataForMonth(ym: string): {
   const planExpenseCat: Record<string, number> = {};
   const actualIncomeCat: Record<string, number> = {};
   const actualExpenseCat: Record<string, number> = {};
-  const filtered = getFilteredTransactionListForCalendar();
+  const filtered = getFilteredTransactionListForCalendar(ym);
   for (const row of filtered) {
     const type = (row.TRANSACTION_TYPE || "expense").toLowerCase();
     const amount = Number(row.AMOUNT) || 0;
@@ -511,7 +512,7 @@ function renderWeeklyPanel(): void {
     block.appendChild(title);
     const list = document.createElement("div");
     list.className = "transaction-history-week-block-list";
-    const rows = getTransactionsInRange(week.from, week.to);
+    const rows = getTransactionsInRange(week.from, week.to, selectedCalendarYM);
     const byDate = new Map<string, { row: TransactionRow; showAmount: boolean }[]>();
     const push = (dateStr: string, row: TransactionRow, showAmount: boolean): void => {
       if (!byDate.has(dateStr)) byDate.set(dateStr, []);
@@ -703,7 +704,7 @@ function renderCalendarPanel(): void {
       num.className = "transaction-history-calendar-day-num";
       num.textContent = String(day);
       cell.appendChild(num);
-      const summary = getCalendarDaySummary(dateStr);
+      const summary = getCalendarDaySummary(dateStr, selectedCalendarYM);
       const addSummaryLine = (
         iconModifierClass: string,
         iconText: string,
