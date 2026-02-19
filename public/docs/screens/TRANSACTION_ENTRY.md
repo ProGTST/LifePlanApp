@@ -140,6 +140,21 @@
 | 更新対象   | TRANSACTION, TAG_MANAGEMENT, TRANSACTION_MANAGEMENT, ACCOUNT_HISTORY, ACCOUNT                                    | 新規・更新・削除に応じて複数 CSV を更新 |
 
 
+### 6.3 各テーブル更新時のルール・処理条件
+
+保存・削除時にどのテーブルをいつ・どのように更新するかを示す。実行順序は実装に依存するが、残高整合性のため ACCOUNT / ACCOUNT_HISTORY は実績の登録・更新・削除の最後にまとめて反映する想定。
+
+| テーブル（ファイル） | 更新するタイミング | 条件・ルール | 処理内容 |
+|----------------------|--------------------|--------------|----------|
+| **TRANSACTION** | 保存（新規・編集）・削除 | 常に。新規時は nextId で ID 採番。編集・削除時は対象行の VERSION をチェック。 | **新規**: 1行追加（全項目をフォーム値で設定。DLT_FLG=0）。**編集**: 対象行の項目をフォーム値で上書き（ID は不変。DLT_FLG は既存を維持）。**削除**: 論理削除の場合は当該行の DLT_FLG を 1 にし VERSION をインクリメント。物理削除の場合は行を削除。 |
+| **TAG_MANAGEMENT** | 保存（新規・編集） | タグを1つ以上選択していても0個でも実行する。**当該取引（TRANSACTION_ID）に紐づく既存行はすべて削除**したうえで、フォームで選択中の TAG_ID ごとに1行ずつ新規追加。 | 当該 TRANSACTION_ID の既存紐付けを削除し、選択タグ分の (TRANSACTION_ID, TAG_ID) を追加。一意制約 (TRANSACTION_ID, TAG_ID) を満たす。編集時は「その取引のタグ」を丸ごと置き換え。 |
+| **TRANSACTION_MANAGEMENT** | 保存（新規・編集）で予定の場合のみ | **PROJECT_TYPE = plan（予定）**のときのみ更新。実績（actual）の新規・編集では当テーブルは触らない。 | **予定の新規・編集**: 当該 TRAN_PLAN_ID に紐づく既存行をすべて削除し、フォームで選択した実績 ID（selectedActualIds）ごとに (TRAN_PLAN_ID, TRAN_ACTUAL_ID) を1行ずつ追加。1実績は1予定にのみ紐づく制約を満たす（同一 TRAN_ACTUAL_ID の重複は登録しない）。予定削除時は当該 TRAN_PLAN_ID の行をすべて削除。 |
+| **ACCOUNT** | 実績の登録・更新・削除時のみ | **PROJECT_TYPE = actual（実績）**のときのみ。対象は出金元（ACCOUNT_ID_OUT）・入金先（ACCOUNT_ID_IN）の勘定。 | 支出: 出金元勘定の BALANCE を減算。収入: 入金先勘定の BALANCE を加算。振替: 出金元を減算・入金先を加算。**削除時**は当該取引による変動を逆方向に反映（巻き戻し）。更新時は旧金額と新金額の差を反映。各勘定の VERSION をインクリメントし、監査項目を更新。 |
+| **ACCOUNT_HISTORY** | 実績の登録・更新・削除時のみ | **PROJECT_TYPE = actual** のときのみ。当該取引で影響を受ける勘定ごとに、その時点の残高を記録。 | **登録時**: 影響する勘定ごとに1行追加。TRANSACTION_STATUS = `regist`。BALANCE は変動後の残高。**更新時**: 影響する勘定ごとに1行追加。TRANSACTION_STATUS = `update`。**削除時**: 影響する勘定ごとに1行追加。TRANSACTION_STATUS = `delete`。BALANCE は巻き戻し後の残高。ACCOUNT.BALANCE と当該勘定の最新履歴の BALANCE が一致するようにする。 |
+
+- **楽観的ロック**: TRANSACTION / ACCOUNT 等を更新・削除する前に、対象行の VERSION を CSV 上の最新値と比較する。不一致の場合は更新せずアラートし、画面を再取得する。
+- **保存順序**: 実装では TRANSACTION → TAG_MANAGEMENT → TRANSACTION_MANAGEMENT の順で保存し、実績の場合は ACCOUNT 残高の計算後に ACCOUNT_HISTORY → ACCOUNT を保存する。
+
 ---
 
 ## 7. 権限制御
