@@ -146,33 +146,14 @@ export function getFilteredTransactionListForSchedule(): TransactionRow[] {
 }
 
 /**
- * 取引の取引日（開始）・取引日（終了）が指定年月に含まれるか判定する。
- * 実績: TRANDATE_FROM の年月が ym と一致。予定: TRANDATE_FROM～TRANDATE_TO が ym の月のいずれかと重なる。
+ * カレンダー用の検索条件（日付欄を除く）でフィルター適用後の取引一覧を返す。
+ * 週・月カレンダー画面で選択年月による絞り込みは行わない。年月フィルタは calendar-screen 側で行う。
+ * @returns カレンダー用検索条件を適用した取引一覧（年月での絞り込み前）
  */
-function isTransactionInYearMonth(row: TransactionRow, ym: string): boolean {
-  const from = (row.TRANDATE_FROM || "").trim();
-  const to = (row.TRANDATE_TO || "").trim();
-  if (row.PROJECT_TYPE === "actual") {
-    return from.length >= 7 && from.slice(0, 7) === ym;
-  }
-  if (!from || !to || from.length < 10 || to.length < 10) return false;
-  const monthFirst = ym + "-01";
-  const lastDate = new Date(parseInt(ym.slice(0, 4), 10), parseInt(ym.slice(5, 7), 10), 0).getDate();
-  const monthLast = ym + "-" + String(lastDate).padStart(2, "0");
-  return from <= monthLast && to >= monthFirst;
-}
-
-/**
- * カレンダー用の検索条件でフィルター適用後の取引一覧を返す。他画面の条件とは同期しない。
- * カレンダーでは検索条件の日付欄（開始日～終了日）は使わず、選択年月（ym）のみで表示データを抽出する。
- * @param ym - 指定時は、取引日（開始）・取引日（終了）がその年月に含まれる取引のみ返す（YYYY-MM）
- */
-export function getFilteredTransactionListForCalendar(ym?: string): TransactionRow[] {
+export function getCalendarFilteredList(): TransactionRow[] {
   const calendarState = getCalendarFilterState();
   const stateNoDate = { ...calendarState, filterDateFrom: "", filterDateTo: "" };
-  const list = applyFilters(transactionList, stateNoDate);
-  if (!ym || !/^\d{4}-\d{2}$/.test(ym)) return list;
-  return list.filter((row) => isTransactionInYearMonth(row, ym));
+  return applyFilters(transactionList, stateNoDate);
 }
 
 /**

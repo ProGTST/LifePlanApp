@@ -14,13 +14,19 @@ import { Chart, registerables, type ChartOptions } from "chart.js";
 import ChartDataLabels from "chartjs-plugin-datalabels";
 import {
   loadTransactionData,
-  getFilteredTransactionListForCalendar,
+  getCalendarFilteredList,
   getCategoryById,
   getRowPermissionType,
   updateTransactionHistoryTabLayout,
   setHistoryFilterDateFromTo,
   registerFilterChangeCallback,
 } from "./transaction-history-screen";
+
+/**
+ * カレンダー画面（週カレンダー・月カレンダー）
+ * - 選択年月の取引を表示し、日付セル／週ブロックのサマリ・月合計・グラフを描画する。
+ * - 予定は頻度・間隔・繰り返しに基づく発生日で集計、実績は TRANDATE_TO（未設定時は FROM）を対象日として集計する。
+ */
 
 // ---------------------------------------------------------------------------
 // 状態
@@ -35,10 +41,13 @@ let chartJsRegistered = false;
 const chartInstances: Chart[] = [];
 
 // ---------------------------------------------------------------------------
-// ヘルパー
+// ヘルパー：日付・表示
 // ---------------------------------------------------------------------------
 
 const WEEKDAY_JA = ["日", "月", "火", "水", "木", "金", "土"];
+
+/** 曜日コード（週ごと頻度の CYCLE_UNIT で使用）。0=日〜6=土。 */
+const WEEKDAY_CODES = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"] as const;
 
 function getTodayYMD(): string {
   const d = new Date();
@@ -90,7 +99,10 @@ function getSundayOfWeek(ymd: string): string {
   return addDays(ymd.slice(0, 10), -date.getDay());
 }
 
-/** 予定の発生日一覧（YYYY-MM-DD）を返す。TRANDATE_FROM～TO の範囲内のみ。頻度・間隔・繰り返しに従う。 */
+/**
+ * 予定の発生日一覧（YYYY-MM-DD）を返す。TRANDATE_FROM～TO の範囲内のみ。
+ * 頻度（FREQUENCY）・間隔（INTERVAL）・繰り返し（CYCLE_UNIT）に従って対象日を列挙する。
+ */
 function getPlanOccurrenceDates(row: TransactionRow): string[] {
   const from = (row.TRANDATE_FROM || "").trim().slice(0, 10);
   const to = (row.TRANDATE_TO || "").trim().slice(0, 10);
@@ -100,10 +112,12 @@ function getPlanOccurrenceDates(row: TransactionRow): string[] {
   const cycleUnit = (row.CYCLE_UNIT ?? "").trim();
   const pad = (n: number) => String(n).padStart(2, "0");
 
+  // 頻度＝1日: 対象日は終了日の1日のみ
   if (frequency === "day") {
     return [to];
   }
 
+  // 頻度＝日ごと: FROM から間隔日ごとに TO まで列挙
   if (frequency === "daily") {
     const out: string[] = [];
     let d = from;
@@ -114,10 +128,10 @@ function getPlanOccurrenceDates(row: TransactionRow): string[] {
     return out;
   }
 
+  // 頻度＝週ごと: FROM を含む週から間隔週ごと、CYCLE_UNIT の曜日のみ
   if (frequency === "weekly") {
     const weekdays = cycleUnit ? cycleUnit.split(",").map((s) => s.trim().toUpperCase()) : [];
     const weekdaySet = new Set(weekdays);
-    const WEEKDAY_CODES = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"];
     const weekSunday = getSundayOfWeek(from);
     const out: string[] = [];
     let weekStart = weekSunday;
@@ -139,6 +153,7 @@ function getPlanOccurrenceDates(row: TransactionRow): string[] {
     return out;
   }
 
+  // 頻度＝月ごと: FROM の月から間隔月ごと、CYCLE_UNIT の日（または月末等）のみ
   if (frequency === "monthly") {
     const daySpecs = cycleUnit ? cycleUnit.split(",").map((s) => s.trim()) : [];
     const out: string[] = [];
@@ -165,6 +180,7 @@ function getPlanOccurrenceDates(row: TransactionRow): string[] {
     return out;
   }
 
+  // 頻度＝年ごと: FROM の年から間隔年ごと、CYCLE_UNIT の MMDD のみ
   if (frequency === "yearly") {
     const mmddList = cycleUnit ? cycleUnit.split(",").map((s) => s.trim()).filter((s) => s.length === 4) : [];
     const out: string[] = [];
@@ -191,6 +207,9 @@ function getPlanOccurrenceDates(row: TransactionRow): string[] {
   return [to];
 }
 
+/**
+ * 指定年月に含まれる週の一覧を返す。各週は日曜〜土曜で、月の日付範囲でクリップする。
+ */
 function getWeeksInMonth(
   year: number,
   month: number
@@ -224,117 +243,213 @@ function getMonthCalendarInfo(year: number, month: number): { firstDay: number; 
   return { firstDay: first.getDay(), lastDate: last.getDate() };
 }
 
+/** 指定年月（YYYY-MM）の月初日・月末日・日数などを返す。集計範囲の算出に共通利用。 */
+function getMonthDateRange(ym: string): { firstDay: string; lastDay: string; lastDate: number; year: number; month: number } | null {
+  const m = ym.match(/^(\d{4})-(\d{2})$/);
+  if (!m) return null;
+  const year = parseInt(m[1], 10);
+  const month = parseInt(m[2], 10);
+  const lastDate = new Date(year, month, 0).getDate();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return {
+    firstDay: `${ym}-01`,
+    lastDay: `${ym}-${pad(lastDate)}`,
+    lastDate,
+    year,
+    month,
+  };
+}
+
+/** 実績取引の対象日（YYYY-MM-DD）。TRANDATE_TO を優先し、未設定時は TRANDATE_FROM。 */
+function getActualTargetDate(row: TransactionRow): string {
+  const from = (row.TRANDATE_FROM || "").trim().slice(0, 10);
+  const to = (row.TRANDATE_TO || "").trim().slice(0, 10);
+  return (to || from) || "";
+}
+
+/** 取引の種別と金額を取得する。集計処理で共通利用。 */
+function getTransactionTypeAndAmount(row: TransactionRow): { type: "income" | "expense" | "transfer"; amount: number } {
+  const type = (row.TRANSACTION_TYPE || "expense").toLowerCase() as "income" | "expense" | "transfer";
+  const amount = Number(row.AMOUNT) || 0;
+  return { type, amount };
+}
+
+/**
+ * 取引が指定年月（YYYY-MM）に含まれるか判定する。
+ * 実績: 対象日（TRANDATE_TO 優先）の年月が ym と一致する場合に true。
+ * 予定: TRANDATE_FROM～TRANDATE_TO が ym の月のいずれかと重なる場合に true。
+ */
+function isTransactionInYearMonth(row: TransactionRow, ym: string): boolean {
+  const from = (row.TRANDATE_FROM || "").trim();
+  const to = (row.TRANDATE_TO || "").trim();
+  if (row.PROJECT_TYPE === "actual") {
+    const actualDate = getActualTargetDate(row);
+    return actualDate.length >= 7 && actualDate.slice(0, 7) === ym;
+  }
+  if (!from || !to || from.length < 10 || to.length < 10) return false;
+  const monthFirst = ym + "-01";
+  const lastDate = new Date(parseInt(ym.slice(0, 4), 10), parseInt(ym.slice(5, 7), 10), 0).getDate();
+  const monthLast = ym + "-" + String(lastDate).padStart(2, "0");
+  return from <= monthLast && to >= monthFirst;
+}
+
+/**
+ * カレンダー用の検索条件でフィルター適用後、さらに指定年月に含まれる取引のみに絞った一覧を返す。
+ * @param ym - 指定時は、取引日がその年月に含まれる取引のみ返す（YYYY-MM）。未指定または不正時は getCalendarFilteredList の結果をそのまま返す。
+ */
+function getFilteredTransactionListForCalendar(ym?: string): TransactionRow[] {
+  const list = getCalendarFilteredList();
+  if (!ym || !/^\d{4}-\d{2}$/.test(ym)) return list;
+  return list.filter((row) => isTransactionInYearMonth(row, ym));
+}
+
 // ---------------------------------------------------------------------------
-// カレンダー集計
+// カレンダー集計（日付セル・月合計・週範囲・グラフ用データ）
 // ---------------------------------------------------------------------------
 
+/**
+ * 指定日付の日付セル用サマリ（予定件数・実績件数・収支金額）を集計する。
+ */
 function getCalendarDaySummary(
   dateStr: string,
   ym?: string
 ): { planCount: number; actualCount: number; incomeAmount: number; expenseAmount: number; transferAmount: number } {
   const filtered = getFilteredTransactionListForCalendar(ym);
-  let planCount = 0;
-  let actualCount = 0;
-  let incomeAmount = 0;
-  let expenseAmount = 0;
-  let transferAmount = 0;
+  const summary = { planCount: 0, actualCount: 0, incomeAmount: 0, expenseAmount: 0, transferAmount: 0 };
+
   for (const row of filtered) {
     const from = row.TRANDATE_FROM || "";
     const to = row.TRANDATE_TO || "";
+
+    // 実績: 対象日がこの日付と一致するとき件数・金額を加算
     if (row.PROJECT_TYPE === "actual") {
-      if (from.slice(0, 10) === dateStr) {
-        actualCount += 1;
-        const type = (row.TRANSACTION_TYPE || "expense").toLowerCase();
-        if (type === "income") incomeAmount += Number(row.AMOUNT) || 0;
-        else if (type === "expense") expenseAmount += Number(row.AMOUNT) || 0;
-        else if (type === "transfer") transferAmount += Number(row.AMOUNT) || 0;
+      const actualDate = getActualTargetDate(row);
+      if (actualDate && actualDate === dateStr) {
+        summary.actualCount += 1;
+        const { type, amount } = getTransactionTypeAndAmount(row);
+        if (type === "income") summary.incomeAmount += amount;
+        else if (type === "expense") summary.expenseAmount += amount;
+        else if (type === "transfer") summary.transferAmount += amount;
       }
       continue;
     }
+
     if (!from || !to) continue;
     const from10 = from.slice(0, 10);
     const to10 = to.slice(0, 10);
     const frequency = (row.FREQUENCY ?? "day").toLowerCase();
+
+    // 予定・頻度1日: 範囲内なら件数＋1、終了日と一致するときのみ金額を加算
     if (frequency === "day") {
       if (from10 <= dateStr && dateStr <= to10) {
-        planCount += 1;
+        summary.planCount += 1;
         if (dateStr === to10) {
-          const type = (row.TRANSACTION_TYPE || "").toLowerCase();
-          const amount = Number(row.AMOUNT) || 0;
-          if (type === "income") incomeAmount += amount;
-          else if (type === "expense") expenseAmount += amount;
-          else if (type === "transfer") transferAmount += amount;
+          const { type, amount } = getTransactionTypeAndAmount(row);
+          if (type === "income") summary.incomeAmount += amount;
+          else if (type === "expense") summary.expenseAmount += amount;
+          else if (type === "transfer") summary.transferAmount += amount;
         }
       }
       continue;
     }
+
+    // 予定・その他頻度: 発生日一覧にこの日が含まれるとき件数・金額を加算
     const occurrences = getPlanOccurrenceDates(row);
-    const onDay = occurrences.includes(dateStr);
-    if (onDay) {
-      planCount += 1;
-      const type = (row.TRANSACTION_TYPE || "").toLowerCase();
-      const amount = Number(row.AMOUNT) || 0;
-      if (type === "income") incomeAmount += amount;
-      else if (type === "expense") expenseAmount += amount;
-      else if (type === "transfer") transferAmount += amount;
+    if (occurrences.includes(dateStr)) {
+      summary.planCount += 1;
+      const { type, amount } = getTransactionTypeAndAmount(row);
+      if (type === "income") summary.incomeAmount += amount;
+      else if (type === "expense") summary.expenseAmount += amount;
+      else if (type === "transfer") summary.transferAmount += amount;
     }
   }
-  return { planCount, actualCount, incomeAmount, expenseAmount, transferAmount };
+  return summary;
 }
 
+/**
+ * 指定月の月合計（予定・実績の収入・支出）を集計する。フッター表示用。
+ */
 function getCalendarMonthTotals(
   year: number,
   month: number
 ): { planIncome: number; planExpense: number; actualIncome: number; actualExpense: number } {
   const monthStr = `${year}-${String(month).padStart(2, "0")}`;
-  const firstDay = monthStr + "-01";
-  const lastDate = new Date(year, month, 0).getDate();
-  const lastDay = monthStr + "-" + String(lastDate).padStart(2, "0");
+  const range = getMonthDateRange(monthStr);
+  if (!range) return { planIncome: 0, planExpense: 0, actualIncome: 0, actualExpense: 0 };
+  const { firstDay, lastDay } = range;
   const filtered = getFilteredTransactionListForCalendar(monthStr);
-  let planIncome = 0;
-  let planExpense = 0;
-  let actualIncome = 0;
-  let actualExpense = 0;
+  const totals = { planIncome: 0, planExpense: 0, actualIncome: 0, actualExpense: 0 };
+
   for (const row of filtered) {
     const from = row.TRANDATE_FROM || "";
     const to = row.TRANDATE_TO || "";
+
     if (row.PROJECT_TYPE === "actual") {
-      if (from.slice(0, 10) < firstDay || from.slice(0, 10) > lastDay) continue;
-      const type = (row.TRANSACTION_TYPE || "expense").toLowerCase();
-      const amount = Number(row.AMOUNT) || 0;
-      if (type === "income") actualIncome += amount;
-      else if (type === "expense") actualExpense += amount;
+      const actualDate = getActualTargetDate(row);
+      if (!actualDate || actualDate < firstDay || actualDate > lastDay) continue;
+      const { type, amount } = getTransactionTypeAndAmount(row);
+      if (type === "income") totals.actualIncome += amount;
+      else if (type === "expense") totals.actualExpense += amount;
       continue;
     }
+
     if (!from || !to) continue;
     const occurrences = getPlanOccurrenceDates(row);
-    const type = (row.TRANSACTION_TYPE || "").toLowerCase();
-    const amount = Number(row.AMOUNT) || 0;
+    const { type, amount } = getTransactionTypeAndAmount(row);
     for (const d of occurrences) {
       if (d < firstDay || d > lastDay) continue;
-      if (type === "income") planIncome += amount;
-      else if (type === "expense") planExpense += amount;
+      if (type === "income") totals.planIncome += amount;
+      else if (type === "expense") totals.planExpense += amount;
     }
   }
-  return { planIncome, planExpense, actualIncome, actualExpense };
+  return totals;
 }
 
+/**
+ * 指定日付範囲に発生日が含まれる取引のみ返す。週カレンダーの週ブロック用。
+ */
 function getTransactionsInRange(from: string, to: string, ym?: string): TransactionRow[] {
   const from10 = from.slice(0, 10);
   const to10 = to.slice(0, 10);
   const filtered = getFilteredTransactionListForCalendar(ym);
   return filtered.filter((row) => {
+    if (row.PROJECT_TYPE === "actual") {
+      const actualDate = getActualTargetDate(row);
+      return actualDate && actualDate >= from10 && actualDate <= to10;
+    }
     const trFrom = (row.TRANDATE_FROM || "").slice(0, 10);
     const trTo = (row.TRANDATE_TO || "").slice(0, 10);
-    if (row.PROJECT_TYPE === "actual") {
-      return trFrom >= from10 && trFrom <= to10;
-    }
     if (!trFrom || !trTo) return false;
     const occurrences = getPlanOccurrenceDates(row);
     return occurrences.some((d) => d >= from10 && d <= to10);
   });
 }
 
+const EMPTY_CHART_DATA = {
+  labels: [],
+  planIncomeByDay: [],
+  actualIncomeByDay: [],
+  planExpenseByDay: [],
+  actualExpenseByDay: [],
+  planIncomeByCategory: [] as Array<{ id: string; name: string; amount: number; color: string }>,
+  planExpenseByCategory: [] as Array<{ id: string; name: string; amount: number; color: string }>,
+  actualIncomeByCategory: [] as Array<{ id: string; name: string; amount: number; color: string }>,
+  actualExpenseByCategory: [] as Array<{ id: string; name: string; amount: number; color: string }>,
+};
+
+/** カテゴリ別集計レコードをグラフ用の配列に変換する。 */
+function toCategoryChartItems(rec: Record<string, number>): Array<{ id: string; name: string; amount: number; color: string }> {
+  return Object.entries(rec).map(([id, amount]) => ({
+    id,
+    name: getCategoryById(id)?.CATEGORY_NAME?.trim() || "未分類",
+    amount,
+    color: getCategoryById(id)?.COLOR || "#888888",
+  }));
+}
+
+/**
+ * 指定月のグラフ用データ（日別棒グラフ・カテゴリ別円グラフ）を集計する。
+ */
 function getChartDataForMonth(ym: string): {
   labels: string[];
   planIncomeByDay: number[];
@@ -346,26 +461,12 @@ function getChartDataForMonth(ym: string): {
   actualIncomeByCategory: Array<{ id: string; name: string; amount: number; color: string }>;
   actualExpenseByCategory: Array<{ id: string; name: string; amount: number; color: string }>;
 } {
-  const m = ym.match(/^(\d{4})-(\d{2})$/);
-  if (!m) {
-    return {
-      labels: [],
-      planIncomeByDay: [],
-      actualIncomeByDay: [],
-      planExpenseByDay: [],
-      actualExpenseByDay: [],
-      planIncomeByCategory: [],
-      planExpenseByCategory: [],
-      actualIncomeByCategory: [],
-      actualExpenseByCategory: [],
-    };
-  }
-  const year = parseInt(m[1], 10);
-  const month = parseInt(m[2], 10);
-  const firstDay = ym + "-01";
-  const lastDate = new Date(year, month, 0).getDate();
-  const lastDay = ym + "-" + String(lastDate).padStart(2, "0");
+  const range = getMonthDateRange(ym);
+  if (!range) return { ...EMPTY_CHART_DATA };
+  const { firstDay, lastDay, lastDate } = range;
   const pad = (n: number) => String(n).padStart(2, "0");
+
+  // 日付ラベルと日別配列を初期化（1日〜月末）
   const labels: string[] = [];
   const planIncomeByDay: number[] = [];
   const actualIncomeByDay: number[] = [];
@@ -382,16 +483,19 @@ function getChartDataForMonth(ym: string): {
   const planExpenseCat: Record<string, number> = {};
   const actualIncomeCat: Record<string, number> = {};
   const actualExpenseCat: Record<string, number> = {};
+
   const filtered = getFilteredTransactionListForCalendar(ym);
   for (const row of filtered) {
-    const type = (row.TRANSACTION_TYPE || "expense").toLowerCase();
-    const amount = Number(row.AMOUNT) || 0;
+    const { type, amount } = getTransactionTypeAndAmount(row);
     const catId = row.CATEGORY_ID || "";
     const from = row.TRANDATE_FROM || "";
     const to = row.TRANDATE_TO || "";
+
+    // 実績: 対象日が月内ならその日の日別・カテゴリに加算
     if (row.PROJECT_TYPE === "actual") {
-      if (from.slice(0, 10) < firstDay || from.slice(0, 10) > lastDay) continue;
-      const dayIdx = parseInt(from.slice(8, 10), 10) - 1;
+      const actualDate = getActualTargetDate(row);
+      if (!actualDate || actualDate < firstDay || actualDate > lastDay) continue;
+      const dayIdx = parseInt(actualDate.slice(8, 10), 10) - 1;
       if (dayIdx < 0 || dayIdx >= labels.length) continue;
       if (type === "income") {
         actualIncomeByDay[dayIdx] += amount;
@@ -402,6 +506,8 @@ function getChartDataForMonth(ym: string): {
       }
       continue;
     }
+
+    // 予定: 発生日が月内なら該当日の日別・カテゴリに加算
     if (!from || !to) continue;
     const occurrences = getPlanOccurrenceDates(row);
     for (const d of occurrences) {
@@ -417,25 +523,17 @@ function getChartDataForMonth(ym: string): {
       }
     }
   }
-  const toCategoryArray = (
-    rec: Record<string, number>
-  ): Array<{ id: string; name: string; amount: number; color: string }> =>
-    Object.entries(rec).map(([id, amount]) => ({
-      id,
-      name: getCategoryById(id)?.CATEGORY_NAME?.trim() || "未分類",
-      amount,
-      color: getCategoryById(id)?.COLOR || "#888888",
-    }));
+
   return {
     labels,
     planIncomeByDay,
     actualIncomeByDay,
     planExpenseByDay,
     actualExpenseByDay,
-    planIncomeByCategory: toCategoryArray(planIncomeCat),
-    planExpenseByCategory: toCategoryArray(planExpenseCat),
-    actualIncomeByCategory: toCategoryArray(actualIncomeCat),
-    actualExpenseByCategory: toCategoryArray(actualExpenseCat),
+    planIncomeByCategory: toCategoryChartItems(planIncomeCat),
+    planExpenseByCategory: toCategoryChartItems(planExpenseCat),
+    actualIncomeByCategory: toCategoryChartItems(actualIncomeCat),
+    actualExpenseByCategory: toCategoryChartItems(actualExpenseCat),
   };
 }
 
@@ -443,11 +541,16 @@ function getChartDataForMonth(ym: string): {
 // グラフ描画
 // ---------------------------------------------------------------------------
 
+/**
+ * 選択年月のグラフ（収入差分・支出差分の棒/折れ線、カテゴリ別円グラフ）を描画する。
+ * 初回のみ Chart.js にカスタムプラグイン（中心ラベル・ドーナツ穴）を登録する。
+ */
 function renderCharts(ym: string): void {
   chartInstances.forEach((ch) => ch.destroy());
   chartInstances.length = 0;
   if (!ym || !/^\d{4}-\d{2}$/.test(ym)) return;
   if (!chartJsRegistered) {
+    // ドーナツ中心の白抜き穴とラベル描画用プラグインを登録
     Chart.register(...registerables, ChartDataLabels, {
       id: "centerLabelAndHole",
       afterDraw(chart: Chart) {
@@ -630,6 +733,9 @@ function renderCharts(ym: string): void {
 // 週表示・月表示
 // ---------------------------------------------------------------------------
 
+/**
+ * 週カレンダーパネルを描画する。選択月の週一覧を取得し、週ごとにブロック（タイトル・取引リスト・フッター）を生成する。
+ */
 function renderWeeklyPanel(): void {
   const container = document.getElementById("transaction-history-weekly-blocks");
   if (!container) return;
@@ -639,6 +745,7 @@ function renderWeeklyPanel(): void {
   const year = parseInt(m[1], 10);
   const month = parseInt(m[2], 10);
   const weeks = getWeeksInMonth(year, month);
+
   for (const week of weeks) {
     const block = document.createElement("div");
     block.className = "transaction-history-week-block";
@@ -659,6 +766,8 @@ function renderWeeklyPanel(): void {
     const list = document.createElement("div");
     list.className = "transaction-history-week-block-list";
     const rows = getTransactionsInRange(week.from, week.to, selectedCalendarYM);
+
+    // 取引を「表示する日付」ごとにグループ化（実績＝対象日、予定＝FROM/TO/範囲内の代表日）
     const byDate = new Map<string, { row: TransactionRow; showAmount: boolean }[]>();
     const push = (dateStr: string, row: TransactionRow, showAmount: boolean): void => {
       if (!byDate.has(dateStr)) byDate.set(dateStr, []);
@@ -669,8 +778,9 @@ function renderWeeklyPanel(): void {
       const planFrom = row.TRANDATE_FROM || "";
       const planTo = row.TRANDATE_TO || "";
       if (row.PROJECT_TYPE === "actual") {
-        if (!planFrom) continue;
-        push(planFrom, row, true);
+        const actualDate = getActualTargetDate(row);
+        if (!actualDate) continue;
+        if (inWeek(actualDate)) push(actualDate, row, true);
       } else {
         if (!planFrom || !planTo) continue;
         const fromInWeek = inWeek(planFrom);
@@ -687,6 +797,8 @@ function renderWeeklyPanel(): void {
         }
       }
     }
+
+    // 表示した取引から週の予定・実績の収入・支出合計を算出
     let planIncome = 0;
     let planExpense = 0;
     let actualIncome = 0;
@@ -694,8 +806,7 @@ function renderWeeklyPanel(): void {
     for (const items of byDate.values()) {
       for (const { row, showAmount } of items) {
         if (!showAmount) continue;
-        const amount = Number(row.AMOUNT) || 0;
-        const type = (row.TRANSACTION_TYPE || "expense") as "income" | "expense" | "transfer";
+        const { type, amount } = getTransactionTypeAndAmount(row);
         const isPlan = row.PROJECT_TYPE === "plan";
         if (type === "income") {
           if (isPlan) planIncome += amount;
@@ -709,6 +820,7 @@ function renderWeeklyPanel(): void {
     const planBalance = planIncome - planExpense;
     const actualBalance = actualIncome - actualExpense;
 
+    // 日付昇順で日付グループを描画（日付タイトル＋取引行一覧）
     const sortedDates = Array.from(byDate.keys()).sort();
     for (const dateStr of sortedDates) {
       const dayGroup = document.createElement("div");
@@ -812,6 +924,9 @@ function renderWeeklyPanel(): void {
   }
 }
 
+/**
+ * 月カレンダーパネルを描画する。曜日ヘッダー・日付セル（サマリ表示）・月合計フッターを生成する。
+ */
 function renderCalendarPanel(): void {
   const grid = document.getElementById("transaction-history-calendar-grid");
   if (!grid) return;
@@ -822,8 +937,7 @@ function renderCalendarPanel(): void {
   const month = parseInt(m[2], 10);
   const { firstDay, lastDate } = getMonthCalendarInfo(year, month);
   const pad = (n: number) => String(n).padStart(2, "0");
-  const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
-  weekdays.forEach((w) => {
+  WEEKDAY_JA.forEach((w) => {
     const th = document.createElement("div");
     th.className = "transaction-history-calendar-weekday";
     th.textContent = w;
@@ -838,6 +952,7 @@ function renderCalendarPanel(): void {
     if (i < firstDay || day > lastDate) {
       cell.classList.add("transaction-history-calendar-day--empty");
     } else {
+      // 有効な日付セル: 日付番号＋当日のサマリ（予/実/収/支/振）
       const dateStr = `${year}-${pad(month)}-${pad(day)}`;
       cell.classList.add("transaction-history-calendar-day--clickable");
       cell.setAttribute("role", "button");
@@ -939,6 +1054,7 @@ function renderCalendarPanel(): void {
     grid.appendChild(cell);
   }
 
+  // 月合計フッター（予定・実績の収入・支出・総合計）を追加
   const panel = grid.parentElement;
   const existingFooter = document.getElementById("transaction-history-calendar-footer");
   if (existingFooter) existingFooter.remove();
@@ -990,6 +1106,9 @@ function renderCalendarPanel(): void {
 // タブ切替
 // ---------------------------------------------------------------------------
 
+/**
+ * 一覧／週カレンダー／月カレンダータブを切り替え、該当パネルとグラフを表示する。
+ */
 function switchTab(tabId: string): void {
   document.querySelectorAll(".transaction-history-tab").forEach((btn) => {
     const b = btn as HTMLButtonElement;
