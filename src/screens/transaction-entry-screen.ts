@@ -20,6 +20,7 @@ let categoryRows: CategoryRow[] = [];
 let accountRows: AccountRow[] = [];
 let permissionRows: AccountPermissionRow[] = [];
 let tagRows: TagRow[] = [];
+/** 参照可能な勘定 ID（フィルタ等で利用予定）。loadFormData で更新。 */
 let visibleAccountIds: Set<string> = new Set();
 /** 出金元・入金先プルダウンに表示する勘定 ID（権限が edit のもののみ） */
 let editableAccountIds: Set<string> = new Set();
@@ -115,7 +116,8 @@ function getWeekRangeFromDate(dateStr: string): { start: string; end: string } {
   return { start, end };
 }
 
-/** 週範囲のラベル文字列（例: 2025年2月10日～2月16日）を返す。 */
+/** 週範囲のラベル文字列（例: 2025年2月10日～2月16日）を返す。将来の表示用に保持。 */
+// @ts-expect-error TS6133 -- 未使用のユーティリティ。週ラベル表示で利用予定。
 function formatWeekLabel(weekStart: string, weekEnd: string): string {
   const [ys, ms, ds] = weekStart.split("-").map(Number);
   const [ye, me, de] = weekEnd.split("-").map(Number);
@@ -1501,6 +1503,7 @@ async function loadOptions(): Promise<void> {
   permissionRows = permissions;
   tagRows = tags;
   visibleAccountIds = getVisibleAccountIds(accountRows, permissionRows);
+  void visibleAccountIds; // 参照可能勘定を保持（フィルタ等で利用予定）
   editableAccountIds = getEditableAccountIds(accountRows, permissionRows);
   const typeInput = getTypeInput();
   const type = typeInput?.value ?? "expense";

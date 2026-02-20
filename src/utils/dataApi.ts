@@ -8,7 +8,8 @@
  * @returns 未設定なら ''（相対 /api を使用）、設定されていればその文字列
  */
 export function getDataApiBase(): string {
-  return typeof import.meta.env?.VITE_DATA_API_BASE === "string" ? import.meta.env.VITE_DATA_API_BASE : "";
+  const env = (import.meta as unknown as { env?: { VITE_DATA_API_BASE?: string } }).env;
+  return typeof env?.VITE_DATA_API_BASE === "string" ? env.VITE_DATA_API_BASE : "";
 }
 
 /**

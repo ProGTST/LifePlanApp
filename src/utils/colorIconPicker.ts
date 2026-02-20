@@ -77,6 +77,7 @@ export function openColorIconPicker(
 ): void {
   const { overlay, swatchesEl, customInput, customBtn, defaultBtn, iconSection, iconsEl, applyBtn, cancelBtn } = getPickerEls();
   if (!overlay || !swatchesEl || !iconsEl || !applyBtn || !cancelBtn) return;
+  const overlayEl = overlay;
 
   const showIconSection = options.showIconSection !== false;
   if (iconSection) {
@@ -94,7 +95,7 @@ export function openColorIconPicker(
   let selectedIconPath = initialIconPath?.trim() || "";
 
   function setPickerSelectedColor(hex: string) {
-    overlay.style.setProperty("--picker-selected-color", hex);
+    overlayEl.style.setProperty("--picker-selected-color", hex);
   }
   setPickerSelectedColor(selectedColor);
 

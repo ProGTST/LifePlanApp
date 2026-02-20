@@ -10,7 +10,7 @@ import { registerViewHandler, registerRefreshHandler, showMainView } from "../ap
 import { updateCurrentMenuItem } from "../app/sidebar";
 import { createIconWrap } from "../utils/iconWrap";
 import { ICON_DEFAULT_COLOR } from "../constants/colorPresets";
-import { Chart, registerables } from "chart.js";
+import { Chart, registerables, type ChartOptions } from "chart.js";
 import ChartDataLabels from "chartjs-plugin-datalabels";
 import {
   loadTransactionData,
@@ -18,8 +18,7 @@ import {
   getCategoryById,
   getRowPermissionType,
   updateTransactionHistoryTabLayout,
-  setFilterDateFromTo,
-  renderList as renderTransactionList,
+  setHistoryFilterDateFromTo,
   registerFilterChangeCallback,
 } from "./transaction-history-screen";
 
@@ -310,7 +309,7 @@ function renderCharts(ym: string): void {
         if (!centerOpts?.label && centerOpts?.total === undefined) return;
         const meta = chart.getDatasetMeta(0);
         if (!meta?.data?.length) return;
-        const arc = meta.data[0] as { x: number; y: number; innerRadius: number };
+        const arc = meta.data[0] as unknown as { x: number; y: number; innerRadius: number };
         const ctx = chart.ctx;
         const x = arc.x;
         const y = arc.y;
@@ -470,7 +469,7 @@ function renderCharts(ym: string): void {
           ...pieOptionsBase.plugins,
           centerLabel: { label: centerLabel, total },
         },
-      },
+      } as ChartOptions<"doughnut">,
     });
     chartInstances.push(ch);
   };
@@ -777,9 +776,9 @@ function renderCalendarPanel(): void {
         );
       }
       const showListForDate = (): void => {
-        setFilterDateFromTo(dateStr, dateStr);
-        switchTab("list");
-        renderTransactionList();
+        setHistoryFilterDateFromTo(dateStr, dateStr);
+        pushNavigation("transaction-history");
+        showMainView("transaction-history");
       };
       cell.addEventListener("click", showListForDate);
       cell.addEventListener("keydown", (e) => {

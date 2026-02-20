@@ -86,7 +86,7 @@ async function saveTagNameFromCell(tagId: string, newName: string): Promise<void
     return;
   }
   row.TAG_NAME = trimmed;
-  setUpdateAudit(row as Record<string, string>, currentUserId ?? "");
+  setUpdateAudit(row as unknown as Record<string, string>, currentUserId ?? "");
   persistTag();
 }
 
@@ -113,7 +113,7 @@ async function moveTagOrder(fromIndex: number, toSlot: number): Promise<void> {
   }
   sorted.forEach((r, i) => {
     r.SORT_ORDER = String(i);
-    setUpdateAudit(r as Record<string, string>, currentUserId ?? "");
+    setUpdateAudit(r as unknown as Record<string, string>, currentUserId ?? "");
   });
   setTagList(sorted);
   setDisplayedKeys("tag", sorted.map((t) => t.ID));
@@ -155,7 +155,7 @@ function renderTagTable(): void {
         }
         row.COLOR = color;
         row.ICON_PATH = iconPath;
-        setUpdateAudit(row as Record<string, string>, currentUserId ?? "");
+        setUpdateAudit(row as unknown as Record<string, string>, currentUserId ?? "");
         persistTag();
         renderTagTable();
       });
@@ -319,7 +319,7 @@ function saveTagFormFromModal(): void {
     ICON_PATH: formIconPath || "",
     SORT_ORDER: String(maxOrder + 1),
   };
-  setNewRowAudit(newRow, userId, newId);
+  setNewRowAudit(newRow as unknown as Record<string, string>, userId, newId);
   tagListFull.push(newRow);
   const sorted = tagListFull.slice().sort((a, b) => sortOrderNum(a.SORT_ORDER, b.SORT_ORDER));
   setTagList(sorted);

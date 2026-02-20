@@ -161,17 +161,19 @@ function isTransactionInYearMonth(row: TransactionRow, ym: string): boolean {
 
 /**
  * カレンダー用の検索条件でフィルター適用後の取引一覧を返す。他画面の条件とは同期しない。
+ * カレンダーでは検索条件の日付欄（開始日～終了日）は使わず、選択年月（ym）のみで表示データを抽出する。
  * @param ym - 指定時は、取引日（開始）・取引日（終了）がその年月に含まれる取引のみ返す（YYYY-MM）
  */
 export function getFilteredTransactionListForCalendar(ym?: string): TransactionRow[] {
-  const list = applyFilters(transactionList, getCalendarFilterState());
+  const calendarState = getCalendarFilterState();
+  const stateNoDate = { ...calendarState, filterDateFrom: "", filterDateTo: "" };
+  const list = applyFilters(transactionList, stateNoDate);
   if (!ym || !/^\d{4}-\d{2}$/.test(ym)) return list;
   return list.filter((row) => isTransactionInYearMonth(row, ym));
 }
 
 /**
- * 日付フィルターを指定し、画面上の日付入力欄を同期する。カレンダーで日付セルクリック時に使用。
- * 表示中ビューがカレンダーのときはカレンダー用条件、それ以外は収支履歴用条件を更新する。
+ * 日付フィルターを指定し、画面上の日付入力欄を同期する。表示中ビューがカレンダー/週のときはカレンダー用条件、それ以外は収支履歴用条件を更新する。
  * @param from - 開始日（YYYY-MM-DD）
  * @param to - 終了日（YYYY-MM-DD）
  */
@@ -191,6 +193,27 @@ export function setFilterDateFromTo(from: string, to: string): void {
   if (dateToEl) {
     dateToEl.value = to;
     dateToEl.classList.remove("is-empty");
+  }
+}
+
+/**
+ * 収支履歴用の検索条件に日付（開始日・終了日）を設定し、画面上の日付入力欄を同期する。
+ * カレンダーで日付セルクリック時に、収支履歴画面へ遷移したうえでその日で絞り込むために使用する。
+ * @param from - 開始日（YYYY-MM-DD）
+ * @param to - 終了日（YYYY-MM-DD）
+ */
+export function setHistoryFilterDateFromTo(from: string, to: string): void {
+  filterStateHistory.filterDateFrom = from;
+  filterStateHistory.filterDateTo = to;
+  const dateFromEl = document.getElementById("transaction-history-date-from") as HTMLInputElement | null;
+  const dateToEl = document.getElementById("transaction-history-date-to") as HTMLInputElement | null;
+  if (dateFromEl) {
+    dateFromEl.value = from;
+    dateFromEl.classList.toggle("is-empty", !from);
+  }
+  if (dateToEl) {
+    dateToEl.value = to;
+    dateToEl.classList.toggle("is-empty", !to);
   }
 }
 
@@ -1108,7 +1131,7 @@ function renderAccountSelectList(tab: "own" | "shared"): void {
  */
 function openAccountSelectModal(): void {
   accountSelectModalTab = "own";
-  accountSelectModalSelectedIds = new Set(filterAccountIds);
+  accountSelectModalSelectedIds = new Set(getActiveFilterState().filterAccountIds);
   const tabs = document.querySelectorAll(".transaction-history-account-select-tab");
   tabs.forEach((t) => {
     const el = t as HTMLElement;

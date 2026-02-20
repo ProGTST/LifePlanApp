@@ -50,7 +50,6 @@ function addMonths(ymd: string, delta: number): string {
 function getWeekNumberInMonth(ymd: string): number {
   const [y, m, d] = ymd.split("-").map(Number);
   const first = new Date(y, m - 1, 1);
-  const date = new Date(y, m - 1, d);
   const dayOfWeek = first.getDay();
   const firstMonday = 1 + ((8 - dayOfWeek) % 7);
   if (firstMonday > 1) {
@@ -131,7 +130,6 @@ function getDateColumns(
 ): DateColumn[] {
   const [startY] = startYMD.split("-").map(Number);
   const columns: DateColumn[] = [];
-  const pad = (n: number) => String(n).padStart(2, "0");
 
   if (unit === "day") {
     const pastMonths = dayRange?.pastMonths ?? 3;
