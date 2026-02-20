@@ -73,6 +73,9 @@ let filterStateSchedule: FilterState = defaultFilterState();
 /** カレンダー用の検索条件（週・月カレンダーで使用、他画面と同期しない） */
 let filterStateCalendar: FilterState = defaultFilterState();
 
+/** 検索条件アコーディオンの開閉をビューごとに保持（カレンダー・スケジュール・収支履歴で同期しない） */
+const searchAccordionOpenByView: Record<string, boolean> = {};
+
 /** 現在表示中のビューに応じた検索条件を返す */
 function getActiveFilterState(): FilterState {
   if (currentView === "schedule") return { ...filterStateSchedule };
@@ -214,6 +217,18 @@ export function setHistoryFilterDateFromTo(from: string, to: string): void {
   if (dateToEl) {
     dateToEl.value = to;
     dateToEl.classList.toggle("is-empty", !to);
+  }
+}
+
+/**
+ * 指定ビュー用の検索条件アコーディオン開閉状態を反映する。ビュー切替時に呼ぶ（カレンダー・スケジュール・収支履歴で同期しない）。
+ * @param viewId - "schedule" | "transaction-history" | "transaction-history-calendar" | "transaction-history-weekly"
+ */
+export function applySearchAccordionStateForView(viewId: string): void {
+  const common = document.getElementById("transaction-history-common");
+  const accordion = common?.querySelector(".transaction-history-search-accordion");
+  if (accordion instanceof HTMLDetailsElement) {
+    accordion.open = searchAccordionOpenByView[viewId] ?? false;
   }
 }
 
@@ -1273,6 +1288,12 @@ export function initTransactionHistoryView(): void {
   });
 
   const searchArea = document.getElementById("transaction-history-common");
+  const accordionEl = searchArea?.querySelector(".transaction-history-search-accordion");
+  if (accordionEl instanceof HTMLDetailsElement) {
+    accordionEl.addEventListener("toggle", () => {
+      searchAccordionOpenByView[currentView] = accordionEl.open;
+    });
+  }
   searchArea?.querySelectorAll(".transaction-history-filter-btn[data-status]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const state = getActiveFilterState();

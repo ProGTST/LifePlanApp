@@ -6,7 +6,7 @@ import {
   MASTER_LIST_VIEW_IDS,
 } from "../constants/index";
 import { currentView, setCurrentView, setTransactionHistoryInitialTab } from "../state";
-import { loadFormFromFilterState } from "../screens/transaction-history-screen";
+import { loadFormFromFilterState, applySearchAccordionStateForView } from "../screens/transaction-history-screen";
 
 const viewHandlers: Record<string, () => void> = {};
 /** メニューバーの「データ最新化」押下時に呼ぶハンドラ。viewId -> fn（CSV から再取得して再描画） */
@@ -123,6 +123,7 @@ export function showMainView(viewId: string): void {
           ? viewId
           : "transaction-history";
     loadFormFromFilterState(formViewId);
+    applySearchAccordionStateForView(formViewId);
   }
 
   const menubarTitleEl = document.getElementById("menubar-title");

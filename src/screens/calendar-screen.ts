@@ -73,6 +73,124 @@ function addDays(dateStr: string, delta: number): string {
   return `${yy}-${mm}-${dd}`;
 }
 
+function addMonths(ymd: string, delta: number): string {
+  const [y, m, d] = ymd.slice(0, 10).split("-").map(Number);
+  const date = new Date(y, m - 1, d);
+  date.setMonth(date.getMonth() + delta);
+  const yy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const dd = String(date.getDate()).padStart(2, "0");
+  return `${yy}-${mm}-${dd}`;
+}
+
+/** 週の日曜日（YYYY-MM-DD）。週は日曜始まり。 */
+function getSundayOfWeek(ymd: string): string {
+  const [y, m, d] = ymd.slice(0, 10).split("-").map(Number);
+  const date = new Date(y, m - 1, d);
+  return addDays(ymd.slice(0, 10), -date.getDay());
+}
+
+/** 予定の発生日一覧（YYYY-MM-DD）を返す。TRANDATE_FROM～TO の範囲内のみ。頻度・間隔・繰り返しに従う。 */
+function getPlanOccurrenceDates(row: TransactionRow): string[] {
+  const from = (row.TRANDATE_FROM || "").trim().slice(0, 10);
+  const to = (row.TRANDATE_TO || "").trim().slice(0, 10);
+  if (!from || !to || from.length < 10 || to.length < 10 || from > to) return [];
+  const frequency = (row.FREQUENCY ?? "day").toLowerCase();
+  const interval = Math.max(1, parseInt(row.INTERVAL ?? "1", 10) || 1);
+  const cycleUnit = (row.CYCLE_UNIT ?? "").trim();
+  const pad = (n: number) => String(n).padStart(2, "0");
+
+  if (frequency === "day") {
+    return [to];
+  }
+
+  if (frequency === "daily") {
+    const out: string[] = [];
+    let d = from;
+    while (d <= to) {
+      out.push(d);
+      d = addDays(d, interval);
+    }
+    return out;
+  }
+
+  if (frequency === "weekly") {
+    const weekdays = cycleUnit ? cycleUnit.split(",").map((s) => s.trim().toUpperCase()) : [];
+    const weekdaySet = new Set(weekdays);
+    const WEEKDAY_CODES = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"];
+    const weekSunday = getSundayOfWeek(from);
+    const out: string[] = [];
+    let weekStart = weekSunday;
+    while (weekStart <= to) {
+      const weekEnd = addDays(weekStart, 6);
+      if (weekEnd < from) {
+        weekStart = addDays(weekStart, 7 * interval);
+        continue;
+      }
+      for (let i = 0; i < 7; i++) {
+        const d = addDays(weekStart, i);
+        if (d < from || d > to) continue;
+        const date = new Date(parseInt(d.slice(0, 4), 10), parseInt(d.slice(5, 7), 10) - 1, parseInt(d.slice(8, 10), 10));
+        const code = WEEKDAY_CODES[date.getDay()];
+        if (weekdaySet.size === 0 || weekdaySet.has(code)) out.push(d);
+      }
+      weekStart = addDays(weekStart, 7 * interval);
+    }
+    return out;
+  }
+
+  if (frequency === "monthly") {
+    const daySpecs = cycleUnit ? cycleUnit.split(",").map((s) => s.trim()) : [];
+    const out: string[] = [];
+    let monthFirst = from.slice(0, 7) + "-01";
+    const toFirst = to.slice(0, 7) + "-01";
+    while (monthFirst <= toFirst) {
+      const [y, m] = monthFirst.split("-").map(Number);
+      const lastDate = new Date(y, m, 0).getDate();
+      const daysToAdd = daySpecs.length > 0 ? daySpecs : ["1"];
+      for (const spec of daysToAdd) {
+        const n = parseInt(spec, 10);
+        let day: number;
+        if (Number.isNaN(n) || n === 0) continue;
+        if (n === -1) day = lastDate;
+        else if (n === -2) day = Math.max(1, lastDate - 1);
+        else if (n === -3) day = Math.max(1, lastDate - 2);
+        else if (n >= 1 && n <= 31) day = Math.min(n, lastDate);
+        else continue;
+        const d = `${y}-${pad(m)}-${pad(day)}`;
+        if (d >= from && d <= to) out.push(d);
+      }
+      monthFirst = addMonths(monthFirst, interval).slice(0, 7) + "-01";
+    }
+    return out;
+  }
+
+  if (frequency === "yearly") {
+    const mmddList = cycleUnit ? cycleUnit.split(",").map((s) => s.trim()).filter((s) => s.length === 4) : [];
+    const out: string[] = [];
+    const fromY = parseInt(from.slice(0, 4), 10);
+    const toY = parseInt(to.slice(0, 4), 10);
+    for (let y = fromY; y <= toY; y += interval) {
+      if (mmddList.length === 0) {
+        const d = `${y}-${from.slice(5, 7)}-${from.slice(8, 10)}`;
+        if (d >= from && d <= to) out.push(d);
+        continue;
+      }
+      for (const mmdd of mmddList) {
+        const m = parseInt(mmdd.slice(0, 2), 10);
+        const day = parseInt(mmdd.slice(2, 4), 10);
+        if (m < 1 || m > 12 || day < 1 || day > 31) continue;
+        const lastD = new Date(y, m, 0).getDate();
+        const d = `${y}-${mmdd.slice(0, 2)}-${pad(Math.min(day, lastD))}`;
+        if (d >= from && d <= to) out.push(d);
+      }
+    }
+    return out;
+  }
+
+  return [to];
+}
+
 function getWeeksInMonth(
   year: number,
   month: number
@@ -124,7 +242,7 @@ function getCalendarDaySummary(
     const from = row.TRANDATE_FROM || "";
     const to = row.TRANDATE_TO || "";
     if (row.PROJECT_TYPE === "actual") {
-      if (from === dateStr) {
+      if (from.slice(0, 10) === dateStr) {
         actualCount += 1;
         const type = (row.TRANSACTION_TYPE || "expense").toLowerCase();
         if (type === "income") incomeAmount += Number(row.AMOUNT) || 0;
@@ -134,13 +252,31 @@ function getCalendarDaySummary(
       continue;
     }
     if (!from || !to) continue;
-    const inPlanRange = from <= dateStr && dateStr <= to;
-    if (inPlanRange) planCount += 1;
-    if (dateStr === to) {
+    const from10 = from.slice(0, 10);
+    const to10 = to.slice(0, 10);
+    const frequency = (row.FREQUENCY ?? "day").toLowerCase();
+    if (frequency === "day") {
+      if (from10 <= dateStr && dateStr <= to10) {
+        planCount += 1;
+        if (dateStr === to10) {
+          const type = (row.TRANSACTION_TYPE || "").toLowerCase();
+          const amount = Number(row.AMOUNT) || 0;
+          if (type === "income") incomeAmount += amount;
+          else if (type === "expense") expenseAmount += amount;
+          else if (type === "transfer") transferAmount += amount;
+        }
+      }
+      continue;
+    }
+    const occurrences = getPlanOccurrenceDates(row);
+    const onDay = occurrences.includes(dateStr);
+    if (onDay) {
+      planCount += 1;
       const type = (row.TRANSACTION_TYPE || "").toLowerCase();
-      if (type === "income") incomeAmount += Number(row.AMOUNT) || 0;
-      else if (type === "expense") expenseAmount += Number(row.AMOUNT) || 0;
-      else if (type === "transfer") transferAmount += Number(row.AMOUNT) || 0;
+      const amount = Number(row.AMOUNT) || 0;
+      if (type === "income") incomeAmount += amount;
+      else if (type === "expense") expenseAmount += amount;
+      else if (type === "transfer") transferAmount += amount;
     }
   }
   return { planCount, actualCount, incomeAmount, expenseAmount, transferAmount };
@@ -163,32 +299,39 @@ function getCalendarMonthTotals(
     const from = row.TRANDATE_FROM || "";
     const to = row.TRANDATE_TO || "";
     if (row.PROJECT_TYPE === "actual") {
-      if (from < firstDay || from > lastDay) continue;
+      if (from.slice(0, 10) < firstDay || from.slice(0, 10) > lastDay) continue;
       const type = (row.TRANSACTION_TYPE || "expense").toLowerCase();
       const amount = Number(row.AMOUNT) || 0;
       if (type === "income") actualIncome += amount;
       else if (type === "expense") actualExpense += amount;
       continue;
     }
-    if (!to || to < firstDay || to > lastDay) continue;
+    if (!from || !to) continue;
+    const occurrences = getPlanOccurrenceDates(row);
     const type = (row.TRANSACTION_TYPE || "").toLowerCase();
     const amount = Number(row.AMOUNT) || 0;
-    if (type === "income") planIncome += amount;
-    else if (type === "expense") planExpense += amount;
+    for (const d of occurrences) {
+      if (d < firstDay || d > lastDay) continue;
+      if (type === "income") planIncome += amount;
+      else if (type === "expense") planExpense += amount;
+    }
   }
   return { planIncome, planExpense, actualIncome, actualExpense };
 }
 
 function getTransactionsInRange(from: string, to: string, ym?: string): TransactionRow[] {
+  const from10 = from.slice(0, 10);
+  const to10 = to.slice(0, 10);
   const filtered = getFilteredTransactionListForCalendar(ym);
   return filtered.filter((row) => {
-    const trFrom = row.TRANDATE_FROM || "";
-    const trTo = row.TRANDATE_TO || "";
+    const trFrom = (row.TRANDATE_FROM || "").slice(0, 10);
+    const trTo = (row.TRANDATE_TO || "").slice(0, 10);
     if (row.PROJECT_TYPE === "actual") {
-      return trFrom >= from && trFrom <= to;
+      return trFrom >= from10 && trFrom <= to10;
     }
     if (!trFrom || !trTo) return false;
-    return trFrom <= to && trTo >= from;
+    const occurrences = getPlanOccurrenceDates(row);
+    return occurrences.some((d) => d >= from10 && d <= to10);
   });
 }
 
@@ -247,7 +390,7 @@ function getChartDataForMonth(ym: string): {
     const from = row.TRANDATE_FROM || "";
     const to = row.TRANDATE_TO || "";
     if (row.PROJECT_TYPE === "actual") {
-      if (from < firstDay || from > lastDay) continue;
+      if (from.slice(0, 10) < firstDay || from.slice(0, 10) > lastDay) continue;
       const dayIdx = parseInt(from.slice(8, 10), 10) - 1;
       if (dayIdx < 0 || dayIdx >= labels.length) continue;
       if (type === "income") {
@@ -259,15 +402,19 @@ function getChartDataForMonth(ym: string): {
       }
       continue;
     }
-    if (!to || to < firstDay || to > lastDay) continue;
-    const dayIdx = parseInt(to.slice(8, 10), 10) - 1;
-    if (dayIdx < 0 || dayIdx >= labels.length) continue;
-    if (type === "income") {
-      planIncomeByDay[dayIdx] += amount;
-      planIncomeCat[catId] = (planIncomeCat[catId] || 0) + amount;
-    } else if (type === "expense") {
-      planExpenseByDay[dayIdx] += amount;
-      planExpenseCat[catId] = (planExpenseCat[catId] || 0) + amount;
+    if (!from || !to) continue;
+    const occurrences = getPlanOccurrenceDates(row);
+    for (const d of occurrences) {
+      if (d < firstDay || d > lastDay) continue;
+      const dayIdx = parseInt(d.slice(8, 10), 10) - 1;
+      if (dayIdx < 0 || dayIdx >= labels.length) continue;
+      if (type === "income") {
+        planIncomeByDay[dayIdx] += amount;
+        planIncomeCat[catId] = (planIncomeCat[catId] || 0) + amount;
+      } else if (type === "expense") {
+        planExpenseByDay[dayIdx] += amount;
+        planExpenseCat[catId] = (planExpenseCat[catId] || 0) + amount;
+      }
     }
   }
   const toCategoryArray = (

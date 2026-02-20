@@ -28,12 +28,9 @@ ID,VERSION,REGIST_DATETIME,REGIST_USER,UPDATE_DATETIME,UPDATE_USER,TRANSACTION_T
 30,2,2026-02-19 12:13:42,testuser001,2026-02-19 12:18:41,testuser001,expense,actual,1,あめ玉,2026-02-19,2026-02-19,day,1,,200,"支出 実績
 登録
 更新",,10,complete,0
-31,3,2026-02-19 12:17:31,testuser001,2026-02-19 12:23:02,testuser001,expense,actual,1,あめ玉,2026-02-19,2026-02-19,day,1,,100,"支出 実績
-参照登録
-更新",,10,complete,1
 32,0,2026-02-19 12:19:52,testuser001,2026-02-19 12:19:52,testuser001,income,actual,4,お小遣い,2026-02-19,2026-02-19,day,1,,1000,"収入 実績
 登録",10,,complete,0
-33,5,2026-02-19 12:24:33,testuser001,2026-02-19 13:27:29,testuser001,expense,plan,1,あめ玉,2026-02-19,2026-02-19,monthly,0,"9,10",200,"支出 予定
+33,9,2026-02-19 12:24:33,testuser001,2026-02-20 14:35:26,testuser001,expense,plan,1,あめ玉,2026-02-19,2026-02-20,yearly,0,"0102,0606",200,"支出 予定
 登録
 更新",,10,planning,0
 34,0,2026-02-19 12:26:16,testuser001,2026-02-19 12:26:16,testuser001,transfer,actual,24,預入,2026-02-19,2026-02-19,day,1,,500,"振替 実績
