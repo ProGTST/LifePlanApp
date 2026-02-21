@@ -20,7 +20,10 @@ import { setDisplayedKeys } from "../utils/csvWatch";
 import { createIconWrap } from "../utils/iconWrap";
 import { ICON_DEFAULT_COLOR } from "../constants/colorPresets";
 
-/** スケジュール用の検索条件を返す（当画面用。state の scheduleFilterState を参照） */
+/**
+ * スケジュール用の検索条件を返す（当画面用。state の scheduleFilterState を参照）。
+ * @returns スケジュール用 FilterState のコピー
+ */
 function getScheduleFilterState() {
   return { ...scheduleFilterState };
 }
@@ -39,17 +42,33 @@ interface DateColumn {
   dateTo: string;
 }
 
+/**
+ * 今日の日付を YYYY-MM-DD 形式で返す。
+ * @returns 今日の日付文字列
+ */
 function getTodayYMD(): string {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+/**
+ * 指定日付に日数を加算した日付を YYYY-MM-DD で返す。
+ * @param ymd - 基準日（YYYY-MM-DD）
+ * @param delta - 加算する日数（負の値で過去）
+ * @returns 計算後の日付文字列
+ */
 function addDays(ymd: string, delta: number): string {
   const [y, m, d] = ymd.split("-").map(Number);
   const date = new Date(y, m - 1, d + delta);
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
+/**
+ * 指定日付に月数を加算した日付を YYYY-MM-DD で返す。
+ * @param ymd - 基準日（YYYY-MM-DD）
+ * @param delta - 加算する月数
+ * @returns 計算後の日付文字列
+ */
 function addMonths(ymd: string, delta: number): string {
   const [y, m, d] = ymd.split("-").map(Number);
   const date = new Date(y, m - 1, d);
@@ -57,6 +76,11 @@ function addMonths(ymd: string, delta: number): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
+/**
+ * 指定日付がその月の第何週に当たるかを返す（月内の週番号。月曜始まりを想定）。
+ * @param ymd - 日付（YYYY-MM-DD）
+ * @returns 週番号（1 始まり）
+ */
 function getWeekNumberInMonth(ymd: string): number {
   const [y, m, d] = ymd.split("-").map(Number);
   const first = new Date(y, m - 1, 1);
@@ -70,7 +94,11 @@ function getWeekNumberInMonth(ymd: string): number {
   return Math.floor((d - 1) / 7) + 1;
 }
 
-/** 年月単位の結合ヘッダー用。1日の上に yyyy年m月 を表示する */
+/**
+ * 年月単位の結合ヘッダー用。各日の上に「yyyy年m月」を表示するためのグループを返す。
+ * @param columns - 日付列の定義
+ * @returns ラベルと colspan の配列
+ */
 function getMonthGroups(columns: DateColumn[]): { label: string; colspan: number }[] {
   if (columns.length === 0) return [];
   const groups: { label: string; colspan: number }[] = [];
@@ -97,7 +125,11 @@ function getMonthGroups(columns: DateColumn[]): { label: string; colspan: number
   return groups;
 }
 
-/** 週単位用。年単位で結合し yyyy年 を表示する */
+/**
+ * 週単位用。年単位で結合し「yyyy年」を表示するためのグループを返す。
+ * @param columns - 日付列の定義
+ * @returns ラベルと colspan の配列
+ */
 function getYearGroups(columns: DateColumn[]): { label: string; colspan: number }[] {
   if (columns.length === 0) return [];
   const groups: { label: string; colspan: number }[] = [];
@@ -125,7 +157,11 @@ interface DayRangeOptions {
   futureMonths: number;
 }
 
-/** 指定日付を含む週の日曜日を YYYY-MM-DD で返す（週は日曜始まり） */
+/**
+ * 指定日付を含む週の日曜日を YYYY-MM-DD で返す（週は日曜始まり）。
+ * @param ymd - 日付（YYYY-MM-DD）
+ * @returns その週の日曜日の日付文字列
+ */
 function getSundayOfWeek(ymd: string): string {
   const [y, m, d] = ymd.split("-").map(Number);
   const date = new Date(y, m - 1, d);
@@ -133,6 +169,13 @@ function getSundayOfWeek(ymd: string): string {
   return addDays(ymd, -dayOfWeek);
 }
 
+/**
+ * 表示単位（日/週/月）と開始日・範囲に応じて、スケジュール表の日付列定義を生成する。
+ * @param startYMD - 開始日（YYYY-MM-DD）
+ * @param unit - 表示単位
+ * @param dayRange - 日/週表示時の過去・未来の月数（省略時は unit に応じた既定値）
+ * @returns 日付列の配列
+ */
 function getDateColumns(
   startYMD: string,
   unit: ScheduleUnit,
@@ -142,6 +185,7 @@ function getDateColumns(
   const columns: DateColumn[] = [];
 
   if (unit === "day") {
+    // 過去・未来の月数で範囲を決め、範囲内の日付を1日ずつリスト化
     const pastMonths = dayRange?.pastMonths ?? 3;
     const futureMonths = dayRange?.futureMonths ?? 6;
     const rangeStart = addMonths(startYMD, -pastMonths);
@@ -153,6 +197,7 @@ function getDateColumns(
       d = addDays(d, 1);
     }
     const startIdx = list.indexOf(startYMD);
+    // 開始日が範囲外の場合はリスト全体をそのまま列に変換
     if (startIdx < 0) {
       list.forEach((ymd) => {
         const [y, m, day] = ymd.split("-").map(Number);
@@ -185,6 +230,7 @@ function getDateColumns(
   }
 
   if (unit === "week") {
+    // 日/週表示で範囲指定がある場合: 範囲内の週を日曜始まりで列挙
     if (dayRange) {
       const pastMonths = dayRange.pastMonths ?? 3;
       const futureMonths = dayRange.futureMonths ?? 6;
@@ -213,6 +259,7 @@ function getDateColumns(
       }
       return columns;
     }
+    // 週単位で範囲指定がない場合: 開始年の1～12月を週ごとに列に分割
     const year = startY;
     for (let month = 1; month <= 12; month++) {
       const lastDate = new Date(year, month, 0).getDate();
@@ -235,6 +282,7 @@ function getDateColumns(
   }
 
   if (unit === "month") {
+    // 月単位で範囲指定がある場合: 開始月～終了月を1列ずつ追加
     if (dayRange) {
       const pastMonths = dayRange.pastMonths ?? 3;
       const futureMonths = dayRange.futureMonths ?? 6;
@@ -264,6 +312,7 @@ function getDateColumns(
       }
       return columns;
     }
+    // 月単位で範囲指定がない場合: 開始年の1～12月を1列ずつ追加
     for (let month = 1; month <= 12; month++) {
       const y = startY;
       const lastDate = new Date(y, month, 0).getDate();
@@ -283,13 +332,27 @@ function getDateColumns(
   return columns;
 }
 
+/**
+ * 取引期間と列の期間が重なっているかどうかを判定する。
+ * @param rowFrom - 取引開始日（YYYY-MM-DD）
+ * @param rowTo - 取引終了日（YYYY-MM-DD）
+ * @param colFrom - 列の開始日
+ * @param colTo - 列の終了日
+ * @returns 重なっていれば true
+ */
 function overlaps(rowFrom: string, rowTo: string, colFrom: string, colTo: string): boolean {
   return rowFrom <= colTo && rowTo >= colFrom;
 }
 
+/**
+ * スケジュール用フィルターで絞り込んだ「予定」のみを、開始日・終了日・登録日時でソートして返す。
+ * @returns 予定の取引行の配列
+ */
 function getPlanRows(): TransactionRow[] {
+  // スケジュール用検索条件でフィルターし、予定（PROJECT_TYPE=plan）のみに絞る
   const list = getFilteredTransactionListForSchedule(transactionList, getScheduleFilterState(), tagManagementList);
   const planOnly = list.filter((r) => (r.PROJECT_TYPE || "").toLowerCase() === "plan");
+  // 開始日・終了日・登録日時の順でソート
   return planOnly.slice().sort((a, b) => {
     const af = a.TRANDATE_FROM || "";
     const bf = b.TRANDATE_FROM || "";
@@ -305,6 +368,11 @@ function getPlanRows(): TransactionRow[] {
   });
 }
 
+/**
+ * 取引種別コードを表示用ラベルに変換する。
+ * @param type - 取引種別（income / expense / transfer）
+ * @returns 表示用文字列（収入 / 支出 / 振替）
+ */
 function getTypeLabel(type: string): string {
   const t = (type || "expense").toLowerCase();
   if (t === "income") return "収入";
@@ -313,7 +381,10 @@ function getTypeLabel(type: string): string {
 }
 
 /**
- * 取引予定に紐づく取引実績一覧をポップアップで表示する。
+ * 取引予定に紐づく取引実績一覧をオーバーレイで表示する。
+ * @param planId - 予定の取引 ID
+ * @param planName - 予定の取引名（タイトル表示用）
+ * @returns なし
  */
 function openScheduleActualListPopup(planId: string, planName: string): void {
   const bodyEl = document.getElementById("schedule-actual-list-body");
@@ -324,12 +395,14 @@ function openScheduleActualListPopup(planId: string, planName: string): void {
   const actuals = getActualTransactionsForPlan(planId);
   bodyEl.innerHTML = "";
 
+  // 実績が0件のときはメッセージのみ、それ以外は表で一覧表示
   if (actuals.length === 0) {
     const p = document.createElement("p");
     p.className = "schedule-actual-list-empty";
     p.textContent = "表示できる取引実績がありません。";
     bodyEl.appendChild(p);
   } else {
+    // 取引実績を表形式で描画
     const table = document.createElement("table");
     table.className = "schedule-actual-list-table";
     table.setAttribute("aria-label", "取引実績一覧");
@@ -374,6 +447,11 @@ function openScheduleActualListPopup(planId: string, planName: string): void {
   openOverlay("schedule-actual-list-overlay");
 }
 
+/**
+ * スケジュール表（日付列・予定行・ガント風のセル）を再描画する。
+ * 開始日・表示単位・過去/未来の範囲を DOM から読み取り、getDateColumns / getPlanRows でデータを取得して描画する。
+ * @returns なし
+ */
 function renderScheduleGrid(): void {
   const startInput = document.getElementById("schedule-start-date") as HTMLInputElement | null;
   const unitRadios = document.querySelectorAll<HTMLInputElement>('input[name="schedule-unit"]');
@@ -388,6 +466,7 @@ function renderScheduleGrid(): void {
   const startYMD = startInput.value || getTodayYMD();
   if (!startYMD) return;
 
+  // 表示単位（日/週/月）をラジオから取得
   let unit: ScheduleUnit = "day";
   unitRadios.forEach((r) => {
     if (r.checked) unit = r.value as ScheduleUnit;
@@ -422,21 +501,20 @@ function renderScheduleGrid(): void {
     setOptions(pastSelect, options, defaultPast);
     setOptions(futureSelect, options, defaultFuture);
   }
-  if (pastSelect) {
-    pastSelect.setAttribute("aria-label", "過去の月数");
-  }
-  if (futureSelect) {
-    futureSelect.setAttribute("aria-label", "未来の月数");
-  }
+  if (pastSelect) pastSelect.setAttribute("aria-label", "過去の月数");
+  if (futureSelect) futureSelect.setAttribute("aria-label", "未来の月数");
+  // 過去・未来の月数（日/週/月単位で select のオプションを切り替え済み）
   const dayRange: DayRangeOptions | undefined =
     pastSelect && futureSelect
       ? { pastMonths: Number(pastSelect.value) || 3, futureMonths: Number(futureSelect.value) || 6 }
       : undefined;
 
+  // 日付列と予定行を取得し、今日の日付でハイライト用に保持
   const columns = getDateColumns(startYMD, unit, dayRange);
   const rows = getPlanRows();
   const todayYMD = getTodayYMD();
 
+  // 年月結合行: 固定列の th を追加し、単位に応じて getMonthGroups / getYearGroups で結合ヘッダーを描画
   const yearMonthRow = document.getElementById("schedule-yearmonth-row");
   if (yearMonthRow) {
     yearMonthRow.innerHTML = "";
@@ -463,6 +541,7 @@ function renderScheduleGrid(): void {
     });
   }
 
+  // 表ヘッダー行: 種類・取引名・取引日・状況の固定列＋日付列
   headRow.innerHTML = "";
   const kindTh = document.createElement("th");
   kindTh.scope = "col";
@@ -483,6 +562,7 @@ function renderScheduleGrid(): void {
     th.setAttribute("aria-label", ariaLabel);
     headRow.appendChild(th);
   });
+  // 各日付列の th を追加（開始日・今日に data 属性やクラスを付与）
   columns.forEach((col) => {
     const th = document.createElement("th");
     th.className = "schedule-view-date-col";
@@ -505,6 +585,7 @@ function renderScheduleGrid(): void {
   });
 
   tbody.innerHTML = "";
+  // 予定ごとに1行ずつ描画し、各日付列に重なりがあればアクティブクラスを付与
   rows.forEach((row) => {
     const cat = getCategoryById(row.CATEGORY_ID);
     const from = (row.TRANDATE_FROM || "").slice(0, 10);
@@ -553,6 +634,7 @@ function renderScheduleGrid(): void {
     tr.appendChild(nameTd);
     tr.appendChild(dateRangeTd);
     tr.appendChild(statusTd);
+    // 各日付列にセルを追加。取引期間と列が重なる場合はアクティブクラス、今日なら current クラス
     columns.forEach((col) => {
       const td = document.createElement("td");
       td.className = "schedule-view-date-cell";
@@ -593,7 +675,12 @@ function renderScheduleGrid(): void {
   }
 }
 
+/**
+ * スケジュール画面の初期化を行う。ビュー・更新・フィルター変更のハンドラ登録と、開始日・単位・範囲のイベント登録を行う。
+ * @returns なし
+ */
 export function initScheduleView(): void {
+  // スケジュール表示時に取引データを読み込み、開始日未設定なら今日を入れてグリッド描画
   registerViewHandler("schedule", () => {
     loadTransactionData().then(() => {
       const startInput = document.getElementById("schedule-start-date") as HTMLInputElement | null;
@@ -609,12 +696,14 @@ export function initScheduleView(): void {
     loadTransactionData(true).then(() => renderScheduleGrid());
   });
 
+  // 検索条件変更時に表示中ならグリッドを再描画
   registerFilterChangeCallback(() => {
     if (document.getElementById("view-schedule")?.classList.contains("main-view--hidden") === false) {
       renderScheduleGrid();
     }
   });
 
+  // 開始日・表示単位・過去/未来の月数変更でグリッド再描画
   const startInput = document.getElementById("schedule-start-date") as HTMLInputElement | null;
   startInput?.addEventListener("change", () => renderScheduleGrid());
 
@@ -627,6 +716,7 @@ export function initScheduleView(): void {
   pastSelect?.addEventListener("change", () => renderScheduleGrid());
   futureSelect?.addEventListener("change", () => renderScheduleGrid());
 
+  // 取引実績オーバーレイの閉じるボタンとオーバーレイ外クリック
   document.getElementById("schedule-actual-list-close")?.addEventListener("click", () => {
     closeOverlay("schedule-actual-list-overlay");
   });

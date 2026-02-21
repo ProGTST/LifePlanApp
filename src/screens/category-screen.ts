@@ -69,6 +69,7 @@ function getDescendantIds(categoryId: string, rows: CategoryRow[]): Set<string> 
   while (currentLevel.length > 0) {
     const nextLevel: string[] = [];
     for (const id of currentLevel) {
+      // 現在階層の id を親に持つ行を子として追加
       for (const row of rows) {
         if (row.PARENT_ID === id) {
           descendants.add(row.ID);
@@ -80,6 +81,7 @@ function getDescendantIds(categoryId: string, rows: CategoryRow[]): Set<string> 
   }
   return descendants;
 }
+
 
 /**
  * 親プルダウン用。同じ種別のうち、自カテゴリーとその子孫を除いた一覧を返す。

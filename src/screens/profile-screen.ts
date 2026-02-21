@@ -88,6 +88,7 @@ async function updateProfileIconDisplay(): Promise<void> {
     img.alt = "";
     img.className = "profile-icon-img";
 
+    // Tauri 環境では get_profile_icon_base64 で data URL を取得、それ以外はパスをそのまま src に
     const isTauri = typeof (window as unknown as { __TAURI_INTERNALS__?: { invoke?: unknown } }).__TAURI_INTERNALS__?.invoke === "function";
     if (isTauri) {
       try {

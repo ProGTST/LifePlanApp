@@ -8,6 +8,8 @@ const onFilterChangeCallbacks: (() => void)[] = [];
 
 /**
  * フィルター変更時のコールバックを登録する。カレンダー・スケジュール表示の再描画用。
+ * @param fn - フィルター変更時に実行するコールバック
+ * @returns なし
  */
 export function registerFilterChangeCallback(fn: () => void): void {
   onFilterChangeCallbacks.push(fn);
@@ -15,6 +17,7 @@ export function registerFilterChangeCallback(fn: () => void): void {
 
 /**
  * 登録済みのフィルター変更コールバックをすべて実行する。収支履歴画面側の notifyFilterChange から呼ぶ。
+ * @returns なし
  */
 export function runFilterChangeCallbacks(): void {
   onFilterChangeCallbacks.forEach((cb) => cb());
@@ -27,6 +30,8 @@ let historyFilterDateSetter: ((from: string, to: string) => void) | null = null;
 
 /**
  * 収支履歴用の日付セッターを登録する。画面初期化時に一度だけ呼ぶ。
+ * @param fn - 日付（from, to）を設定する関数
+ * @returns なし
  */
 export function registerHistoryFilterDateSetter(fn: (from: string, to: string) => void): void {
   historyFilterDateSetter = fn;
@@ -35,6 +40,9 @@ export function registerHistoryFilterDateSetter(fn: (from: string, to: string) =
 /**
  * 収支履歴用の検索条件に日付（開始日・終了日）を設定し、画面上の日付入力欄を同期する。
  * カレンダーで日付セルクリック時に、収支履歴画面へ遷移したうえでその日で絞り込むために使用する。
+ * @param from - 開始日（YYYY-MM-DD）
+ * @param to - 終了日（YYYY-MM-DD）
+ * @returns なし
  */
 export function setHistoryFilterDateFromTo(from: string, to: string): void {
   if (historyFilterDateSetter) historyFilterDateSetter(from, to);
@@ -54,6 +62,7 @@ export function setHistoryFilterDateFromTo(from: string, to: string): void {
  * 収支履歴・カレンダー共通の検索条件で、カレンダー画面のときは日付行を非表示にする。
  * 収支履歴画面（一覧表示）のときは一覧パネルの hidden を外す。
  * ※一覧は別ビュー（view-transaction-history）で表示。週/月のタブはカレンダー画面（view-transaction-calendar）のみ。
+ * @returns なし
  */
 export function updateTransactionHistoryTabLayout(): void {
   const fromCalendarMenu =

@@ -56,6 +56,7 @@ async function fetchTagList(noCache = false): Promise<TagRow[]> {
   return list;
 }
 
+
 /**
  * タグの変更を dirty にし、TAG.csv の保存を非同期で実行する。
  * @returns なし
@@ -103,6 +104,7 @@ async function moveTagOrder(fromIndex: number, toSlot: number): Promise<void> {
   const [removed] = sorted.splice(fromIndex, 1);
   const insertAt = slotToInsertAt(toSlot, fromIndex, originalLength);
   sorted.splice(insertAt, 0, removed);
+  // 全行のバージョンチェック（競合時はアラートして再読み込み）
   for (const r of sorted) {
     const check = await checkVersionBeforeUpdate("/data/TAG.csv", r.ID, r.VERSION ?? "0");
     if (!check.allowed) {
@@ -139,6 +141,7 @@ function renderTagTable(): void {
     const tdIcon = document.createElement("td");
     tdIcon.className = "data-table-icon-col";
     const iconWrap = createIconWrap(row.COLOR ?? "", row.ICON_PATH ?? "");
+    // アイコンクリックで色・アイコンピッカーを開き、変更後にバージョンチェック・永続化
     iconWrap.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();

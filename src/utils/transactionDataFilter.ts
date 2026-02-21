@@ -103,6 +103,7 @@ export function getCalendarFilteredList(
  * @param transactionList - 取引一覧
  * @param scheduleFilterState - スケジュール用検索条件
  * @param tagManagementList - タグ紐付け一覧
+ * @returns フィルター適用・ソート後の取引配列
  */
 export function getFilteredTransactionListForSchedule(
   transactionList: TransactionRow[],

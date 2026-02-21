@@ -33,7 +33,10 @@ const CHOSEN_LABEL_DEFAULT_BG = "#646cff";
 /** 一覧のタグラベルで色未設定時に使う文字色 */
 const CHOSEN_LABEL_DEFAULT_FG = "#ffffff";
 
-/** 収支履歴用の検索条件を返す（state の historyFilterState を参照）。一覧のフィルター適用で使用。 */
+/**
+ * 収支履歴用の検索条件を返す（state の historyFilterState を参照）。一覧のフィルター適用で使用。
+ * @returns 収支履歴用 FilterState のコピー
+ */
 function getHistoryFilterState(): FilterState {
   return { ...historyFilterState };
 }
@@ -62,6 +65,7 @@ function appendAccountWrap(
   nameSpan.textContent = acc.ACCOUNT_NAME || "—";
   wrap.appendChild(nameSpan);
   parent.appendChild(wrap);
+  // 親要素にラッパーを追加
 }
 
 /**
@@ -81,6 +85,7 @@ function isPlanDateToPast(row: TransactionRow): boolean {
   const todayY = now.getFullYear();
   const todayM = now.getMonth() + 1;
   const todayD = now.getDate();
+  // 年・月・日の順で比較し、過去なら true
   if (planY !== todayY) return planY < todayY;
   if (planM !== todayM) return planM < todayM;
   return planD < todayD;
@@ -94,14 +99,17 @@ function renderList(): void {
   const tbody = document.getElementById("transaction-history-tbody");
   if (!tbody) return;
   tbody.innerHTML = "";
+  // 収支履歴用検索条件でフィルター・ソートし、表示キーを記録
   const filtered = applyFilters(transactionList, getHistoryFilterState(), tagManagementList);
   setDisplayedKeys("transaction-history", filtered.map((row) => row.ID));
+  // フィルター済みの取引を1行ずつ描画
   filtered.forEach((row) => {
     const tr = document.createElement("tr");
     if (isPlanDateToPast(row)) tr.classList.add("transaction-history-row--past-plan");
     const permType = getRowPermissionType(row);
     if (permType === "view") tr.classList.add("transaction-history-row--permission-view");
     else if (permType === "edit") tr.classList.add("transaction-history-row--permission-edit");
+    // 日付・カテゴリ・予定/実績アイコン列
     const tdDate = document.createElement("td");
     tdDate.textContent = row.TRANDATE_FROM || "—";
     const cat = getCategoryById(row.CATEGORY_ID);
@@ -126,6 +134,7 @@ function renderList(): void {
     planIcon.setAttribute("aria-label", row.PROJECT_TYPE === "actual" ? "実績" : "予定");
     planIcon.textContent = row.PROJECT_TYPE === "actual" ? "実" : "予";
     tdPlan.appendChild(planIcon);
+    // 金額・取引名・種別アイコン列
     const tdData = document.createElement("td");
     const dataWrap = document.createElement("div");
     dataWrap.className = "transaction-history-data-cell";
@@ -153,6 +162,7 @@ function renderList(): void {
     nameText.textContent = row.NAME || "—";
     nameWrap.appendChild(nameText);
     tdName.appendChild(nameWrap);
+    // タグ列（紐付きタグをラベルで列挙）
     const tdTags = document.createElement("td");
     tdTags.className = "transaction-history-tags-cell";
     const tags = getTagsForTransaction(row.ID, tagManagementList);
@@ -172,6 +182,7 @@ function renderList(): void {
     } else {
       tdTags.textContent = "—";
     }
+    // 勘定列（収入=入金先、支出=出金元、振替=出金元▶入金先）
     const tdAccount = document.createElement("td");
     tdAccount.className = "transaction-history-account-cell";
     const type = row.TRANSACTION_TYPE as "income" | "expense" | "transfer";
@@ -207,6 +218,7 @@ function renderList(): void {
     tr.appendChild(tdPlanDateTo);
     tr.dataset.transactionId = row.ID;
     tr.classList.add("transaction-history-row--clickable");
+    // 行クリックで収支記録画面へ遷移（参照/編集は権限に応じて設定済み）
     tr.addEventListener("click", () => {
       const permType = getRowPermissionType(row);
       setTransactionEntryViewOnly(permType === "view");
@@ -221,6 +233,8 @@ function renderList(): void {
 
 /**
  * 日付を YYYY-MM-DD にフォーマットする。loadAndShow の初期日付用。
+ * @param d - フォーマット対象の日付
+ * @returns YYYY-MM-DD 形式の文字列
  */
 function formatDateYMD(d: Date): string {
   const y = d.getFullYear();
@@ -240,6 +254,7 @@ function loadAndShow(forceReloadFromCsv = false): void {
   const state = historyFilterState;
   const dateFromEl = document.getElementById("transaction-history-date-from") as HTMLInputElement | null;
   const dateToEl = document.getElementById("transaction-history-date-to") as HTMLInputElement | null;
+  // 日付未設定時は「1年前〜今日」を初期値にし、フォームと state を同期
   if (state.filterDateFrom === "" && state.filterDateTo === "") {
     const today = new Date();
     const fromDate = new Date(today.getFullYear() - 1, today.getMonth(), today.getDate());
@@ -253,6 +268,7 @@ function loadAndShow(forceReloadFromCsv = false): void {
       dateToEl.classList.add("is-empty");
     }
   } else {
+    // 既に日付が設定されている場合は空欄表示クラスのみ同期
     if (dateFromEl) dateFromEl.classList.toggle("is-empty", !dateFromEl.value);
     if (dateToEl) dateToEl.classList.toggle("is-empty", !dateToEl.value);
   }
@@ -264,6 +280,7 @@ function loadAndShow(forceReloadFromCsv = false): void {
 /**
  * 収支履歴画面の初期化を行う。ビュー表示・更新ハンドラとフィルター変更時の一覧再描画のみ登録する。
  * 検索フォームのイベントは transactionSearchForm.initTransactionSearchForm で登録済み。
+ * @returns なし
  */
 export function initTransactionHistoryView(): void {
   registerViewHandler("transaction-history", loadAndShow);

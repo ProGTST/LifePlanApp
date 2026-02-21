@@ -48,6 +48,7 @@ export function initLoginScreen(): void {
       return;
     }
 
+    // 検証OK: パレット適用・ユーザーID保存・アプリ画面へ遷移
     await applyUserPalette(userId);
     setCurrentUserId(userId);
     setAccountListLoaded(false);

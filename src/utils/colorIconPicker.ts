@@ -136,6 +136,7 @@ export function openColorIconPicker(
   fetchCustomIconList().then((byFolder) => {
     const folderNames = Object.keys(byFolder).sort((a, b) => a.localeCompare(b, "ja"));
     for (const folderName of folderNames) {
+      // フォルダごとにサブタイトルを追加し、アイコンボタンを並べる
       const subtitle = document.createElement("div");
       subtitle.className = "picker-icon-subtitle";
       subtitle.textContent = CUSTOM_ICON_FOLDER_SUBTITLES[folderName] ?? folderName;
@@ -143,6 +144,7 @@ export function openColorIconPicker(
       const filenames = byFolder[folderName] || [];
       for (const filename of filenames) {
         const iconPath = `${CUSTOM_ICON_BASE_PATH}/${folderName}/${filename}`;
+        // 各アイコンファイルをボタンとして追加（クリックで選択/解除）
         const pathNorm = iconPath.replace(/\/+$/, "").trim();
         const btn = document.createElement("button");
         btn.type = "button";

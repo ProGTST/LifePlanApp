@@ -29,3 +29,4 @@ export async function saveDirtyCsvsOnly(): Promise<void> {
   if (colorPaletteDirty) promises.push(saveColorPaletteCsvOnNavigate());
   await Promise.all(promises);
 }
+

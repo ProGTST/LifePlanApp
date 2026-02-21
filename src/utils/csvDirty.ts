@@ -8,44 +8,74 @@ export let tagDirty = false;
 export let userDirty = false;
 export let colorPaletteDirty = false;
 
-/** 勘定項目が未保存であることをマークする。戻り値なし。 */
+/**
+ * 勘定項目が未保存であることをマークする。
+ * @returns なし
+ */
 export function setAccountDirty(): void {
   accountDirty = true;
 }
-/** カテゴリーが未保存であることをマークする。戻り値なし。 */
+/**
+ * カテゴリーが未保存であることをマークする。
+ * @returns なし
+ */
 export function setCategoryDirty(): void {
   categoryDirty = true;
 }
-/** タグが未保存であることをマークする。戻り値なし。 */
+/**
+ * タグが未保存であることをマークする。
+ * @returns なし
+ */
 export function setTagDirty(): void {
   tagDirty = true;
 }
-/** ユーザーが未保存であることをマークする。戻り値なし。 */
+/**
+ * ユーザーが未保存であることをマークする。
+ * @returns なし
+ */
 export function setUserDirty(): void {
   userDirty = true;
 }
-/** カラーパレットが未保存であることをマークする。戻り値なし。 */
+/**
+ * カラーパレットが未保存であることをマークする。
+ * @returns なし
+ */
 export function setColorPaletteDirty(): void {
   colorPaletteDirty = true;
 }
 
-/** 勘定項目の未保存フラグをクリアする。戻り値なし。 */
+/**
+ * 勘定項目の未保存フラグをクリアする。
+ * @returns なし
+ */
 export function clearAccountDirty(): void {
   accountDirty = false;
 }
-/** カテゴリーの未保存フラグをクリアする。戻り値なし。 */
+/**
+ * カテゴリーの未保存フラグをクリアする。
+ * @returns なし
+ */
 export function clearCategoryDirty(): void {
   categoryDirty = false;
 }
-/** タグの未保存フラグをクリアする。戻り値なし。 */
+/**
+ * タグの未保存フラグをクリアする。
+ * @returns なし
+ */
 export function clearTagDirty(): void {
   tagDirty = false;
 }
-/** ユーザーの未保存フラグをクリアする。戻り値なし。 */
+/**
+ * ユーザーの未保存フラグをクリアする。
+ * @returns なし
+ */
 export function clearUserDirty(): void {
   userDirty = false;
 }
-/** カラーパレットの未保存フラグをクリアする。戻り値なし。 */
+/**
+ * カラーパレットの未保存フラグをクリアする。
+ * @returns なし
+ */
 export function clearColorPaletteDirty(): void {
   colorPaletteDirty = false;
 }

@@ -117,6 +117,7 @@ function getLastUpdateRowFromCsvText(text: string): Record<string, string> | nul
   let maxDate = "";
   let lastRowCells: string[] = [];
   for (let i = 1; i < rows.length; i++) {
+    // データ行から UPDATE_DATETIME を比較し、最新行を保持
     const cells = parseCsvLine(rows[i]);
     const d = cells[dateIdx] ?? "";
     if (d && d >= maxDate) {

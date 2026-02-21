@@ -90,7 +90,12 @@ function filterTransactionsByVisibleAccounts(
   });
 }
 
-/** 日付文字列 YYYY-MM-DD に days 日を加算した日付を返す。 */
+/**
+ * 日付文字列 YYYY-MM-DD に指定日数を加算した日付を返す。
+ * @param dateStr - 基準日（YYYY-MM-DD）
+ * @param days - 加算する日数
+ * @returns 計算後の日付文字列（YYYY-MM-DD）
+ */
 function addDays(dateStr: string, days: number): string {
   const [y, m, d] = dateStr.split("-").map(Number);
   const date = new Date(y, (m ?? 1) - 1, (d ?? 1) + days);
@@ -100,7 +105,11 @@ function addDays(dateStr: string, days: number): string {
   return `${yy}-${mm}-${dd}`;
 }
 
-/** 指定日を含む週の月曜～日曜の範囲を返す（ISO週）。 */
+/**
+ * 指定日を含む週の月曜～日曜の範囲を返す（ISO週）。
+ * @param dateStr - 日付（YYYY-MM-DD）
+ * @returns 週の開始日・終了日（YYYY-MM-DD）
+ */
 function getWeekRangeFromDate(dateStr: string): { start: string; end: string } {
   const [y, m, d] = dateStr.split("-").map(Number);
   const date = new Date(y, (m ?? 1) - 1, d ?? 1);
@@ -325,6 +334,7 @@ function updateAccountTriggerDisplay(which: "out" | "in", accountId: string): vo
   }
   const acc = getAccountById(accountId);
   if (!acc) {
+    // 勘定が見つからない場合はプレースホルダ表示
     triggerText.textContent = "—";
     (triggerIcon as HTMLElement).style.display = "none";
     return;
@@ -527,6 +537,7 @@ function openTransactionEntryTagModal(): void {
   const tagSortOrderNum = (v: string | undefined): number => (v !== undefined && v !== "" ? Number(v) : 0);
   const sorted = tagRows.slice().sort((a, b) => tagSortOrderNum(a.SORT_ORDER) - tagSortOrderNum(b.SORT_ORDER));
   for (const row of sorted) {
+    // SORT_ORDER 順でタグを1行ずつ追加
     const item = createTagSelectItemRow(
       row.ID,
       row.TAG_NAME || "—",
@@ -551,6 +562,7 @@ function renderActualChosenDisplay(): void {
     return;
   }
   selectedActualDisplayInfo.forEach((info) => {
+    // 選択中実績ごとにチップ（名称・削除ボタン）を生成して追加
     const wrap = document.createElement("span");
     wrap.className = "transaction-history-chosen-label-wrap";
     const cat = getCategoryById(info.categoryId);
@@ -603,6 +615,7 @@ function createActualSelectItemRow(row: TransactionRow, isSelected: boolean): HT
   wrap.appendChild(checkBtn);
   const cat = getCategoryById(row.CATEGORY_ID);
   if (cat) {
+    // カテゴリーアイコンを追加
     const catIconWrap = createIconWrap(cat.COLOR || ICON_DEFAULT_COLOR, cat.ICON_PATH, { tag: "span" });
     catIconWrap.classList.add("transaction-entry-actual-select-category-icon");
     wrap.appendChild(catIconWrap);
@@ -633,6 +646,7 @@ function createActualSelectItemRow(row: TransactionRow, isSelected: boolean): HT
     checkBtn.classList.toggle("is-selected", next);
   };
   checkBtn.addEventListener("click", handleRowClick);
+  // 名前・日付・金額クリックでも選択切替
   nameSpan.addEventListener("click", handleRowClick);
   dateSpan.addEventListener("click", handleRowClick);
   amountWrap.addEventListener("click", handleRowClick);
@@ -672,6 +686,7 @@ function renderActualSelectList(): void {
   const sorted = inWeek.slice().sort((a, b) => (b.TRANDATE_FROM || "").localeCompare(a.TRANDATE_FROM || ""));
   listEl.innerHTML = "";
   if (sorted.length === 0) {
+    // 週内に実績がなければ空メッセージのみ
     const emptyEl = document.createElement("p");
     emptyEl.className = "transaction-entry-actual-select-empty";
     emptyEl.textContent = "この週は取引実績がありません。";
@@ -685,6 +700,7 @@ function renderActualSelectList(): void {
 }
 
 function openTransactionEntryActualModal(): void {
+  // 取引種別・日付から週範囲を決め、実績一覧を取得してモーダルを開く
   const listEl = document.getElementById("transaction-entry-actual-select-list");
   if (!listEl) return;
   const planType = (getTypeInput()?.value ?? "expense").toLowerCase();
@@ -702,6 +718,7 @@ function openTransactionEntryActualModal(): void {
     ]);
     const visibleIds = getVisibleAccountIds(accList, permList);
     const txRows = filterTransactionsByVisibleAccounts(txResult.rows, visibleIds);
+    // 種別が一致し、実績かつ編集中でない取引のみ対象
     const actualRows = txRows.filter(
       (r) =>
         (r.PROJECT_TYPE || "").toLowerCase() === "actual" &&
@@ -762,6 +779,7 @@ function fillCategorySelect(type: string): void {
     valueEl.value = sorted.length > 0 ? sorted[0].ID : "";
   }
   sorted.forEach((c) => {
+    // 種別に合うカテゴリーを option として追加
     const option = document.createElement("div");
     option.className = "transaction-entry-category-option";
     option.setAttribute("role", "option");
@@ -798,6 +816,7 @@ function fillAccountDropdown(which: "out" | "in", visibleIds: Set<string>): void
   }
   listEl.innerHTML = "";
   sorted.forEach((a) => {
+    // 参照可能な勘定を自分の勘定→共有勘定の順で option 追加
     const option = document.createElement("div");
     option.className = "transaction-entry-account-option";
     option.setAttribute("role", "option");
@@ -829,10 +848,12 @@ function updateAccountRowsVisibility(type: string): void {
   if (outVal) outVal.required = type === "expense" || type === "transfer";
   if (inVal) inVal.required = type === "income" || type === "transfer";
   if (type === "income" && outVal) {
+    // 収入のときは出金元をクリア
     outVal.value = "";
     updateAccountTriggerDisplay("out", "");
   }
   if (type === "expense" && inVal) {
+    // 支出のときは入金先をクリア
     inVal.value = "";
     updateAccountTriggerDisplay("in", "");
   }

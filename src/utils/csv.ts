@@ -11,6 +11,7 @@ export function parseCsvLine(line: string): string[] {
     const c = line[i];
     if (c === '"') {
       if (inQuotes && line[i + 1] === '"') {
+        // 引用内の "" はエスケープとして 1 文字の " を追加
         current += '"';
         i += 1;
       } else {
@@ -46,6 +47,7 @@ function splitCsvLogicalRows(text: string): string[] {
       inQuotes = !inQuotes;
       current += c;
     } else if (!inQuotes && (c === "\n" || c === "\r")) {
+      // 引用外の改行で論理行区切り
       rows.push(current);
       current = "";
       if (c === "\r" && trimmed[i + 1] === "\n") i += 1;

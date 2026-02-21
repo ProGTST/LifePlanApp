@@ -52,6 +52,7 @@ export function getSlotFromRects(
   for (let i = 0; i < rects.length; i++) {
     const r = rects[i];
     if (clientY >= r.top && clientY < r.bottom) {
+      // 行の上半分ならその行の前、下半分なら次のスロット
       const mid = r.top + (r.bottom - r.top) / 2;
       return clientY < mid ? i : i + 1;
     }

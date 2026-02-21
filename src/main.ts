@@ -61,7 +61,7 @@ function initAppScreen(): void {
     triggerRefreshFromCsv();
   });
 
-  /* フッター・ホーム / スケジュール / 収支履歴: メニュー遷移として該当画面へ */
+  /** フッター等から指定ビューへ遷移し、メニュー選択状態を更新する */
   function navigateTo(view: string): void {
     showMainView(view);
     pushNavigation(view);
@@ -82,7 +82,7 @@ function initAppScreen(): void {
   document.getElementById("footer-menu-btn")?.addEventListener("click", () => openSidebarPanel(SIDEBAR_PANEL_MENU));
   document.getElementById("footer-settings-btn")?.addEventListener("click", () => openSidebarPanel(SIDEBAR_PANEL_SETTINGS));
 
-  /* 戻るボタン: 遷移スタックを pop してひとつ前の画面に戻る（戻り先はスタックに積まない） */
+  /** 戻るボタン: 遷移スタックを pop してひとつ前の画面に戻る */
   document.getElementById("footer-back-btn")?.addEventListener("click", () => {
     const isTransactionView =
       currentView === "transaction-history" ||

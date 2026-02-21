@@ -38,11 +38,13 @@ export function openSidebarPanel(panel: string): void {
   const panelSettings = document.getElementById("sidebar-panel-settings");
   if (!sidebar || !panelMenu || !panelSettings) return;
   const alreadyOpen = sidebar.classList.contains("is-visible");
+  // 既に同じパネルで開いていれば閉じる、それ以外は該当パネルを表示
   if (alreadyOpen && sidebarOpenPanel === panel) {
     sidebar.classList.remove("is-visible");
     sidebar.setAttribute("aria-hidden", "true");
     setSidebarOpenPanel(null);
   } else {
+    // 指定パネルを active にし、サイドバーを表示
     panelMenu.classList.toggle("is-active", panel === SIDEBAR_PANEL_MENU);
     panelSettings.classList.toggle("is-active", panel === SIDEBAR_PANEL_SETTINGS);
     setSidebarOpenPanel(panel);

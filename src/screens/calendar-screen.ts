@@ -27,7 +27,10 @@ import {
 } from "../utils/transactionDataLayout";
 import { getCalendarFilteredList } from "../utils/transactionDataFilter";
 
-/** カレンダー用の検索条件を返す（当画面用。state の calendarFilterState を参照） */
+/**
+ * カレンダー用の検索条件を返す（当画面用。state の calendarFilterState を参照）。
+ * @returns カレンダー用 FilterState のコピー
+ */
 function getCalendarFilterState() {
   return { ...calendarFilterState };
 }
@@ -59,6 +62,10 @@ const WEEKDAY_JA = ["日", "月", "火", "水", "木", "金", "土"];
 /** 曜日コード（週ごと頻度の CYCLE_UNIT で使用）。0=日〜6=土。 */
 const WEEKDAY_CODES = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"] as const;
 
+/**
+ * 今日の日付を YYYY-MM-DD 形式で返す。
+ * @returns 今日の日付文字列
+ */
 function getTodayYMD(): string {
   const d = new Date();
   const y = d.getFullYear();
@@ -67,6 +74,11 @@ function getTodayYMD(): string {
   return `${y}-${m}-${day}`;
 }
 
+/**
+ * 日付文字列を「n月n日(曜)」形式にフォーマットする。
+ * @param dateStr - YYYY-MM-DD 形式の日付文字列
+ * @returns フォーマット後の文字列。不正な場合は "—"
+ */
 function formatDateMdWeek(dateStr: string): string {
   const match = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (!match) return "—";
@@ -78,11 +90,23 @@ function formatDateMdWeek(dateStr: string): string {
   return `${month}月${day}日(${week})`;
 }
 
+/**
+ * 指定した週範囲（from〜to）に今日が含まれるかどうかを返す。
+ * @param from - 週の開始日（YYYY-MM-DD）
+ * @param to - 週の終了日（YYYY-MM-DD）
+ * @returns 今日が範囲内なら true
+ */
 function isCurrentWeek(from: string, to: string): boolean {
   const today = getTodayYMD();
   return today >= from && today <= to;
 }
 
+/**
+ * 日付文字列に日数を加算した日付を YYYY-MM-DD で返す。
+ * @param dateStr - 基準日（YYYY-MM-DD）
+ * @param delta - 加算する日数
+ * @returns 計算後の日付文字列
+ */
 function addDays(dateStr: string, delta: number): string {
   const [y, m, d] = dateStr.split("-").map(Number);
   const date = new Date(y, m - 1, d + delta);
@@ -92,6 +116,12 @@ function addDays(dateStr: string, delta: number): string {
   return `${yy}-${mm}-${dd}`;
 }
 
+/**
+ * 日付文字列に月数を加算した日付を YYYY-MM-DD で返す。
+ * @param ymd - 基準日（YYYY-MM-DD）
+ * @param delta - 加算する月数
+ * @returns 計算後の日付文字列
+ */
 function addMonths(ymd: string, delta: number): string {
   const [y, m, d] = ymd.slice(0, 10).split("-").map(Number);
   const date = new Date(y, m - 1, d);
@@ -102,7 +132,11 @@ function addMonths(ymd: string, delta: number): string {
   return `${yy}-${mm}-${dd}`;
 }
 
-/** 週の日曜日（YYYY-MM-DD）。週は日曜始まり。 */
+/**
+ * 指定日付を含む週の日曜日を YYYY-MM-DD で返す（週は日曜始まり）。
+ * @param ymd - 日付（YYYY-MM-DD）
+ * @returns その週の日曜日の日付文字列
+ */
 function getSundayOfWeek(ymd: string): string {
   const [y, m, d] = ymd.slice(0, 10).split("-").map(Number);
   const date = new Date(y, m - 1, d);
@@ -112,6 +146,8 @@ function getSundayOfWeek(ymd: string): string {
 /**
  * 予定の発生日一覧（YYYY-MM-DD）を返す。TRANDATE_FROM～TO の範囲内のみ。
  * 頻度（FREQUENCY）・間隔（INTERVAL）・繰り返し（CYCLE_UNIT）に従って対象日を列挙する。
+ * @param row - 予定の取引行
+ * @returns 発生日の YYYY-MM-DD 文字列の配列
  */
 function getPlanOccurrenceDates(row: TransactionRow): string[] {
   const from = (row.TRANDATE_FROM || "").trim().slice(0, 10);
@@ -231,6 +267,7 @@ function getWeeksInMonth(
   const weeks: { from: string; to: string; weekNumber: number; dateRange: string }[] = [];
   let weekIndex = 0;
   let sun = 1 - first.getDay();
+  // 日曜始まりで週を区切り、月内の日付範囲でクリップして週情報を追加
   while (sun <= lastDate) {
     const sat = sun + 6;
     const weekFrom = Math.max(1, sun);
@@ -331,8 +368,8 @@ function getCalendarDaySummary(
     const from = row.TRANDATE_FROM || "";
     const to = row.TRANDATE_TO || "";
 
-    // 実績: 対象日がこの日付と一致するとき件数・金額を加算
     if (row.PROJECT_TYPE === "actual") {
+      // 実績: 対象日がこの日付と一致するとき件数・金額を加算
       const actualDate = getActualTargetDate(row);
       if (actualDate && actualDate === dateStr) {
         summary.actualCount += 1;
@@ -395,6 +432,7 @@ function getCalendarMonthTotals(
     const to = row.TRANDATE_TO || "";
 
     if (row.PROJECT_TYPE === "actual") {
+      // 実績: 対象日が月範囲内なら金額を該当合計に加算
       const actualDate = getActualTargetDate(row);
       if (!actualDate || actualDate < firstDay || actualDate > lastDay) continue;
       const { type, amount } = getTransactionTypeAndAmount(row);
@@ -406,6 +444,7 @@ function getCalendarMonthTotals(
     if (!from || !to) continue;
     const occurrences = getPlanOccurrenceDates(row);
     const { type, amount } = getTransactionTypeAndAmount(row);
+    // 予定: 発生日が月範囲内のときのみ金額を加算
     for (const d of occurrences) {
       if (d < firstDay || d > lastDay) continue;
       if (type === "income") totals.planIncome += amount;

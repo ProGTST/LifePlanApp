@@ -107,6 +107,7 @@ function getCurrentUserPalette(): PaletteRow | undefined {
 function getOrCreateCurrentPalette(): PaletteRow {
   let row = getCurrentUserPalette();
   if (row) return row;
+  // 未存在時はデフォルト色で新規行を作成し、監査項目をセットしてリストに追加
   row = {
     USER_ID: currentUserId ?? "",
     SEQ_NO: "1",
@@ -144,6 +145,7 @@ function applyPaletteToPreview(): void {
   const wrap = document.getElementById("design-preview-wrap");
   const container = document.getElementById("design-form-fields");
   if (!wrap || !container) return;
+  // 各パレットキーの入力値を CSS 変数に反映（プレビュー用）
   PALETTE_KEYS.forEach((key) => {
     const colorEl = container.querySelector(`.design-palette-color[data-palette-key="${key}"]`) as HTMLInputElement;
     const value = toValidHex(colorEl?.value, key);
@@ -161,6 +163,7 @@ function renderDesignForm(): void {
   const palette = getOrCreateCurrentPalette();
   container.innerHTML = "";
 
+  // 各パレットキーごとにラベル・color/hex 入力・スウォッチの行を追加
   PALETTE_KEYS.forEach((key) => {
     const label = LABELS[key] ?? key;
     const value = toValidHex(palette[key], key);
@@ -185,6 +188,7 @@ function renderDesignForm(): void {
     swatch.classList.toggle("design-palette-swatch--light", isWhiteHex(hex));
   }
 
+  // スウォッチクリック・Enter/Space で色ピッカーを開く
   container.querySelectorAll(".design-palette-swatch").forEach((el) => {
     const swatch = el as HTMLElement;
     const key = swatch.dataset.paletteKey as (typeof PALETTE_KEYS)[number] | undefined;
@@ -215,6 +219,7 @@ function renderDesignForm(): void {
     });
   });
 
+  // hex 入力の変更で color 入力・スウォッチ・プレビューを同期
   container.querySelectorAll(".design-palette-hex").forEach((input) => {
     input.addEventListener("input", function (this: HTMLInputElement) {
       setColorPaletteDirty();
@@ -242,6 +247,7 @@ async function saveDesignForm(): Promise<void> {
   const container = document.getElementById("design-form-fields");
   if (!container) return;
 
+  // フォームの color 入力値をパレット行に反映
   PALETTE_KEYS.forEach((key) => {
     const colorEl = container.querySelector(`.design-palette-color[data-palette-key="${key}"]`) as HTMLInputElement;
     if (colorEl) palette[key] = colorEl.value;

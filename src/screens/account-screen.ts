@@ -69,6 +69,7 @@ async function fetchAccountList(noCache = false): Promise<AccountRow[]> {
   const list: AccountRow[] = [];
   for (const cells of rows) {
     const row = rowToObject(header, cells) as unknown as AccountRow;
+    // 未設定フィールドに既定値を補う
     if (row.SORT_ORDER === undefined || row.SORT_ORDER === "") row.SORT_ORDER = String(list.length);
     if (row.COLOR === undefined) row.COLOR = "";
     if (row.ICON_PATH === undefined) row.ICON_PATH = "";
@@ -131,6 +132,7 @@ async function saveAccountNameFromCell(accountId: string, newName: string): Prom
   }
   const row = accountListFull.find((r) => r.ID === accountId);
   if (!row || row.USER_ID !== currentUserId) return;
+  // バージョン競合チェック後、許可されていれば名前更新・永続化
   const check = await checkVersionBeforeUpdate(
     "/data/ACCOUNT.csv",
     accountId,
@@ -159,6 +161,7 @@ async function moveAccountOrder(fromIndex: number, toSlot: number): Promise<void
   const [removed] = sorted.splice(fromIndex, 1);
   const insertAt = slotToInsertAt(toSlot, fromIndex, originalLength);
   sorted.splice(insertAt, 0, removed);
+  // 全行のバージョンチェック（競合時はアラートして再読み込み）
   for (const r of sorted) {
     const check = await checkVersionBeforeUpdate("/data/ACCOUNT.csv", r.ID, r.VERSION ?? "0");
     if (!check.allowed) {
@@ -171,6 +174,7 @@ async function moveAccountOrder(fromIndex: number, toSlot: number): Promise<void
     r.SORT_ORDER = String(i);
     setUpdateAudit(r as unknown as Record<string, string>, currentUserId ?? "");
   });
+  // 自分の勘定のみ sorted の順で差し替え、state 更新・永続化・再描画
   let sortedIdx = 0;
   const newFull = accountListFull.map((r) =>
     r.USER_ID === currentUserId ? sorted[sortedIdx++] : r
@@ -224,6 +228,7 @@ async function renderSharedWithMeAccountTable(): Promise<void> {
   const shared = accountListFull.filter(
     (r) => r.USER_ID !== currentUserId && permittedIds.includes(r.ID)
   );
+  // 参照可能な勘定が0件のときは空メッセージ行のみ
   if (shared.length === 0) {
     const tr = document.createElement("tr");
     const td = document.createElement("td");
@@ -241,6 +246,7 @@ async function renderSharedWithMeAccountTable(): Promise<void> {
     .slice()
     .sort((a, b) => (a.ID || "").localeCompare(b.ID || ""))
     .map((u) => u.ID);
+  // ユーザー順・同一ユーザー内は SORT_ORDER でソート
   const sorted = shared.slice().sort((a, b) => {
     const indexA = userIdsInOrder.indexOf(a.USER_ID);
     const indexB = userIdsInOrder.indexOf(b.USER_ID);
@@ -252,6 +258,7 @@ async function renderSharedWithMeAccountTable(): Promise<void> {
   sorted.forEach((row) => {
     const perm = permissionList.find((p) => p.ACCOUNT_ID === row.ID && p.USER_ID === currentUserId);
     const permissionType = (perm?.PERMISSION_TYPE ?? "view") as "view" | "edit";
+    // 1行: アイコン・勘定名・残高・所有者名・権限バッジ
     const tr = document.createElement("tr");
     tr.setAttribute("data-account-id", row.ID);
     const tdIcon = document.createElement("td");
@@ -301,6 +308,7 @@ function renderAccountTable(): void {
     const tdIcon = document.createElement("td");
     tdIcon.className = "data-table-icon-col";
     const iconWrap = createIconWrap(row.COLOR ?? "", row.ICON_PATH ?? "");
+    // アイコンクリックで色・アイコンピッカーを開き、変更後にバージョンチェック・永続化
     iconWrap.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
@@ -366,6 +374,7 @@ function renderAccountTable(): void {
       const indicator = createDropIndicatorRow(ACCOUNT_TABLE_COL_COUNT);
       let currentSlot = fromIndex;
       tbody.insertBefore(indicator, dataRows[currentSlot] ?? null);
+      // マウス移動でドロップ位置のインジケーターを更新
       const onMouseMove = (e: MouseEvent): void => {
         const slot = getSlotFromRects(e.clientY, rects);
         if (slot === currentSlot) return;
@@ -382,6 +391,7 @@ function renderAccountTable(): void {
         const noMove = insertAt === fromIndex;
         if (!noMove) moveAccountOrder(fromIndex, currentSlot).catch((e) => console.error(e));
       };
+      // ドラッグ終了時に並び替えを実行（位置が変わった場合のみ）
       document.addEventListener("mousemove", onMouseMove);
       document.addEventListener("mouseup", onMouseUp);
     });
@@ -411,6 +421,7 @@ async function deleteAccountRow(accountId: string): Promise<void> {
   }
   const idx = accountListFull.indexOf(row);
   if (idx !== -1) accountListFull.splice(idx, 1);
+  // 当該勘定への権限行を除外し、永続化・自分の勘定リストと表示キーを更新して再描画
   const permissionWithoutAccount = getAccountPermissionRows().filter(
     (p) => p.ACCOUNT_ID !== accountId
   );
@@ -452,6 +463,7 @@ export async function loadAndRenderAccountList(forceReloadFromCsv = false): Prom
   const [list] = await Promise.all([fetchAccountList(forceReloadFromCsv), fetchAccountPermissionList()]);
   setAccountListFull(list);
   setAccountListLoaded(true);
+  // 自分の勘定のみ SORT_ORDER でソートし、表示キーを登録
   let next = currentUserId
     ? accountListFull.filter((r) => r.USER_ID === currentUserId)
     : [...accountListFull];
