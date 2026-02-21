@@ -9,10 +9,13 @@ import {
   historyFilterState,
   calendarFilterState,
   scheduleFilterState,
+  schedulePlanStatuses,
   setHistoryFilterState,
   setCalendarFilterState,
   setScheduleFilterState,
+  setSchedulePlanStatuses,
 } from "../state";
+import type { SchedulePlanStatus } from "../state";
 import { runFilterChangeCallbacks } from "./transactionDataLayout";
 import { registerHistoryFilterDateSetter } from "./transactionDataLayout";
 import {
@@ -24,6 +27,7 @@ import {
   getPermissionRows,
 } from "./transactionDataSync";
 import type { FilterState } from "./transactionDataFilter";
+import { sortOrderNum } from "./dragSort";
 import { createIconWrap } from "./iconWrap";
 import { openOverlay, closeOverlay } from "./overlay";
 import { ICON_DEFAULT_COLOR } from "../constants/colorPresets";
@@ -112,6 +116,7 @@ export function loadFormFromFilterState(viewId: string): void {
   if (freeTextEl) freeTextEl.value = state.filterFreeText;
   syncFilterButtons();
   updateChosenDisplays();
+  if (viewId === "schedule") syncPlanStatusButtons();
 }
 
 /**
@@ -145,6 +150,19 @@ function syncFilterButtons(): void {
   searchArea.querySelectorAll(".transaction-history-filter-btn[data-type]").forEach((b) => {
     const t = (b as HTMLButtonElement).dataset.type as "income" | "expense" | "transfer";
     b.classList.toggle("is-active", state.filterType.includes(t));
+  });
+}
+
+/**
+ * スケジュール画面用のステータス（計画中/完了/中止）ボタンの is-active を state に合わせる。複数選択表示。
+ * @returns なし
+ */
+function syncPlanStatusButtons(): void {
+  const searchArea = document.getElementById("transaction-history-common");
+  if (!searchArea) return;
+  searchArea.querySelectorAll(".transaction-history-filter-btn[data-plan-status]").forEach((b) => {
+    const value = (b as HTMLButtonElement).dataset.planStatus as SchedulePlanStatus;
+    b.classList.toggle("is-active", schedulePlanStatuses.includes(value));
   });
 }
 
@@ -341,8 +359,7 @@ function filterCategoriesByType(type: "income" | "expense" | "transfer"): Catego
   const rows = getCategoryRows();
   if (type === "income") return rows.filter((c) => (c.TYPE || "").toLowerCase() === "income");
   if (type === "expense") return rows.filter((c) => (c.TYPE || "").toLowerCase() === "expense");
-  // 振替のときは収入・支出両方のカテゴリを対象
-  if (type === "transfer") return rows.filter((c) => ["income", "expense"].includes((c.TYPE || "").toLowerCase()));
+  if (type === "transfer") return rows.filter((c) => (c.TYPE || "").toLowerCase() === "transfer");
   return rows;
 }
 
@@ -356,7 +373,7 @@ function renderCategorySelectList(type: "income" | "expense" | "transfer"): void
   if (!listEl) return;
   listEl.innerHTML = "";
   const filtered = filterCategoriesByType(type);
-  const sorted = filtered.slice().sort((a, b) => (a.SORT_ORDER || "").localeCompare(b.SORT_ORDER || ""));
+  const sorted = filtered.slice().sort((a, b) => sortOrderNum(a.SORT_ORDER, b.SORT_ORDER));
   // 種別に合うカテゴリを SORT_ORDER 順で1行ずつ追加
   for (const row of sorted) {
     const item = createSelectItemRow(
@@ -508,17 +525,21 @@ function formatDateYMD(d: Date): string {
  * @returns なし
  */
 function resetConditions(): void {
+  const isCalendar =
+    currentView === "transaction-history-calendar" || currentView === "transaction-history-weekly";
+  const isScheduleOrCalendar = currentView === "schedule" || isCalendar;
+  // 収支履歴一覧では日付 From を1年前に、スケジュール・カレンダーでは未指定（空）にする
   const today = new Date();
   const fromDate = new Date(today.getFullYear() - 1, today.getMonth(), today.getDate());
   const defaultDateFrom = formatDateYMD(fromDate);
-  // state を全条件あり・日付は1年前〜にリセット
+  const dateFromValue = isScheduleOrCalendar ? "" : defaultDateFrom;
   setActiveFilterState({
     filterStatus: ["plan", "actual"],
     filterType: ["income", "expense", "transfer"],
     filterCategoryIds: [],
     filterTagIds: [],
     filterAccountIds: [],
-    filterDateFrom: defaultDateFrom,
+    filterDateFrom: dateFromValue,
     filterDateTo: "",
     filterAmountMin: "",
     filterAmountMax: "",
@@ -528,8 +549,8 @@ function resetConditions(): void {
   const dateFromEl = document.getElementById("transaction-history-date-from") as HTMLInputElement | null;
   const dateToEl = document.getElementById("transaction-history-date-to") as HTMLInputElement | null;
   if (dateFromEl) {
-    dateFromEl.value = defaultDateFrom;
-    dateFromEl.classList.remove("is-empty");
+    dateFromEl.value = dateFromValue;
+    dateFromEl.classList.toggle("is-empty", !dateFromValue);
   }
   if (dateToEl) {
     dateToEl.value = "";
@@ -543,6 +564,10 @@ function resetConditions(): void {
   if (freeTextEl) freeTextEl.value = "";
   // ボタン・選択表示を同期し、一覧・カレンダー・スケジュールの再描画を促す
   syncFilterButtons();
+  if (currentView === "schedule") {
+    setSchedulePlanStatuses(["planning"]);
+    syncPlanStatusButtons();
+  }
   updateChosenDisplays();
   notifyFilterChange();
 }
@@ -556,6 +581,78 @@ export function initTransactionSearchForm(): void {
   registerHistoryFilterDateSetter((from, to) => {
     setHistoryFilterState({ filterDateFrom: from, filterDateTo: to });
   });
+
+  // 条件表示ボタン: 検索条件パネルを開閉トグル
+  document.getElementById("transaction-history-show-conditions-btn")?.addEventListener("click", () => {
+    const panel = document.getElementById("transaction-history-common");
+    if (!panel?.classList.contains("search-conditions-panel")) return;
+    const isOpen = panel.classList.contains("search-conditions-panel--open");
+    if (isOpen) {
+      panel.classList.add("search-conditions-panel--closed");
+      panel.classList.remove("search-conditions-panel--open");
+      panel.setAttribute("aria-hidden", "true");
+      panel.removeAttribute("role");
+      panel.removeAttribute("aria-modal");
+      panel.style.left = "";
+      panel.style.top = "";
+      panel.style.width = "";
+      panel.style.bottom = "";
+      panel.style.right = "";
+    } else {
+      panel.classList.remove("search-conditions-panel--closed");
+      panel.classList.add("search-conditions-panel--open");
+      panel.setAttribute("aria-hidden", "false");
+      panel.setAttribute("role", "dialog");
+      panel.setAttribute("aria-modal", "false");
+      panel.setAttribute("aria-label", "検索条件");
+      panel.style.left = "";
+      panel.style.top = "";
+      panel.style.width = "";
+      panel.style.bottom = "";
+      panel.style.right = "";
+      const accordion = panel.querySelector(".transaction-history-search-accordion");
+      if (accordion instanceof HTMLDetailsElement) accordion.open = true;
+    }
+  });
+
+  // 検索条件パネル: ドラッグで移動
+  (() => {
+    const panel = document.getElementById("transaction-history-common");
+    const handle = document.getElementById("search-conditions-panel-drag-handle");
+    if (!panel || !handle) return;
+    let startX = 0;
+    let startY = 0;
+    let startLeft = 0;
+    let startTop = 0;
+    const onMove = (e: MouseEvent): void => {
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      (panel as HTMLElement).style.left = `${startLeft + dx}px`;
+      (panel as HTMLElement).style.top = `${startTop + dy}px`;
+    };
+    const onUp = (): void => {
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+    };
+    handle.addEventListener("mousedown", (e: MouseEvent) => {
+      if (!panel.classList.contains("search-conditions-panel--open")) return;
+      e.preventDefault();
+      const rect = panel.getBoundingClientRect();
+      if (!(panel as HTMLElement).style.left) {
+        (panel as HTMLElement).style.bottom = "auto";
+        (panel as HTMLElement).style.right = "auto";
+        (panel as HTMLElement).style.left = `${rect.left}px`;
+        (panel as HTMLElement).style.top = `${rect.top}px`;
+        (panel as HTMLElement).style.width = `${rect.width}px`;
+      }
+      startX = e.clientX;
+      startY = e.clientY;
+      startLeft = rect.left;
+      startTop = rect.top;
+      document.addEventListener("mousemove", onMove);
+      document.addEventListener("mouseup", onUp);
+    });
+  })();
 
   // 検索条件リセットボタン
   document.getElementById("transaction-history-reset-conditions-btn")?.addEventListener("click", () => {
@@ -617,6 +714,18 @@ export function initTransactionSearchForm(): void {
         setActiveFilterState({ filterType: [...state.filterType, type] });
       }
       syncFilterButtons();
+      notifyFilterChange();
+    });
+  });
+  // スケジュール用ステータス（計画中/完了/中止）ボタン押下で複数選択トグル
+  searchArea?.querySelectorAll(".transaction-history-filter-btn[data-plan-status]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const value = (btn as HTMLButtonElement).dataset.planStatus as SchedulePlanStatus;
+      const next = schedulePlanStatuses.includes(value)
+        ? schedulePlanStatuses.filter((s) => s !== value)
+        : [...schedulePlanStatuses, value];
+      setSchedulePlanStatuses(next);
+      syncPlanStatusButtons();
       notifyFilterChange();
     });
   });

@@ -38,6 +38,7 @@
               <button type="button" class="btn-secondary btn-header-delete" id="header-delete-btn">削除モード</button>
               <button type="button" class="btn-primary btn-header-save" id="header-save-btn">保存</button>
               <button type="button" class="btn-secondary btn-header-default" id="header-default-btn">デフォルトに戻す</button>
+              <button type="button" class="btn-secondary" id="transaction-history-show-conditions-btn" aria-label="条件表示">条件表示</button>
               <button type="button" class="btn-secondary btn-header-refresh" id="transaction-history-reset-conditions-btn" aria-label="条件初期化">条件初期化</button>
               <button type="button" class="btn-primary" id="header-transaction-entry-submit">保存</button>
               <button type="button" class="btn-secondary" id="header-transaction-entry-copy-as-new">参照登録</button>
@@ -71,6 +72,7 @@
 
             <!-- 収支履歴・カレンダー・スケジュール共通: 検索条件 -->
             <div id="transaction-history-common" class="transaction-history-common main-view--hidden" aria-label="収支検索">
+              <div class="search-conditions-panel-drag-handle" id="search-conditions-panel-drag-handle" aria-label="ドラッグで移動"></div>
               <div class="view-body">
                 <section class="transaction-history-search" aria-label="検索条件">
                   <details class="transaction-history-search-accordion">
@@ -96,6 +98,14 @@
                             <button type="button" class="btn-secondary transaction-history-filter-btn is-active" data-type="expense" id="transaction-history-type-expense">支出</button>
                             <button type="button" class="btn-secondary transaction-history-filter-btn is-active" data-type="income" id="transaction-history-type-income">収入</button>
                             <button type="button" class="btn-secondary transaction-history-filter-btn is-active" data-type="transfer" id="transaction-history-type-transfer">振替</button>
+                          </div>
+                        </div>
+                        <div id="transaction-history-plan-status-row" class="transaction-history-search-row transaction-history-plan-status-row is-hidden" aria-hidden="true">
+                          <span class="transaction-history-search-label">ステータス</span>
+                          <div class="transaction-history-search-buttons" role="group" aria-label="ステータス">
+                            <button type="button" class="btn-secondary transaction-history-filter-btn is-active" data-plan-status="planning" id="transaction-history-plan-status-planning">計画中</button>
+                            <button type="button" class="btn-secondary transaction-history-filter-btn" data-plan-status="complete" id="transaction-history-plan-status-complete">完了</button>
+                            <button type="button" class="btn-secondary transaction-history-filter-btn" data-plan-status="canceled" id="transaction-history-plan-status-canceled">中止</button>
                           </div>
                         </div>
                       </div>

@@ -12,6 +12,7 @@ import type {
 } from "../types";
 import { currentUserId, setTransactionList, setTagManagementList, transactionList } from "../state";
 import { fetchCsv, rowToObject } from "./csv";
+import { sortOrderNum } from "./dragSort";
 
 const CSV_NO_CACHE: RequestInit = { cache: "reload" };
 
@@ -297,10 +298,10 @@ export function getTagsForTransaction(
 
 /**
  * タグ一覧をソート順で返す。収支履歴のタグモーダル等で使用。
- * @returns タグ行の配列（SORT_ORDER でソート済み）
+ * @returns タグ行の配列（SORT_ORDER を数値としてソート済み）
  */
 export function getTagRows(): TagRow[] {
-  return tagRows.slice().sort((a, b) => (a.SORT_ORDER || "").localeCompare(b.SORT_ORDER || ""));
+  return tagRows.slice().sort((a, b) => sortOrderNum(a.SORT_ORDER, b.SORT_ORDER));
 }
 
 /**

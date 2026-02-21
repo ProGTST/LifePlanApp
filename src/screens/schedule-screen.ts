@@ -1,8 +1,10 @@
 import type { TransactionRow } from "../types";
+import type { SchedulePlanStatus } from "../state";
 import {
   transactionList,
   tagManagementList,
   scheduleFilterState,
+  schedulePlanStatuses,
 } from "../state";
 import {
   loadTransactionData,
@@ -14,6 +16,7 @@ import {
 } from "../utils/transactionDataSync";
 import { registerFilterChangeCallback } from "../utils/transactionDataLayout";
 import { getFilteredTransactionListForSchedule } from "../utils/transactionDataFilter";
+import { getPlanOccurrenceDates } from "../utils/planOccurrence";
 import { openOverlay, closeOverlay } from "../utils/overlay";
 import { registerViewHandler, registerRefreshHandler } from "../app/screen";
 import { setDisplayedKeys } from "../utils/csvWatch";
@@ -333,7 +336,7 @@ function getDateColumns(
 }
 
 /**
- * 取引期間と列の期間が重なっているかどうかを判定する。
+ * 取引期間と列の期間が重なっているかどうかを判定する（間隔1日の予定用）。
  * @param rowFrom - 取引開始日（YYYY-MM-DD）
  * @param rowTo - 取引終了日（YYYY-MM-DD）
  * @param colFrom - 列の開始日
@@ -345,6 +348,36 @@ function overlaps(rowFrom: string, rowTo: string, colFrom: string, colTo: string
 }
 
 /**
+ * 予定行について、指定列を対象セルとするかどうかを返す。
+ * 間隔1日（FREQUENCY=day）のときは取引日の開始日～終了日で重なり判定。
+ * それ以外はカレンダーと同様の対象日計算を使い、日単位＝対象日、週単位＝対象日を含む週、月単位＝対象日を含む月で判定。
+ * @param row - 予定の取引行
+ * @param col - 日付列の定義
+ * @param unit - 表示単位
+ * @returns 対象セルなら true
+ */
+function isCellActiveForPlan(
+  row: TransactionRow,
+  col: { dateFrom: string; dateTo: string },
+  unit: ScheduleUnit
+): boolean {
+  const from = (row.TRANDATE_FROM || "").slice(0, 10);
+  const to = (row.TRANDATE_TO || "").slice(0, 10);
+  const frequency = (row.FREQUENCY ?? "day").toLowerCase();
+  if (frequency === "day") {
+    return overlaps(from, to, col.dateFrom, col.dateTo);
+  }
+  const occurrenceDates = getPlanOccurrenceDates(row);
+  if (unit === "day") {
+    return col.dateFrom === col.dateTo && occurrenceDates.includes(col.dateFrom);
+  }
+  if (unit === "week" || unit === "month") {
+    return occurrenceDates.some((d) => d >= col.dateFrom && d <= col.dateTo);
+  }
+  return false;
+}
+
+/**
  * スケジュール用フィルターで絞り込んだ「予定」のみを、開始日・終了日・登録日時でソートして返す。
  * @returns 予定の取引行の配列
  */
@@ -352,8 +385,16 @@ function getPlanRows(): TransactionRow[] {
   // スケジュール用検索条件でフィルターし、予定（PROJECT_TYPE=plan）のみに絞る
   const list = getFilteredTransactionListForSchedule(transactionList, getScheduleFilterState(), tagManagementList);
   const planOnly = list.filter((r) => (r.PROJECT_TYPE || "").toLowerCase() === "plan");
+  // ステータス（計画中/完了/中止）で絞り込み。未設定は計画中扱い。選択なしの場合は全表示
+  const statusNormalized = (s: string) => (s || "planning").toLowerCase() as SchedulePlanStatus;
+  const byStatus =
+    schedulePlanStatuses.length === 0
+      ? planOnly
+      : planOnly.filter((r) =>
+          schedulePlanStatuses.includes(statusNormalized(r.PLAN_STATUS || "planning"))
+        );
   // 開始日・終了日・登録日時の順でソート
-  return planOnly.slice().sort((a, b) => {
+  return byStatus.slice().sort((a, b) => {
     const af = a.TRANDATE_FROM || "";
     const bf = b.TRANDATE_FROM || "";
     const cmpFrom = af.localeCompare(bf);
@@ -634,11 +675,11 @@ function renderScheduleGrid(): void {
     tr.appendChild(nameTd);
     tr.appendChild(dateRangeTd);
     tr.appendChild(statusTd);
-    // 各日付列にセルを追加。取引期間と列が重なる場合はアクティブクラス、今日なら current クラス
+    // 各日付列にセルを追加。対象日計算に基づき対象セルのみアクティブクラス、今日なら current クラス
     columns.forEach((col) => {
       const td = document.createElement("td");
       td.className = "schedule-view-date-cell";
-      if (overlaps(from, to, col.dateFrom, col.dateTo)) {
+      if (isCellActiveForPlan(row, col, unit)) {
         td.classList.add("schedule-view-date-cell--active");
         td.setAttribute("aria-label", "対象期間");
       }

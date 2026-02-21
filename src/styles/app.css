@@ -412,6 +412,7 @@
 #app .btn-header-delete,
 #app .btn-header-save,
 #app .btn-header-default,
+#app #transaction-history-show-conditions-btn,
 #app #transaction-history-reset-conditions-btn,
 #app #header-transaction-entry-submit,
 #app #header-transaction-entry-copy-as-new,
@@ -431,6 +432,7 @@
 #app .btn-header-delete.is-visible,
 #app .btn-header-save.is-visible,
 #app .btn-header-default.is-visible,
+#app #transaction-history-show-conditions-btn.is-visible,
 #app #transaction-history-reset-conditions-btn.is-visible,
 #app #header-transaction-entry-submit.is-visible,
 #app #header-transaction-entry-copy-as-new.is-visible,
@@ -2976,6 +2978,56 @@
   display: none;
 }
 
+/* 検索条件モーダレスパネル（条件表示ボタンで開く）・画面下部に横長で表示 */
+#transaction-history-common.search-conditions-panel {
+  position: fixed;
+  bottom: 5%;
+  left: 5%;
+  right: 5%;
+  width: 90%;
+  overflow: auto;
+  background: var(--color-view-bg, #ffffff);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
+  z-index: 500;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--gray-300);
+  border-bottom: none;
+}
+#transaction-history-common.search-conditions-panel--closed {
+  display: none !important;
+}
+#transaction-history-common.search-conditions-panel--open {
+  display: flex !important;
+}
+.search-conditions-panel-drag-handle {
+  flex-shrink: 0;
+  height: 1.5rem;
+  cursor: move;
+  background: var(--gray-100);
+  border-bottom: 1px solid var(--gray-300);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.search-conditions-panel-drag-handle::before {
+  content: "";
+  display: block;
+  width: 2rem;
+  height: 0.25rem;
+  margin: 0.5rem auto 0;
+  background: var(--gray-400);
+  border-radius: 2px;
+}
+#transaction-history-common.search-conditions-panel .view-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  margin-bottom: 0;
+}
+
 .transaction-history-search-accordion {
   border: 1px solid var(--gray-400);
   border-radius: var(--radius-md);
@@ -3140,6 +3192,10 @@
 
 .transaction-history-date-input {
   font-size: 0.75rem;
+}
+
+.transaction-history-amount-input {
+  text-align: right;
 }
 
 /* 日付ピッカー内の表示テキストにフォントサイズを効かせる（WebKit/Blink） */
@@ -4138,6 +4194,9 @@
 .schedule-view-toolbar-day-range.is-hidden {
   display: none;
 }
+.transaction-history-plan-status-row.is-hidden {
+  display: none;
+}
 .schedule-view-month-select {
   height: 40px;
   padding: 0 0.5rem;
@@ -4410,7 +4469,7 @@
 .schedule-view-head-col:nth-child(3) {
   width: 10rem;
   min-width: 10rem;
-  text-align: center;
+  text-align: left;
 }
 .schedule-view-head-col:nth-child(4) {
   width: 3.5rem;
@@ -4464,7 +4523,7 @@
   min-width: 10rem;
   max-width: 10rem;
   font-size: 0.75rem;
-  text-align: center;
+  text-align: left;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

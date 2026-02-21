@@ -317,3 +317,10 @@ export let scheduleFilterState: FilterState = defaultFilterState();
 export function setScheduleFilterState(partial: Partial<FilterState> | FilterState): void {
   Object.assign(scheduleFilterState, partial);
 }
+
+/** スケジュール画面でのみ使用する予定ステータス（計画中/完了/中止）。複数選択。 */
+export type SchedulePlanStatus = "planning" | "complete" | "canceled";
+export let schedulePlanStatuses: SchedulePlanStatus[] = ["planning"];
+export function setSchedulePlanStatuses(value: SchedulePlanStatus[]): void {
+  schedulePlanStatuses = value;
+}

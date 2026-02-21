@@ -121,8 +121,22 @@ export function showMainView(viewId: string): void {
     viewId === "transaction-history" || isTransactionHistorySubView || viewId === "schedule";
   const transactionHistoryCommon = document.getElementById("transaction-history-common");
   if (transactionHistoryCommon) {
-    transactionHistoryCommon.classList.toggle("main-view--hidden", !showSearchCommon);
-    transactionHistoryCommon.classList.toggle("is-schedule-search", viewId === "schedule");
+    if (showSearchCommon) {
+      transactionHistoryCommon.classList.remove("main-view--hidden");
+      transactionHistoryCommon.classList.add("search-conditions-panel", "search-conditions-panel--closed");
+      transactionHistoryCommon.classList.remove("search-conditions-panel--open");
+      transactionHistoryCommon.setAttribute("aria-hidden", "true");
+      transactionHistoryCommon.classList.toggle("is-schedule-search", viewId === "schedule");
+    } else {
+      transactionHistoryCommon.classList.add("main-view--hidden");
+      transactionHistoryCommon.classList.remove("search-conditions-panel", "search-conditions-panel--closed", "search-conditions-panel--open");
+    }
+  }
+  const planStatusRow = document.getElementById("transaction-history-plan-status-row");
+  if (planStatusRow) {
+    const showPlanStatus = viewId === "schedule";
+    planStatusRow.classList.toggle("is-hidden", !showPlanStatus);
+    planStatusRow.setAttribute("aria-hidden", showPlanStatus ? "false" : "true");
   }
   if (showSearchCommon) {
     const formViewId =
@@ -153,12 +167,12 @@ export function showMainView(viewId: string): void {
   const headerDefaultBtn = document.getElementById("header-default-btn");
   if (headerDefaultBtn) headerDefaultBtn.classList.toggle("is-visible", viewId === "design");
 
+  const showConditionsBtns =
+    viewId === "transaction-history" || isTransactionHistorySubView || viewId === "schedule";
+  const headerShowConditionsBtn = document.getElementById("transaction-history-show-conditions-btn");
+  if (headerShowConditionsBtn) headerShowConditionsBtn.classList.toggle("is-visible", showConditionsBtns);
   const headerResetConditionsBtn = document.getElementById("transaction-history-reset-conditions-btn");
-  if (headerResetConditionsBtn)
-    headerResetConditionsBtn.classList.toggle(
-      "is-visible",
-      viewId === "transaction-history" || isTransactionHistorySubView || viewId === "schedule"
-    );
+  if (headerResetConditionsBtn) headerResetConditionsBtn.classList.toggle("is-visible", showConditionsBtns);
 
   const headerTransactionEntrySubmit = document.getElementById("header-transaction-entry-submit");
   if (headerTransactionEntrySubmit) headerTransactionEntrySubmit.classList.toggle("is-visible", viewId === "transaction-entry");
