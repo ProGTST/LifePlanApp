@@ -3362,9 +3362,32 @@
 .transaction-history-tabs-row-right {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   flex: 1;
   min-width: 0;
   min-height: 40px;
+  font-size: 1.25rem;
+  line-height: 1.5;
+  color: var(--color-view-fg, #1a1a1a);
+  gap: 1rem;
+}
+
+.transaction-history-summary-right-item {
+  white-space: nowrap;
+}
+
+.transaction-history-summary-right-value {
+  font-weight: 700;
+}
+
+/* 実績率50％以下：残高差の金額と実績率の割合を赤文字 */
+.transaction-history-tabs-row-right.transaction-history-summary-right--rate-low .transaction-history-summary-right-value {
+  color: var(--danger, #c00);
+}
+
+/* 実績率101％以上：残高差の金額と実績率の割合を青文字 */
+.transaction-history-tabs-row-right.transaction-history-summary-right--rate-high .transaction-history-summary-right-value {
+  color: #0066cc;
 }
 
 .transaction-history-tabs-row.is-nav-visible .transaction-history-tabs-row-center {
@@ -3458,7 +3481,12 @@
   display: none;
 }
 
-/* 週単位ビュー：週ブロックを横並び */
+/* 週単位ビュー：週ブロックを横並び（ブロックとフッターで幅を揃えるため変数で統一） */
+.transaction-history-weekly-blocks,
+.transaction-history-week-footers {
+  --transaction-history-week-column-width: 13.5rem;
+}
+
 .transaction-history-weekly-blocks {
   display: flex;
   flex-wrap: nowrap;
@@ -3470,12 +3498,38 @@
 
 .transaction-history-week-block {
   flex: 0 0 auto;
-  min-width: 12rem;
-  max-width: 18rem;
+  width: var(--transaction-history-week-column-width);
+  min-width: var(--transaction-history-week-column-width);
+  max-width: var(--transaction-history-week-column-width);
+  box-sizing: border-box;
   border: 1px solid var(--gray-400);
   border-radius: var(--radius-md);
   padding: 0;
   background: var(--color-view-bg, #ffffff);
+}
+
+/* transaction-history-weekly-blocks の下に配置。週ブロックと同順・同幅で週フッターを横並び */
+.transaction-history-week-footers {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.5rem;
+  min-width: 0;
+  margin-top: 0.5rem;
+  overflow-x: auto;
+}
+
+.transaction-history-week-footer {
+  flex: 0 0 auto;
+  width: var(--transaction-history-week-column-width);
+  min-width: var(--transaction-history-week-column-width);
+  max-width: var(--transaction-history-week-column-width);
+  box-sizing: border-box;
+  padding: 0.5rem;
+  border: 1px solid var(--gray-400);
+  border-radius: var(--radius-md);
+  background: var(--color-view-bg, #ffffff);
+  font-size: 0.875rem;
+  color: var(--color-view-fg, #1a1a1a);
 }
 
 .transaction-history-week-block-title {
@@ -3579,8 +3633,8 @@
 
 .transaction-history-week-block-item .transaction-history-week-block-name {
   flex: 1;
-  max-width: 65px;
-  max-width: 65px;
+  min-width: 76px;
+  max-width: 76px;
   overflow-wrap: break-word;
   word-break: break-word;
   color: var(--gray-700);
@@ -3588,8 +3642,8 @@
 
 .transaction-history-week-block-item .transaction-history-week-block-amount {
   flex-shrink: 0;
-  min-width: 50px;
-  max-width: 50px;
+  min-width: 60px;
+  max-width: 60px;
   overflow-wrap: break-word;
   word-break: break-word;
   font-weight: 500;
@@ -4037,10 +4091,6 @@
 
 .transaction-history-calendar-day--clickable {
   cursor: pointer;
-}
-
-.transaction-history-calendar-day--clickable:hover {
-  background: var(--gray-100);
 }
 
 .transaction-history-calendar-day--today {

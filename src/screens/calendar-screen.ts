@@ -677,8 +677,10 @@ function renderCharts(ym: string): void {
  */
 function renderWeeklyPanel(): void {
   const container = document.getElementById("transaction-history-weekly-blocks");
+  const footersContainer = document.getElementById("transaction-history-week-footers");
   if (!container) return;
   container.innerHTML = "";
+  if (footersContainer) footersContainer.innerHTML = "";
   const m = selectedCalendarYM.match(/^(\d{4})-(\d{2})$/);
   if (!m) return;
   const year = parseInt(m[1], 10);
@@ -823,11 +825,8 @@ function renderWeeklyPanel(): void {
     }
     block.appendChild(list);
 
-    const footer = document.createElement("div");
-    footer.className = "transaction-history-week-block-footer";
-    footer.setAttribute("role", "group");
-    footer.setAttribute("aria-label", "週合計");
-    const addFooterSection = (
+    const appendFooterSection = (
+      parent: HTMLElement,
       sectionLabel: string,
       income: number,
       expense: number,
@@ -836,7 +835,7 @@ function renderWeeklyPanel(): void {
       const sectionTitle = document.createElement("div");
       sectionTitle.className = "transaction-history-week-block-footer-section-title";
       sectionTitle.textContent = sectionLabel;
-      footer.appendChild(sectionTitle);
+      parent.appendChild(sectionTitle);
       const footerRow = document.createElement("div");
       footerRow.className = "transaction-history-week-block-footer-row";
       const incomeCell = document.createElement("div");
@@ -855,12 +854,21 @@ function renderWeeklyPanel(): void {
       footerRow.appendChild(incomeCell);
       footerRow.appendChild(expenseCell);
       footerRow.appendChild(balanceCell);
-      footer.appendChild(footerRow);
+      parent.appendChild(footerRow);
     };
-    addFooterSection("予定", planIncome, planExpense, planBalance);
-    addFooterSection("実績", actualIncome, actualExpense, actualBalance);
-    block.appendChild(footer);
+
     container.appendChild(block);
+
+    // transaction-history-week-footers 内に transaction-history-week-footer を1つずつ追加（週ブロックと同順）
+    if (footersContainer) {
+      const weekFooter = document.createElement("div");
+      weekFooter.className = "transaction-history-week-footer";
+      weekFooter.setAttribute("role", "group");
+      weekFooter.setAttribute("aria-label", "週合計");
+      appendFooterSection(weekFooter, "予定", planIncome, planExpense, planBalance);
+      appendFooterSection(weekFooter, "実績", actualIncome, actualExpense, actualBalance);
+      footersContainer.appendChild(weekFooter);
+    }
   }
 }
 
@@ -1042,6 +1050,53 @@ function renderCalendarPanel(): void {
   panel?.appendChild(footer);
 }
 
+/**
+ * 月カレンダー・週カレンダー右上ブロック（transaction-history-tabs-row-right）に残高差・実績率を表示する。
+ * 残高差 = 実績の総合計(実績収入-実績支出) - 予定の総合計(予定収入-予定支出)
+ * 実績率 = 実績の総合計 / 予定の総合計 * 100（予定の総合計が0のときは「—」）
+ */
+function renderCalendarSummaryRight(): void {
+  const rightEl = document.querySelector(".transaction-history-tabs-row-right");
+  if (!rightEl) return;
+  const ym = selectedCalendarYM?.match(/^(\d{4})-(\d{2})$/);
+  if (!ym) {
+    rightEl.textContent = "";
+    return;
+  }
+  const year = parseInt(ym[1], 10);
+  const month = parseInt(ym[2], 10);
+  const { planIncome, planExpense, actualIncome, actualExpense } = getCalendarMonthTotals(year, month);
+  const planTotal = planIncome - planExpense;
+  const actualTotal = actualIncome - actualExpense;
+  const balanceDiff = actualTotal - planTotal;
+  const rate =
+    planTotal !== 0 ? (actualTotal / planTotal) * 100 : null;
+  const rateText = rate !== null ? `${Math.round(rate)}%` : "—";
+  rightEl.innerHTML = "";
+  rightEl.classList.remove("transaction-history-summary-right--rate-low", "transaction-history-summary-right--rate-high");
+  if (rate !== null && rate <= 50) {
+    rightEl.classList.add("transaction-history-summary-right--rate-low");
+  } else if (rate !== null && rate >= 101) {
+    rightEl.classList.add("transaction-history-summary-right--rate-high");
+  }
+  const diffSpan = document.createElement("span");
+  diffSpan.className = "transaction-history-summary-right-item";
+  diffSpan.appendChild(document.createTextNode("残高差 "));
+  const diffValue = document.createElement("span");
+  diffValue.className = "transaction-history-summary-right-value";
+  diffValue.textContent = balanceDiff.toLocaleString();
+  diffSpan.appendChild(diffValue);
+  rightEl.appendChild(diffSpan);
+  const rateSpan = document.createElement("span");
+  rateSpan.className = "transaction-history-summary-right-item";
+  rateSpan.appendChild(document.createTextNode("実績率 "));
+  const rateValue = document.createElement("span");
+  rateValue.className = "transaction-history-summary-right-value";
+  rateValue.textContent = rateText;
+  rateSpan.appendChild(rateValue);
+  rightEl.appendChild(rateSpan);
+}
+
 // ---------------------------------------------------------------------------
 // タブ切替
 // ---------------------------------------------------------------------------
@@ -1068,10 +1123,12 @@ function switchTab(tabId: string): void {
 
   const tabsRow = document.querySelector(".transaction-history-tabs-row");
   const centerWrap = document.querySelector(".transaction-history-tabs-row-center");
+  const rightWrap = document.querySelector(".transaction-history-tabs-row-right");
   const ymInput = document.getElementById("transaction-history-calendar-ym") as HTMLInputElement;
   const isNavVisible = tabId === "weekly" || tabId === "calendar";
   tabsRow?.classList.toggle("is-nav-visible", isNavVisible);
   if (centerWrap) centerWrap.setAttribute("aria-hidden", isNavVisible ? "false" : "true");
+  if (rightWrap) rightWrap.setAttribute("aria-hidden", isNavVisible ? "false" : "true");
   if (isNavVisible && ymInput) {
     if (!selectedCalendarYM) {
       const now = new Date();
@@ -1081,6 +1138,9 @@ function switchTab(tabId: string): void {
     if (tabId === "weekly") renderWeeklyPanel();
     else if (tabId === "calendar") renderCalendarPanel();
     renderCharts(selectedCalendarYM);
+    renderCalendarSummaryRight();
+  } else if (rightWrap) {
+    rightWrap.textContent = "";
   }
 }
 
@@ -1093,9 +1153,11 @@ export function refreshCalendarView(): void {
   if (tab === "weekly") {
     renderWeeklyPanel();
     if (selectedCalendarYM) renderCharts(selectedCalendarYM);
+    renderCalendarSummaryRight();
   } else if (tab === "calendar") {
     renderCalendarPanel();
     if (selectedCalendarYM) renderCharts(selectedCalendarYM);
+    renderCalendarSummaryRight();
   }
 }
 
@@ -1113,11 +1175,21 @@ function loadAndShowCalendar(forceReloadFromCsv = false): void {
     } else {
       const activeTab = document.querySelector(".transaction-history-tab.is-active") as HTMLButtonElement | undefined;
       if (activeTab?.dataset.tab === "weekly") {
+        if (!selectedCalendarYM) {
+          const now = new Date();
+          selectedCalendarYM = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+        }
         renderWeeklyPanel();
         if (selectedCalendarYM) renderCharts(selectedCalendarYM);
+        renderCalendarSummaryRight();
       } else if (activeTab?.dataset.tab === "calendar") {
+        if (!selectedCalendarYM) {
+          const now = new Date();
+          selectedCalendarYM = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+        }
         renderCalendarPanel();
         if (selectedCalendarYM) renderCharts(selectedCalendarYM);
+        renderCalendarSummaryRight();
       }
     }
   });
@@ -1150,7 +1222,10 @@ export function initCalendarView(): void {
     const tab = tabList?.dataset.tab;
     if (tab === "weekly") renderWeeklyPanel();
     else if (tab === "calendar") renderCalendarPanel();
-    if (tab === "weekly" || tab === "calendar") renderCharts(ym);
+    if (tab === "weekly" || tab === "calendar") {
+      renderCharts(ym);
+      renderCalendarSummaryRight();
+    }
   }
   calendarPrev?.addEventListener("click", () => {
     if (!selectedCalendarYM) return;
