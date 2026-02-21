@@ -565,6 +565,21 @@
   max-width: 32rem;
 }
 
+/* システム画面（仮） */
+.system-view-placeholder {
+  padding: 1.5rem 0;
+}
+.system-view-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 0;
+}
+.system-view-message {
+  color: var(--gray-600);
+  font-size: 0.9375rem;
+}
+
 .calendar-view-message {
   margin: 0 0 1rem;
   color: var(--color-view-fg, #1a1a1a);

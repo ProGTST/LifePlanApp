@@ -31,6 +31,7 @@ import { initCategoryView } from "./screens/category-screen";
 import { initTagView } from "./screens/tag-screen";
 import { initProfileView } from "./screens/profile-screen";
 import { initDesignView } from "./screens/design-screen";
+import { initSystemView } from "./screens/system-screen";
 import { initTransactionSearchForm } from "./utils/transactionSearchForm";
 import { initTransactionHistoryView } from "./screens/transaction-history-screen";
 import { initCalendarView } from "./screens/calendar-screen";
@@ -50,6 +51,7 @@ function initAppScreen(): void {
   initTagView();
   initProfileView();
   initDesignView();
+  initSystemView();
   initTransactionSearchForm();
   initTransactionHistoryView();
   initCalendarView();
@@ -94,6 +96,7 @@ function initAppScreen(): void {
       MASTER_LIST_VIEW_IDS.includes(currentView as (typeof MASTER_LIST_VIEW_IDS)[number]) ||
       currentView === "profile" ||
       currentView === "design" ||
+      currentView === "system" ||
       currentView === "schedule" ||
       isTransactionView;
     if (!canGoBack) return;

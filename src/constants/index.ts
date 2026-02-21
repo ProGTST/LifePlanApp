@@ -32,6 +32,7 @@ export const VIEW_TITLES: Record<string, string> = {
   tag: "タグ",
   profile: "プロフィール",
   design: "デザイン",
+  system: "システム",
 };
 
 /** 一覧・追加ボタン・フッター「戻る」を表示するビュー（勘定・カテゴリー・タグ） */

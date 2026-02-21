@@ -605,6 +605,18 @@
               </div>
             </div>
 
+            <!-- ビュー: システム（仮画面） -->
+            <div id="view-system" class="main-view main-view--hidden" data-view="system">
+              <div class="view-body view-body--form">
+                <div class="system-view-placeholder">
+                  <div class="system-view-actions">
+                    <button type="button" class="btn-primary" id="system-monthly-aggregate-btn">月別集計</button>
+                    <span id="system-view-message" class="system-view-message" aria-live="polite"></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <!-- ビュー: デザイン（カラーパレット） -->
             <div id="view-design" class="main-view main-view--hidden" data-view="design">
               <div class="design-view-layout">
@@ -897,6 +909,7 @@
             <ul class="sidebar-settings-list">
               <li><button type="button" class="sidebar-settings-item" data-view="profile">プロフィール</button></li>
               <li><button type="button" class="sidebar-settings-item" data-view="design">デザイン</button></li>
+              <li><button type="button" class="sidebar-settings-item" data-view="system">システム</button></li>
             </ul>
           </div>
         </aside>

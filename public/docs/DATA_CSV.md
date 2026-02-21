@@ -37,6 +37,63 @@ LifePlanGant で扱う収支・タグ・勘定項目のデータは、`data/` �
 
 ---
 
+## ファイル一覧
+
+| ファイル | テーブル名 | 説明 |
+|----------|------------|------|
+| `data/COLOR_PALETTE.csv` | COLOR_PALETTE | カラーパレット（ユーザー別色設定） |
+| `data/USER.csv` | USER | ユーザーマスタ |
+| `data/ACCOUNT.csv` | ACCOUNT | 勘定項目マスタ |
+| `data/ACCOUNT_PERMISSION.csv` | ACCOUNT_PERMISSION | 勘定項目参照権限 |
+| `data/ACCOUNT_HISTORY.csv` | ACCOUNT_HISTORY | 勘定項目履歴 |
+| `data/CATEGORY.csv` | CATEGORY | カテゴリマスタ（収入・支出の分類） |
+| `data/TAG.csv` | TAG | タグマスタ |
+| `data/TAG_MANAGEMENT.csv` | TAG_MANAGEMENT | 収支とタグの対応 |
+| `data/TRANSACTION.csv` | TRANSACTION | 収支（計画・実績） |
+| `data/TRANSACTION_MANAGEMENT.csv` | TRANSACTION_MANAGEMENT | 取引予定と取引実績の紐付け |
+| `data/TRANSACTION_MONTHLY.csv` | TRANSACTION_MONTHLY | 取引データの月別集計 |
+
+---
+
+## カラーパレットテーブル（COLOR_PALETTE）
+
+**ファイル**: `data/COLOR_PALETTE.csv`
+
+ユーザーごとに複数のパレットを登録でき、SEQ_NO で採番してパレットを選べるようにするマスタです。
+
+| 列名 | 説明 | 備考 |
+|------|------|------|
+| USER_ID | ユーザーID | USER.ID への参照 |
+| SEQ_NO | 連番 | ユーザーごとに 1 から採番。同一ユーザー内で一意 |
+| VERSION | 楽観的ロック用 | 初期値 0。更新時に 1 増やす |
+| REGIST_DATETIME | 登録日時 | 共通 |
+| REGIST_USER | 登録ユーザーID | USER.ID への参照 |
+| UPDATE_DATETIME | 更新日時 | 共通 |
+| UPDATE_USER | 更新ユーザーID | USER.ID への参照 |
+| MENUBAR_BG | メニューバーの背景色 | 例: #2c2c2e |
+| MENUBAR_FG | メニューバーの文字色 | 例: #fff |
+| HEADER_BG | ヘッダー領域の背景色 | 例: #fff |
+| HEADER_FG | ヘッダー領域の文字色 | 例: #1a1a1a |
+| MAIN_BG | メインコンテンツ領域の背景色 | 例: #f0f2f5 |
+| MAIN_FG | メインコンテンツ領域の文字色 | 例: #1a1a1a |
+| VIEW_BG | ビュー領域（一覧・フォーム等）の背景色 | 例: #fff |
+| VIEW_FG | ビュー領域の文字色 | 例: #1a1a1a |
+| FOOTER_BG | フッター領域の背景色 | 例: #fff |
+| FOOTER_FG | フッター領域の文字色 | 例: #666 |
+| BUTTON_BG | ボタンの背景色 | 例: #646cff |
+| BUTTON_FG | ボタンの文字色 | 例: #fff |
+| BASE_BG | サイドバーメニュー等の背景色 | 例: #fff |
+| BASE_FG | サイドバーメニュー等の文字色 | 例: #333 |
+| ACCENT_BG | 強調背景色（選択中メニュー等） | 例: #646cff |
+| ACCENT_FG | 強調文字色（選択中メニュー等） | 例: #fff |
+
+**一意制約**
+- **(USER_ID, SEQ_NO)** は一意。同一ユーザー内で SEQ_NO が重複しない。ユーザーごとに複数パレットを持てるが、SEQ_NO で区別する。
+
+※ 色は空欄の場合はアプリのデフォルトを使用。必要に応じて列を追加して管理します。
+
+---
+
 ## 1. ユーザーテーブル（USER）
 
 **ファイル**: `data/USER.csv`
@@ -60,74 +117,80 @@ LifePlanGant で扱う収支・タグ・勘定項目のデータは、`data/` �
 
 ---
 
-## 2. タグテーブル（TAG）
+## 2. 勘定項目テーブル（ACCOUNT）
 
-**ファイル**: `data/TAG.csv`
+**ファイル**: `data/ACCOUNT.csv`
 
-収支に付与するタグのマスタです。
+現金・口座・カードなど、収支の発生元・発生先を表すマスタです。
 
 | 列名 | 説明 | 備考 |
 |------|------|------|
-| ID | タグの一意識別子 | 数値。他テーブルから参照される |
+| ID | 勘定項目の一意識別子 | 数値。TRANSACTION.ACCOUNT_ID_IN / ACCOUNT_ID_OUT から参照 |
 | VERSION | 楽観的ロック用 | 初期値 0。更新時に 1 増やす |
 | REGIST_DATETIME | 登録日時 | 共通 |
 | REGIST_USER | 登録ユーザーID | USER.ID への参照 |
 | UPDATE_DATETIME | 更新日時 | 共通 |
 | UPDATE_USER | 更新ユーザーID | USER.ID への参照 |
-| TAG_NAME | タグの表示名 | 例: 食費, 交通費, 娯楽 |
+| USER_ID | ユーザーID | USER.ID への参照。ユーザーごとに勘定項目を管理 |
+| ACCOUNT_NAME | 勘定項目名 | 例: 現金, 銀行口座, クレジットカード |
 | COLOR | 色 | 例: #ff0000 やカラーコード。任意。一覧・ピッカーで変更可 |
 | ICON_PATH | アイコンパス | 例: /icon/custom/xxx.svg。任意。一覧・ピッカーで変更可 |
-| SORT_ORDER | 表示順 | 同テーブル内の並び順（数値）。ドラッグで変更可 |
+| BALANCE | 残高 | 初期値 0。数値。勘定の残高を保持 |
+| SORT_ORDER | 表示順 | ユーザー内の並び順（数値）。ドラッグで変更可 |
 
 **一意制約**
 - **ID** は一意。
 
+**残高の整合性（ACCOUNT.BALANCE と ACCOUNT_HISTORY）**
+- **ACCOUNT.BALANCE は、当該勘定の ACCOUNT_HISTORY の最新レコード（同一 ACCOUNT_ID で TRANSACTION_ID が最も新しい取引時点）の BALANCE と一致すること**を仕様とする。実績取引の登録・更新・削除時に、勘定残高を増減させると同時に ACCOUNT_HISTORY に履歴を追加し、ACCOUNT.BALANCE を更新する。
+- 取引削除時は、当該取引による残高変動を巻き戻す（逆方向の変動を ACCOUNT に反映し、ACCOUNT_HISTORY に TRANSACTION_STATUS = `delete` のレコードを追加する）。再計算が必要な場合は、当該勘定の ACCOUNT_HISTORY を TRANSACTION_ID 順にたどって残高を再構築できるようにする。
+
 ---
 
-## 3. タグ管理テーブル（TAG_MANAGEMENT）
+## 3. 勘定項目参照権限テーブル（ACCOUNT_PERMISSION）
 
-**ファイル**: `data/TAG_MANAGEMENT.csv`
+**ファイル**: `data/ACCOUNT_PERMISSION.csv`
 
-「どの収支（TRANSACTION）にどのタグ（TAG）が付いているか」を表す中間テーブルです。  
-1件の収支に複数タグを付けられます。
+どのユーザーがどの勘定項目を参照・編集できるかを表すテーブルです。
 
 | 列名 | 説明 | 備考 |
 |------|------|------|
 | ID | 一意識別子 | 数値 |
 | VERSION | 楽観的ロック用 | 初期値 0。更新時に 1 増やす |
 | REGIST_DATETIME | 登録日時 | 共通 |
-| REGIST_USER | 登録ユーザーID | USER.ID への参照 |
+| REGIST_USER | 登録ユーザーID | USER.ID |
 | UPDATE_DATETIME | 更新日時 | 共通 |
-| UPDATE_USER | 更新ユーザーID | USER.ID への参照 |
-| TRANSACTION_ID | 収支ID | TRANSACTION.ID への参照 |
-| TAG_ID | タグID | TAG.ID への参照 |
+| UPDATE_USER | 更新ユーザーID | USER.ID |
+| ACCOUNT_ID | 勘定項目ID | ACCOUNT.ID |
+| USER_ID | 参照を許可するユーザーID | USER.ID |
+| PERMISSION_TYPE | 権限種別 | `view`（参照） / `edit`（編集） |
 
 **一意制約**
-- **(TRANSACTION_ID, TAG_ID)** は一意。同一の「取引・タグ」の組み合わせは1行のみ登録する。アプリ側で重複登録しないようにする。
+- **(ACCOUNT_ID, USER_ID)** は一意。同一の「勘定・ユーザー」の組み合わせは1行のみ登録する。同一ユーザーに同一勘定の権限を複数回付与することはできない。アプリ側で重複登録しないようにする。
 
 ---
 
-## 4. 取引予定-実績紐付けテーブル（TRANSACTION_MANAGEMENT）
+## 4. 勘定項目履歴テーブル（ACCOUNT_HISTORY）
 
-**ファイル**: `data/TRANSACTION_MANAGEMENT.csv`
+**ファイル**: `data/ACCOUNT_HISTORY.csv`
 
-「どの取引予定（plan）にどの取引実績（actual）が紐づいているか」を表す中間テーブルです。  
-1件の取引予定に複数の取引実績を紐づけられます。
+勘定項目ごとの取引に紐づく残高履歴を表すテーブルです。取引の登録・更新・削除時の残高を記録します。
 
 | 列名 | 説明 | 備考 |
 |------|------|------|
-| ID | 一意識別子 | 数値 |
+| ID | 勘定項目履歴の一意識別子 | 数値 |
 | VERSION | 楽観的ロック用 | 初期値 0。更新時に 1 増やす |
-| REGIST_DATETIME | 登録日時 | 共通 |
-| REGIST_USER | 登録ユーザーID | USER.ID への参照 |
-| UPDATE_DATETIME | 更新日時 | 共通 |
-| UPDATE_USER | 更新ユーザーID | USER.ID への参照 |
-| TRAN_PLAN_ID | 取引予定ID | TRANSACTION.ID（PROJECT_TYPE=plan）への参照 |
-| TRAN_ACTUAL_ID | 取引実績ID | TRANSACTION.ID（PROJECT_TYPE=actual）への参照 |
+| REGIST_DATETIME | 登録日時 | 省略可 |
+| REGIST_USER | 登録ユーザーID | USER.ID への参照。省略可 |
+| UPDATE_DATETIME | 更新日時 | 省略可 |
+| UPDATE_USER | 更新ユーザーID | USER.ID への参照。省略可 |
+| ACCOUNT_ID | 勘定項目ID | ACCOUNT.ID への参照 |
+| TRANSACTION_ID | 取引ID | TRANSACTION.ID への参照 |
+| BALANCE | 残高 | 当該取引時点の勘定残高（数値） |
+| TRANSACTION_STATUS | 取引ステータス | `regist`（登録） / `update`（更新） / `delete`（削除） |
 
 **一意制約**
-- **(TRAN_PLAN_ID, TRAN_ACTUAL_ID)** は一意。同一の「予定・実績」ペアの重複登録は禁止。
-- **TRAN_ACTUAL_ID** は一意とする（1件の実績は1つの予定にのみ紐づける。同一実績を複数予定に紐づけることはできない）。アプリ側で強制する。
+- **ID** は一意。同一 (ACCOUNT_ID, TRANSACTION_ID) で複数レコードが存在し得るのは、同一取引の「更新」で複数回履歴が書かれる場合（regist → update など）。通常は「1取引1勘定あたり、登録・更新・削除それぞれで1レコード」を想定。同一取引の同一勘定に対する履歴は時系列で複数になる。
 
 ---
 
@@ -158,7 +221,54 @@ LifePlanGant で扱う収支・タグ・勘定項目のデータは、`data/` �
 
 ---
 
-## 6. 収支テーブル（TRANSACTION）
+## 6. タグテーブル（TAG）
+
+**ファイル**: `data/TAG.csv`
+
+収支に付与するタグのマスタです。
+
+| 列名 | 説明 | 備考 |
+|------|------|------|
+| ID | タグの一意識別子 | 数値。他テーブルから参照される |
+| VERSION | 楽観的ロック用 | 初期値 0。更新時に 1 増やす |
+| REGIST_DATETIME | 登録日時 | 共通 |
+| REGIST_USER | 登録ユーザーID | USER.ID への参照 |
+| UPDATE_DATETIME | 更新日時 | 共通 |
+| UPDATE_USER | 更新ユーザーID | USER.ID への参照 |
+| TAG_NAME | タグの表示名 | 例: 食費, 交通費, 娯楽 |
+| COLOR | 色 | 例: #ff0000 やカラーコード。任意。一覧・ピッカーで変更可 |
+| ICON_PATH | アイコンパス | 例: /icon/custom/xxx.svg。任意。一覧・ピッカーで変更可 |
+| SORT_ORDER | 表示順 | 同テーブル内の並び順（数値）。ドラッグで変更可 |
+
+**一意制約**
+- **ID** は一意。
+
+---
+
+## 7. タグ管理テーブル（TAG_MANAGEMENT）
+
+**ファイル**: `data/TAG_MANAGEMENT.csv`
+
+「どの収支（TRANSACTION）にどのタグ（TAG）が付いているか」を表す中間テーブルです。  
+1件の収支に複数タグを付けられます。
+
+| 列名 | 説明 | 備考 |
+|------|------|------|
+| ID | 一意識別子 | 数値 |
+| VERSION | 楽観的ロック用 | 初期値 0。更新時に 1 増やす |
+| REGIST_DATETIME | 登録日時 | 共通 |
+| REGIST_USER | 登録ユーザーID | USER.ID への参照 |
+| UPDATE_DATETIME | 更新日時 | 共通 |
+| UPDATE_USER | 更新ユーザーID | USER.ID への参照 |
+| TRANSACTION_ID | 収支ID | TRANSACTION.ID への参照 |
+| TAG_ID | タグID | TAG.ID への参照 |
+
+**一意制約**
+- **(TRANSACTION_ID, TAG_ID)** は一意。同一の「取引・タグ」の組み合わせは1行のみ登録する。アプリ側で重複登録しないようにする。
+
+---
+
+## 8. 収支テーブル（TRANSACTION）
 
 **ファイル**: `data/TRANSACTION.csv`
 
@@ -200,80 +310,51 @@ LifePlanGant で扱う収支・タグ・勘定項目のデータは、`data/` �
 
 ---
 
-## 7. 勘定項目テーブル（ACCOUNT）
+## 9. 取引予定-実績紐付けテーブル（TRANSACTION_MANAGEMENT）
 
-**ファイル**: `data/ACCOUNT.csv`
+**ファイル**: `data/TRANSACTION_MANAGEMENT.csv`
 
-現金・口座・カードなど、収支の発生元・発生先を表すマスタです。
-
-| 列名 | 説明 | 備考 |
-|------|------|------|
-| ID | 勘定項目の一意識別子 | 数値。TRANSACTION.ACCOUNT_ID_IN / ACCOUNT_ID_OUT から参照 |
-| VERSION | 楽観的ロック用 | 初期値 0。更新時に 1 増やす |
-| REGIST_DATETIME | 登録日時 | 共通 |
-| REGIST_USER | 登録ユーザーID | USER.ID への参照 |
-| UPDATE_DATETIME | 更新日時 | 共通 |
-| UPDATE_USER | 更新ユーザーID | USER.ID への参照 |
-| USER_ID | ユーザーID | USER.ID への参照。ユーザーごとに勘定項目を管理 |
-| ACCOUNT_NAME | 勘定項目名 | 例: 現金, 銀行口座, クレジットカード |
-| COLOR | 色 | 例: #ff0000 やカラーコード。任意。一覧・ピッカーで変更可 |
-| ICON_PATH | アイコンパス | 例: /icon/custom/xxx.svg。任意。一覧・ピッカーで変更可 |
-| BALANCE | 残高 | 初期値 0。数値。勘定の残高を保持 |
-| SORT_ORDER | 表示順 | ユーザー内の並び順（数値）。ドラッグで変更可 |
-
-**一意制約**
-- **ID** は一意。
-
-**残高の整合性（ACCOUNT.BALANCE と ACCOUNT_HISTORY）**
-- **ACCOUNT.BALANCE は、当該勘定の ACCOUNT_HISTORY の最新レコード（同一 ACCOUNT_ID で TRANSACTION_ID が最も新しい取引時点）の BALANCE と一致すること**を仕様とする。実績取引の登録・更新・削除時に、勘定残高を増減させると同時に ACCOUNT_HISTORY に履歴を追加し、ACCOUNT.BALANCE を更新する。
-- 取引削除時は、当該取引による残高変動を巻き戻す（逆方向の変動を ACCOUNT に反映し、ACCOUNT_HISTORY に TRANSACTION_STATUS = `delete` のレコードを追加する）。再計算が必要な場合は、当該勘定の ACCOUNT_HISTORY を TRANSACTION_ID 順にたどって残高を再構築できるようにする。
-
----
-
-## 8. 勘定項目参照権限テーブル（ACCOUNT_PERMISSION）
-
-**ファイル**: `data/ACCOUNT_PERMISSION.csv`
-
-どのユーザーがどの勘定項目を参照・編集できるかを表すテーブルです。
+「どの取引予定（plan）にどの取引実績（actual）が紐づいているか」を表す中間テーブルです。  
+1件の取引予定に複数の取引実績を紐づけられます。
 
 | 列名 | 説明 | 備考 |
 |------|------|------|
 | ID | 一意識別子 | 数値 |
 | VERSION | 楽観的ロック用 | 初期値 0。更新時に 1 増やす |
 | REGIST_DATETIME | 登録日時 | 共通 |
-| REGIST_USER | 登録ユーザーID | USER.ID |
+| REGIST_USER | 登録ユーザーID | USER.ID への参照 |
 | UPDATE_DATETIME | 更新日時 | 共通 |
-| UPDATE_USER | 更新ユーザーID | USER.ID |
-| ACCOUNT_ID | 勘定項目ID | ACCOUNT.ID |
-| USER_ID | 参照を許可するユーザーID | USER.ID |
-| PERMISSION_TYPE | 権限種別 | `view`（参照） / `edit`（編集） |
+| UPDATE_USER | 更新ユーザーID | USER.ID への参照 |
+| TRAN_PLAN_ID | 取引予定ID | TRANSACTION.ID（PROJECT_TYPE=plan）への参照 |
+| TRAN_ACTUAL_ID | 取引実績ID | TRANSACTION.ID（PROJECT_TYPE=actual）への参照 |
 
 **一意制約**
-- **(ACCOUNT_ID, USER_ID)** は一意。同一の「勘定・ユーザー」の組み合わせは1行のみ登録する。同一ユーザーに同一勘定の権限を複数回付与することはできない。アプリ側で重複登録しないようにする。
+- **(TRAN_PLAN_ID, TRAN_ACTUAL_ID)** は一意。同一の「予定・実績」ペアの重複登録は禁止。
+- **TRAN_ACTUAL_ID** は一意とする（1件の実績は1つの予定にのみ紐づける。同一実績を複数予定に紐づけることはできない）。アプリ側で強制する。
 
 ---
 
-## 9. 勘定項目履歴テーブル（ACCOUNT_HISTORY）
+## 10. 取引月別集計テーブル（TRANSACTION_MONTHLY）
 
-**ファイル**: `data/ACCOUNT_HISTORY.csv`
+**ファイル**: `data/TRANSACTION_MONTHLY.csv`
 
-勘定項目ごとの取引に紐づく残高履歴を表すテーブルです。取引の登録・更新・削除時の残高を記録します。
+取引データの月別集計を保持するテーブルです。全テーブル共通の ID・VERSION・監査項目に加え、集計結果を格納します。
 
 | 列名 | 説明 | 備考 |
 |------|------|------|
-| ID | 勘定項目履歴の一意識別子 | 数値 |
+| ID | 一意識別子 | 数値 |
 | VERSION | 楽観的ロック用 | 初期値 0。更新時に 1 増やす |
-| REGIST_DATETIME | 登録日時 | 省略可 |
-| REGIST_USER | 登録ユーザーID | USER.ID への参照。省略可 |
-| UPDATE_DATETIME | 更新日時 | 省略可 |
-| UPDATE_USER | 更新ユーザーID | USER.ID への参照。省略可 |
+| REGIST_DATETIME | 登録日時 | 共通 |
+| REGIST_USER | 登録ユーザーID | USER.ID への参照 |
+| UPDATE_DATETIME | 更新日時 | 共通 |
+| UPDATE_USER | 更新ユーザーID | USER.ID への参照 |
 | ACCOUNT_ID | 勘定項目ID | ACCOUNT.ID への参照 |
-| TRANSACTION_ID | 取引ID | TRANSACTION.ID への参照 |
-| BALANCE | 残高 | 当該取引時点の勘定残高（数値） |
-| TRANSACTION_STATUS | 取引ステータス | `regist`（登録） / `update`（更新） / `delete`（削除） |
-
-**一意制約**
-- **ID** は一意。同一 (ACCOUNT_ID, TRANSACTION_ID) で複数レコードが存在し得るのは、同一取引の「更新」で複数回履歴が書かれる場合（regist → update など）。通常は「1取引1勘定あたり、登録・更新・削除それぞれで1レコード」を想定。同一取引の同一勘定に対する履歴は時系列で複数になる。
+| PROJECT_TYPE | 計画 | 予定（plan）または実績（actual）の種別 |
+| YEAR | 年 | 集計対象年（数値） |
+| MONTH | 月 | 集計対象月（1～12） |
+| INCOME_TOTAL | 収入の合計 | 当該勘定・計画種別・年月の収入合計 |
+| EXPENSE_TOTAL | 支出合計 | 当該勘定・計画種別・年月の支出合計 |
+| BALANCE_TOTAL | 残高合計 | 収入合計－支出合計（または集計ルールに従う残高） |
 
 ---
 
@@ -297,62 +378,6 @@ TAG (1) ----< TAG_MANAGEMENT >---- (N) TRANSACTION
 - **TRANSACTION** と **TAG** は **TAG_MANAGEMENT** を通じて多対多。
 - **TRANSACTION**（予定）と **TRANSACTION**（実績）は **TRANSACTION_MANAGEMENT** を通じて、1件の予定に複数の実績を紐づけられる。
 - **CATEGORY** は PARENT_ID で親子関係を持てる（階層構造）。
-
----
-
-## ファイル一覧
-
-| ファイル | テーブル名 | 説明 |
-|----------|------------|------|
-| `data/USER.csv` | USER | ユーザーマスタ |
-| `data/TAG.csv` | TAG | タグマスタ |
-| `data/TAG_MANAGEMENT.csv` | TAG_MANAGEMENT | 収支とタグの対応 |
-| `data/TRANSACTION_MANAGEMENT.csv` | TRANSACTION_MANAGEMENT | 取引予定と取引実績の紐付け |
-| `data/CATEGORY.csv` | CATEGORY | カテゴリマスタ（収入・支出の分類） |
-| `data/TRANSACTION.csv` | TRANSACTION | 収支（計画・実績） |
-| `data/ACCOUNT.csv` | ACCOUNT | 勘定項目マスタ |
-| `data/ACCOUNT_PERMISSION.csv` | ACCOUNT_PERMISSION | 勘定項目参照権限 |
-| `data/ACCOUNT_HISTORY.csv` | ACCOUNT_HISTORY | 勘定項目履歴 |
-| `data/COLOR_PALETTE.csv` | COLOR_PALETTE | カラーパレット（ユーザー別色設定） |
-
----
-
-## カラーパレットテーブル（COLOR_PALETTE）
-
-**ファイル**: `data/COLOR_PALETTE.csv`
-
-ユーザーごとに複数のパレットを登録でき、SEQ_NO で採番してパレットを選べるようにするマスタです。
-
-| 列名 | 説明 | 備考 |
-|------|------|------|
-| USER_ID | ユーザーID | USER.ID への参照 |
-| SEQ_NO | 連番 | ユーザーごとに 1 から採番。同一ユーザー内で一意 |
-| VERSION | 楽観的ロック用 | 初期値 0。更新時に 1 増やす |
-| REGIST_DATETIME | 登録日時 | 共通 |
-| REGIST_USER | 登録ユーザーID | USER.ID への参照 |
-| UPDATE_DATETIME | 更新日時 | 共通 |
-| UPDATE_USER | 更新ユーザーID | USER.ID への参照 |
-| MENUBAR_BG | メニューバーの背景色 | 例: #2c2c2e |
-| MENUBAR_FG | メニューバーの文字色 | 例: #fff |
-| HEADER_BG | ヘッダー領域の背景色 | 例: #fff |
-| HEADER_FG | ヘッダー領域の文字色 | 例: #1a1a1a |
-| MAIN_BG | メインコンテンツ領域の背景色 | 例: #f0f2f5 |
-| MAIN_FG | メインコンテンツ領域の文字色 | 例: #1a1a1a |
-| VIEW_BG | ビュー領域（一覧・フォーム等）の背景色 | 例: #fff |
-| VIEW_FG | ビュー領域の文字色 | 例: #1a1a1a |
-| FOOTER_BG | フッター領域の背景色 | 例: #fff |
-| FOOTER_FG | フッター領域の文字色 | 例: #666 |
-| BUTTON_BG | ボタンの背景色 | 例: #646cff |
-| BUTTON_FG | ボタンの文字色 | 例: #fff |
-| BASE_BG | サイドバーメニュー等の背景色 | 例: #fff |
-| BASE_FG | サイドバーメニュー等の文字色 | 例: #333 |
-| ACCENT_BG | 強調背景色（選択中メニュー等） | 例: #646cff |
-| ACCENT_FG | 強調文字色（選択中メニュー等） | 例: #fff |
-
-**一意制約**
-- **(USER_ID, SEQ_NO)** は一意。同一ユーザー内で SEQ_NO が重複しない。ユーザーごとに複数パレットを持てるが、SEQ_NO で区別する。
-
-※ 色は空欄の場合はアプリのデフォルトを使用。必要に応じて列を追加して管理します。
 
 ---
 

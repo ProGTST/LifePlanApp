@@ -153,7 +153,7 @@ export function showMainView(viewId: string): void {
   if (menubarTitleEl) menubarTitleEl.textContent = VIEW_TITLES[viewId] ?? viewId;
 
   const showMasterTools = MASTER_LIST_VIEW_IDS.includes(viewId as (typeof MASTER_LIST_VIEW_IDS)[number]);
-  const showFooterNav = showMasterTools || viewId === "profile" || viewId === "design";
+  const showFooterNav = showMasterTools || viewId === "profile" || viewId === "design" || viewId === "system";
 
   const headerAddBtn = document.getElementById("header-add-btn");
   if (headerAddBtn) headerAddBtn.classList.toggle("is-visible", showMasterTools);
@@ -163,6 +163,7 @@ export function showMainView(viewId: string): void {
 
   const headerSaveBtn = document.getElementById("header-save-btn");
   if (headerSaveBtn) headerSaveBtn.classList.toggle("is-visible", viewId === "profile" || viewId === "design");
+  const isSystemView = viewId === "system";
 
   const headerDefaultBtn = document.getElementById("header-default-btn");
   if (headerDefaultBtn) headerDefaultBtn.classList.toggle("is-visible", viewId === "design");
@@ -200,7 +201,7 @@ export function showMainView(viewId: string): void {
     menubarProfileArea.setAttribute("aria-hidden", showProfile ? "false" : "true");
   }
 
-  const isProfileOrDesign = viewId === "profile" || viewId === "design";
+  const isProfileOrDesign = viewId === "profile" || viewId === "design" || isSystemView;
   const isMasterListOnly = showFooterNav && !isProfileOrDesign;
   const isTransactionView =
     viewId === "transaction-history" ||
