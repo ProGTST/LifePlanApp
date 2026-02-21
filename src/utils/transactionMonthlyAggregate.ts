@@ -230,9 +230,10 @@ export async function computeTransactionMonthlyRows(): Promise<ComputeMonthlyRes
 type ExistingMonthlyRow = Record<string, string>;
 
 /**
- * 既存の TRANSACTION_MONTHLY.csv を取得する。存在しない・エラー時は空の行配列を返す。
+ * TRANSACTION_MONTHLY.csv を取得する。存在しない・エラー時は空の行配列を返す。
+ * カレンダー残高推移グラフ等で利用する。
  */
-async function fetchExistingTransactionMonthly(): Promise<ExistingMonthlyRow[]> {
+export async function getTransactionMonthlyRows(): Promise<ExistingMonthlyRow[]> {
   try {
     const res = await fetchCsv("/data/TRANSACTION_MONTHLY.csv", CSV_NO_CACHE);
     if (!res.header.length || !res.rows.length) return [];
@@ -246,6 +247,13 @@ async function fetchExistingTransactionMonthly(): Promise<ExistingMonthlyRow[]> 
   } catch {
     return [];
   }
+}
+
+/**
+ * 既存の TRANSACTION_MONTHLY.csv を取得する。（saveTransactionMonthlyCsv 等の内部用）
+ */
+async function fetchExistingTransactionMonthly(): Promise<ExistingMonthlyRow[]> {
+  return getTransactionMonthlyRows();
 }
 
 /** 1行オブジェクトをヘッダー順の CSV 行文字列にする */
@@ -269,12 +277,10 @@ export async function saveTransactionMonthlyCsv(
 
   const existing = await fetchExistingTransactionMonthly();
   const accountIdsToReplace = new Set(rows.map((r) => (r.ACCOUNT_ID || "").trim()).filter(Boolean));
+  // 参照可能勘定の既存行はすべて削除し、今回の計算結果で置き換える（重複防止・整合性）。参照不可の勘定の行のみ保持。
   const kept =
     visibleAccountIds !== undefined
-      ? existing.filter((row) => {
-          const aid = (row.ACCOUNT_ID || "").trim();
-          return !visibleAccountIds.has(aid) || accountIdsToReplace.has(aid);
-        })
+      ? existing.filter((row) => !visibleAccountIds.has((row.ACCOUNT_ID || "").trim()))
       : existing.filter((row) => !accountIdsToReplace.has((row.ACCOUNT_ID || "").trim()));
 
   let nextId = 1;
@@ -345,7 +351,10 @@ export interface MonthlyDelta {
   expenseDelta: number;
 }
 
-/** 実績は TRANDATE_TO（未設定時 TRANDATE_FROM）の年月を1件返す。予定は getPlanOccurrenceDates の各発生日の年月を返す（重複除く）。 */
+/**
+ * 実績は TRANDATE_TO（未設定時 TRANDATE_FROM）の年月を1件返す。
+ * 予定は getPlanOccurrenceDates の各発生日ごとに年月を返す（同月に複数発生日があれば複数件＝金額×発生日の考慮）。
+ */
 function getYearMonthsForRow(row: TransactionRow): { year: string; month: string }[] {
   const projectType = (row.PROJECT_TYPE || "").toLowerCase();
   if (projectType === "actual") {
@@ -354,15 +363,7 @@ function getYearMonthsForRow(row: TransactionRow): { year: string; month: string
     return [{ year: dateStr.slice(0, 4), month: dateStr.slice(5, 7) }];
   }
   const dates = getPlanOccurrenceDates(row);
-  const set = new Set<string>();
-  const out: { year: string; month: string }[] = [];
-  for (const ymd of dates) {
-    const key = ymd.slice(0, 7);
-    if (set.has(key)) continue;
-    set.add(key);
-    out.push({ year: ymd.slice(0, 4), month: ymd.slice(5, 7) });
-  }
-  return out;
+  return dates.map((ymd) => ({ year: ymd.slice(0, 4), month: ymd.slice(5, 7) }));
 }
 
 /** 予定のフィルタ: 計画このみ / 中止・完了のみ / 全ステータス */

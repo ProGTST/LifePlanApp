@@ -7,6 +7,7 @@ import {
   setTransactionEntryReturnView,
   currentView,
   pushNavigation,
+  currentUserId,
   transactionList,
   tagManagementList,
   calendarFilterState,
@@ -21,6 +22,8 @@ import {
   loadTransactionData,
   getCategoryById,
   getRowPermissionType,
+  getAccountRows,
+  getPermissionRows,
 } from "../utils/transactionDataSync";
 import {
   updateTransactionHistoryTabLayout,
@@ -29,6 +32,7 @@ import {
 } from "../utils/transactionDataLayout";
 import { getCalendarFilteredList } from "../utils/transactionDataFilter";
 import { getPlanOccurrenceDates } from "../utils/planOccurrence";
+import { getTransactionMonthlyRows } from "../utils/transactionMonthlyAggregate";
 
 /**
  * カレンダー用の検索条件を返す（当画面用。state の calendarFilterState を参照）。
@@ -36,6 +40,18 @@ import { getPlanOccurrenceDates } from "../utils/planOccurrence";
  */
 function getCalendarFilterState() {
   return { ...calendarFilterState };
+}
+
+/** ログインユーザーが参照できる勘定 ID の Set（残高グラフの勘定プルダウン用） */
+function getVisibleAccountIdsForCharts(): Set<string> {
+  const ids = new Set<string>();
+  const me = currentUserId;
+  if (!me) return ids;
+  const accountRows = getAccountRows();
+  const permissionRows = getPermissionRows();
+  accountRows.filter((a) => a.USER_ID === me).forEach((a) => ids.add(a.ID));
+  permissionRows.filter((p) => p.USER_ID === me).forEach((p) => ids.add(p.ACCOUNT_ID));
+  return ids;
 }
 
 /**
@@ -476,15 +492,72 @@ function getChartDataForMonth(ym: string): {
   };
 }
 
+/**
+ * 指定月・指定勘定のグラフ用データ（日別の収入・支出）を集計する。残高推移グラフ用。
+ */
+function getChartDataForMonthByAccount(
+  ym: string,
+  accountId: string
+): { labels: string[]; planIncomeByDay: number[]; actualIncomeByDay: number[]; planExpenseByDay: number[]; actualExpenseByDay: number[] } {
+  const range = getMonthDateRange(ym);
+  if (!range || !accountId) {
+    return { labels: [], planIncomeByDay: [], actualIncomeByDay: [], planExpenseByDay: [], actualExpenseByDay: [] };
+  }
+  const { firstDay, lastDay, lastDate } = range;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const labels: string[] = [];
+  const planIncomeByDay: number[] = [];
+  const actualIncomeByDay: number[] = [];
+  const planExpenseByDay: number[] = [];
+  const actualExpenseByDay: number[] = [];
+  for (let d = 1; d <= lastDate; d++) {
+    labels.push(pad(d) + "日");
+    planIncomeByDay.push(0);
+    actualIncomeByDay.push(0);
+    planExpenseByDay.push(0);
+    actualExpenseByDay.push(0);
+  }
+  const filtered = getFilteredTransactionListForCalendar(ym).filter((row) => {
+    const inId = (row.ACCOUNT_ID_IN || "").trim();
+    const outId = (row.ACCOUNT_ID_OUT || "").trim();
+    return inId === accountId || outId === accountId;
+  });
+  for (const row of filtered) {
+    const { type, amount } = getTransactionTypeAndAmount(row);
+    const from = row.TRANDATE_FROM || "";
+    const to = row.TRANDATE_TO || "";
+
+    if (row.PROJECT_TYPE === "actual") {
+      const actualDate = getActualTargetDate(row);
+      if (!actualDate || actualDate < firstDay || actualDate > lastDay) continue;
+      const dayIdx = parseInt(actualDate.slice(8, 10), 10) - 1;
+      if (dayIdx < 0 || dayIdx >= labels.length) continue;
+      if (type === "income") actualIncomeByDay[dayIdx] += amount;
+      else if (type === "expense") actualExpenseByDay[dayIdx] += amount;
+      continue;
+    }
+    if (!from || !to) continue;
+    const occurrences = getPlanOccurrenceDates(row);
+    for (const d of occurrences) {
+      if (d < firstDay || d > lastDay) continue;
+      const dayIdx = parseInt(d.slice(8, 10), 10) - 1;
+      if (dayIdx < 0 || dayIdx >= labels.length) continue;
+      if (type === "income") planIncomeByDay[dayIdx] += amount;
+      else if (type === "expense") planExpenseByDay[dayIdx] += amount;
+    }
+  }
+  return { labels, planIncomeByDay, actualIncomeByDay, planExpenseByDay, actualExpenseByDay };
+}
+
 // ---------------------------------------------------------------------------
 // グラフ描画
 // ---------------------------------------------------------------------------
 
 /**
- * 選択年月のグラフ（収入差分・支出差分の棒/折れ線、カテゴリ別円グラフ）を描画する。
+ * 選択年月のグラフ（残高推移・収入差分・支出差分の棒/折れ線、カテゴリ別円グラフ）を描画する。
  * 初回のみ Chart.js にカスタムプラグイン（中心ラベル・ドーナツ穴）を登録する。
  */
-function renderCharts(ym: string): void {
+async function renderCharts(ym: string): Promise<void> {
   chartInstances.forEach((ch) => ch.destroy());
   chartInstances.length = 0;
   if (!ym || !/^\d{4}-\d{2}$/.test(ym)) return;
@@ -538,6 +611,99 @@ function renderCharts(ym: string): void {
       y: { title: { display: true, text: "金額" }, beginAtZero: false },
     },
   };
+
+  // 残高推移グラフ：TRANSACTION_MONTHLY から繰越を取得し、勘定別の予定・実績折れ線を描画
+  const balanceCanvas = document.getElementById("transaction-history-chart-balance") as HTMLCanvasElement | null;
+  const balanceSelect = document.getElementById("transaction-history-chart-balance-account") as HTMLSelectElement | null;
+  if (balanceCanvas && balanceSelect) {
+    const monthlyRows = await getTransactionMonthlyRows();
+    const visibleIds = getVisibleAccountIdsForCharts();
+    const accountRows = getAccountRows().filter((a) => visibleIds.has(a.ID));
+    const preserveId = balanceSelect.value && visibleIds.has(balanceSelect.value) ? balanceSelect.value : "";
+
+    balanceSelect.innerHTML = "";
+    for (const acc of accountRows) {
+      const opt = document.createElement("option");
+      opt.value = acc.ID;
+      opt.textContent = (acc.ACCOUNT_NAME || "").trim() || acc.ID;
+      balanceSelect.appendChild(opt);
+    }
+    if (preserveId) balanceSelect.value = preserveId;
+    else if (accountRows.length > 0) balanceSelect.value = accountRows[0].ID;
+
+    const selectedAccountId = balanceSelect.value || "";
+    if (selectedAccountId) {
+      let carryoverPlan = 0;
+      let carryoverActual = 0;
+      for (const row of monthlyRows) {
+        const aid = (row.ACCOUNT_ID || "").trim();
+        const py = (row.YEAR || "").trim();
+        const pm = (row.MONTH || "").trim().padStart(2, "0");
+        if (aid !== selectedAccountId || `${py}-${pm}` !== ym) continue;
+        const carry = parseFloat(String(row.CARRYOVER_TOTAL ?? "0")) || 0;
+        if ((row.PROJECT_TYPE || "").toLowerCase() === "plan") carryoverPlan = carry;
+        else if ((row.PROJECT_TYPE || "").toLowerCase() === "actual") carryoverActual = carry;
+      }
+      const accData = getChartDataForMonthByAccount(ym, selectedAccountId);
+      const planBalance: number[] = [];
+      const actualBalance: number[] = [];
+      let planCur = carryoverPlan;
+      let actualCur = carryoverActual;
+      for (let i = 0; i < accData.labels.length; i++) {
+        planCur += (accData.planIncomeByDay[i] || 0) - (accData.planExpenseByDay[i] || 0);
+        actualCur += (accData.actualIncomeByDay[i] || 0) - (accData.actualExpenseByDay[i] || 0);
+        planBalance.push(planCur);
+        actualBalance.push(actualCur);
+      }
+      const balanceChart = new Chart(balanceCanvas, {
+        type: "line",
+        data: {
+          labels: accData.labels,
+          datasets: [
+            {
+              label: "予定推移",
+              data: planBalance,
+              borderColor: "rgba(46, 125, 50, 0.8)",
+              backgroundColor: "transparent",
+              borderDash: [4, 2],
+              fill: false,
+              tension: 0.2,
+            },
+            {
+              label: "実績推移",
+              data: actualBalance,
+              borderColor: "rgb(46, 125, 50)",
+              backgroundColor: "rgba(46, 125, 50, 0.1)",
+              fill: false,
+              tension: 0.2,
+            },
+          ],
+        },
+        options: {
+          ...mixedOptions,
+          plugins: {
+            datalabels: {
+              display: (ctx) => {
+                const data = ctx.chart.data.datasets[ctx.datasetIndex].data as number[];
+                const i = ctx.dataIndex;
+                if (i === 0) return false;
+                const prev = data[i - 1];
+                const curr = data[i];
+                return prev !== curr;
+              },
+              formatter: (value: number) => (value === null || value === undefined ? "" : value.toLocaleString()),
+              color: "#333",
+              font: { size: 10 },
+              align: "top",
+              anchor: "end",
+            },
+          },
+        },
+      });
+      chartInstances.push(balanceChart);
+    }
+  }
+
   const incomeDiffCanvas = document.getElementById("transaction-history-chart-income-diff") as HTMLCanvasElement | null;
   if (incomeDiffCanvas) {
     const ch = new Chart(incomeDiffCanvas, {
@@ -1137,7 +1303,7 @@ function switchTab(tabId: string): void {
     ymInput.value = selectedCalendarYM;
     if (tabId === "weekly") renderWeeklyPanel();
     else if (tabId === "calendar") renderCalendarPanel();
-    renderCharts(selectedCalendarYM);
+    void renderCharts(selectedCalendarYM);
     renderCalendarSummaryRight();
   } else if (rightWrap) {
     rightWrap.textContent = "";
@@ -1152,11 +1318,11 @@ export function refreshCalendarView(): void {
   const tab = activeTab?.dataset.tab;
   if (tab === "weekly") {
     renderWeeklyPanel();
-    if (selectedCalendarYM) renderCharts(selectedCalendarYM);
+    if (selectedCalendarYM) void renderCharts(selectedCalendarYM);
     renderCalendarSummaryRight();
   } else if (tab === "calendar") {
     renderCalendarPanel();
-    if (selectedCalendarYM) renderCharts(selectedCalendarYM);
+    if (selectedCalendarYM) void renderCharts(selectedCalendarYM);
     renderCalendarSummaryRight();
   }
 }
@@ -1180,7 +1346,7 @@ function loadAndShowCalendar(forceReloadFromCsv = false): void {
           selectedCalendarYM = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
         }
         renderWeeklyPanel();
-        if (selectedCalendarYM) renderCharts(selectedCalendarYM);
+        if (selectedCalendarYM) void renderCharts(selectedCalendarYM);
         renderCalendarSummaryRight();
       } else if (activeTab?.dataset.tab === "calendar") {
         if (!selectedCalendarYM) {
@@ -1188,7 +1354,7 @@ function loadAndShowCalendar(forceReloadFromCsv = false): void {
           selectedCalendarYM = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
         }
         renderCalendarPanel();
-        if (selectedCalendarYM) renderCharts(selectedCalendarYM);
+        if (selectedCalendarYM) void renderCharts(selectedCalendarYM);
         renderCalendarSummaryRight();
       }
     }
@@ -1223,7 +1389,7 @@ export function initCalendarView(): void {
     if (tab === "weekly") renderWeeklyPanel();
     else if (tab === "calendar") renderCalendarPanel();
     if (tab === "weekly" || tab === "calendar") {
-      renderCharts(ym);
+      void renderCharts(ym);
       renderCalendarSummaryRight();
     }
   }
@@ -1242,5 +1408,10 @@ export function initCalendarView(): void {
   ymInput?.addEventListener("change", () => {
     const v = ymInput.value;
     if (v) applyCalendarYM(v);
+  });
+
+  const balanceAccountSelect = document.getElementById("transaction-history-chart-balance-account") as HTMLSelectElement | null;
+  balanceAccountSelect?.addEventListener("change", () => {
+    if (selectedCalendarYM) void renderCharts(selectedCalendarYM);
   });
 }

@@ -349,17 +349,25 @@
                 <section class="transaction-history-charts-section">
                     <h2 class="transaction-history-charts-title">収支グラフ</h2>
                     <div class="transaction-history-charts-grid">
+                      <figure class="transaction-history-chart-figure transaction-history-chart-figure--balance">
+                        <figcaption class="transaction-history-chart-caption">残高推移</figcaption>
+                        <div class="transaction-history-chart-balance-header">
+                          <label for="transaction-history-chart-balance-account" class="transaction-history-chart-balance-label">勘定</label>
+                          <select id="transaction-history-chart-balance-account" class="transaction-history-chart-balance-select" aria-label="勘定項目を選択"></select>
+                        </div>
+                        <div class="transaction-history-chart-wrap transaction-history-chart-wrap--diff"><canvas id="transaction-history-chart-balance" aria-label="残高推移の折れ線グラフ"></canvas></div>
+                      </figure>
                       <figure class="transaction-history-chart-figure transaction-history-chart-figure--diff">
-                        <figcaption class="transaction-history-chart-caption">1. 予定収入と実績収入の差分</figcaption>
+                        <figcaption class="transaction-history-chart-caption">予定収入と実績収入の差分</figcaption>
                         <div class="transaction-history-chart-wrap transaction-history-chart-wrap--diff"><canvas id="transaction-history-chart-income-diff" aria-label="予定収入と実績収入の差分チャート"></canvas></div>
                       </figure>
                       <figure class="transaction-history-chart-figure transaction-history-chart-figure--diff">
-                        <figcaption class="transaction-history-chart-caption">2. 予定支出と実績支出の差分</figcaption>
+                        <figcaption class="transaction-history-chart-caption">予定支出と実績支出の差分</figcaption>
                         <div class="transaction-history-chart-wrap transaction-history-chart-wrap--diff"><canvas id="transaction-history-chart-expense-diff" aria-label="予定支出と実績支出の差分チャート"></canvas></div>
                       </figure>
                       <div class="transaction-history-charts-row">
                         <figure class="transaction-history-chart-figure">
-                          <figcaption class="transaction-history-chart-caption">3. 予定収入のカテゴリー割合</figcaption>
+                          <figcaption class="transaction-history-chart-caption">予定収入のカテゴリー割合</figcaption>
                           <div class="transaction-history-chart-wrap"><canvas id="transaction-history-chart-plan-income-pie" aria-label="予定収入のカテゴリー割合円グラフ"></canvas></div>
                         </figure>
                         <figure class="transaction-history-chart-figure">
@@ -369,7 +377,7 @@
                       </div>
                       <div class="transaction-history-charts-row">
                         <figure class="transaction-history-chart-figure">
-                          <figcaption class="transaction-history-chart-caption">4. 予定支出のカテゴリー割合</figcaption>
+                          <figcaption class="transaction-history-chart-caption">予定支出のカテゴリー割合</figcaption>
                           <div class="transaction-history-chart-wrap"><canvas id="transaction-history-chart-plan-expense-pie" aria-label="予定支出のカテゴリー割合円グラフ"></canvas></div>
                         </figure>
                         <figure class="transaction-history-chart-figure">

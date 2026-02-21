@@ -625,6 +625,10 @@ function openScheduleOccurrencePopup(row: TransactionRow): void {
   if (cycleEl) cycleEl.textContent = formatCycleUnitForDisplay(row);
 
   const dates = getPlanOccurrenceDates(row);
+  const amount = parseFloat(String(row.AMOUNT ?? "0")) || 0;
+  const amountFmt =
+    amount === 0 ? "0" : amount.toLocaleString(undefined, { maximumFractionDigits: 0 });
+
   datesWrap.innerHTML = "";
   if (dates.length === 0) {
     const p = document.createElement("p");
@@ -632,15 +636,35 @@ function openScheduleOccurrencePopup(row: TransactionRow): void {
     p.textContent = "対象日がありません。";
     datesWrap.appendChild(p);
   } else {
-    const ul = document.createElement("ul");
-    ul.className = "schedule-occurrence-dates-list";
-    ul.setAttribute("aria-label", "対象日一覧");
+    const table = document.createElement("table");
+    table.className = "schedule-occurrence-dates-table";
+    table.setAttribute("aria-label", "対象日一覧");
+    const thead = document.createElement("thead");
+    const headerRow = document.createElement("tr");
+    const thDate = document.createElement("th");
+    thDate.scope = "col";
+    thDate.textContent = "取引予定日";
+    const thAmount = document.createElement("th");
+    thAmount.scope = "col";
+    thAmount.textContent = "金額";
+    headerRow.appendChild(thDate);
+    headerRow.appendChild(thAmount);
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+    const tbody = document.createElement("tbody");
     for (const d of dates) {
-      const li = document.createElement("li");
-      li.textContent = d.replace(/-/g, "/");
-      ul.appendChild(li);
+      const tr = document.createElement("tr");
+      const tdDate = document.createElement("td");
+      tdDate.textContent = d.replace(/-/g, "/");
+      const tdAmount = document.createElement("td");
+      tdAmount.textContent = amountFmt;
+      tdAmount.className = "schedule-occurrence-dates-amount";
+      tr.appendChild(tdDate);
+      tr.appendChild(tdAmount);
+      tbody.appendChild(tr);
     }
-    datesWrap.appendChild(ul);
+    table.appendChild(tbody);
+    datesWrap.appendChild(table);
   }
 
   openOverlay("schedule-occurrence-overlay");
@@ -728,7 +752,7 @@ function renderScheduleGrid(): void {
     ymFixed1.colSpan = 2;
     ymFixed1.className = "schedule-view-yearmonth-col schedule-view-yearmonth-col--fixed";
     yearMonthRow.appendChild(ymFixed1);
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 4; i++) {
       const th = document.createElement("th");
       th.scope = "col";
       th.className = "schedule-view-yearmonth-col schedule-view-yearmonth-col--fixed";
@@ -757,6 +781,7 @@ function renderScheduleGrid(): void {
   headRow.appendChild(kindTh);
   [
     { label: "取引名", ariaLabel: "取引名" },
+    { label: "金額", ariaLabel: "金額（予定金額×発生日数）" },
     { label: "取引日", ariaLabel: "取引日" },
     { label: "状況", ariaLabel: "状況" },
   ].forEach(({ label, ariaLabel }) => {
@@ -836,6 +861,26 @@ function renderScheduleGrid(): void {
         openTransactionEntryForPlan(row);
       }
     });
+    const amountTd = document.createElement("td");
+    amountTd.className = "schedule-col-amount schedule-cell--clickable";
+    amountTd.setAttribute("role", "button");
+    amountTd.tabIndex = 0;
+    const amount = parseFloat(String(row.AMOUNT ?? "0")) || 0;
+    const occurrenceDates = getPlanOccurrenceDates(row);
+    const amountTotal = amount * occurrenceDates.length;
+    amountTd.textContent =
+      amountTotal === 0 ? "0" : amountTotal.toLocaleString(undefined, { maximumFractionDigits: 0 });
+    amountTd.setAttribute(
+      "aria-label",
+      `金額：${amountTotal.toLocaleString()}（予定金額×発生日数）。収支記録を開く`
+    );
+    amountTd.addEventListener("click", () => openTransactionEntryForPlan(row));
+    amountTd.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        openTransactionEntryForPlan(row);
+      }
+    });
     const dateRangeTd = document.createElement("td");
     dateRangeTd.className = "schedule-col-date-range schedule-cell--clickable";
     dateRangeTd.setAttribute("role", "button");
@@ -883,6 +928,7 @@ function renderScheduleGrid(): void {
     tr.appendChild(typeTd);
     tr.appendChild(catTd);
     tr.appendChild(nameTd);
+    tr.appendChild(amountTd);
     tr.appendChild(dateRangeTd);
     tr.appendChild(statusTd);
     // 各日付列にセルを追加。対象日計算に基づき対象セルのみアクティブクラス・クリック可能。今日なら current クラス。実績の対象日には「実」アイコンを表示
