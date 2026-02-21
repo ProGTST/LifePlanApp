@@ -40,7 +40,7 @@
               <button type="button" class="btn-secondary btn-header-default" id="header-default-btn">デフォルトに戻す</button>
               <button type="button" class="btn-secondary" id="transaction-history-show-conditions-btn" aria-label="条件表示">条件表示</button>
               <button type="button" class="btn-secondary btn-header-refresh" id="transaction-history-reset-conditions-btn" aria-label="条件初期化">条件初期化</button>
-              <button type="button" class="btn-primary" id="header-transaction-entry-submit">保存</button>
+              <button type="button" class="btn-primary transaction-entry-submit--register" id="header-transaction-entry-submit" aria-label="登録">登録</button>
               <button type="button" class="btn-secondary" id="header-transaction-entry-copy-as-new">参照登録</button>
               <span id="transaction-entry-view-only-notice" class="transaction-entry-view-only-notice" aria-hidden="true">※参照のみのデータです</span>
               <button type="button" class="btn-secondary" id="header-transaction-entry-reset">初期化</button>
@@ -149,10 +149,10 @@
                   <div class="schedule-view-toolbar-left">
                     <label for="schedule-start-date" class="schedule-view-label">開始日</label>
                     <input type="date" id="schedule-start-date" class="schedule-view-date-input" aria-label="開始日" />
-                    <div class="schedule-view-unit" role="radiogroup" aria-label="表示単位">
-                      <label class="schedule-view-unit-option"><input type="radio" name="schedule-unit" value="day" checked /> 日単位</label>
-                      <label class="schedule-view-unit-option"><input type="radio" name="schedule-unit" value="week" /> 週単位</label>
-                      <label class="schedule-view-unit-option"><input type="radio" name="schedule-unit" value="month" /> 月単位</label>
+                    <div class="schedule-view-unit" role="group" aria-label="表示単位">
+                      <button type="button" class="schedule-view-unit-btn is-active" data-schedule-unit="day" aria-pressed="true">日単位</button>
+                      <button type="button" class="schedule-view-unit-btn" data-schedule-unit="week" aria-pressed="false">週単位</button>
+                      <button type="button" class="schedule-view-unit-btn" data-schedule-unit="month" aria-pressed="false">月単位</button>
                     </div>
                   </div>
                   <div class="schedule-view-toolbar-day-range is-hidden" id="schedule-day-range-wrap">
@@ -186,6 +186,7 @@
                       <option value="11">11ヶ月</option>
                       <option value="12">12ヶ月</option>
                     </select>
+                    <button type="button" class="btn-secondary schedule-view-scroll-reset-btn" id="schedule-scroll-reset-btn" aria-label="位置を戻す">位置を戻す</button>
                   </div>
                 </div>
                 <div class="schedule-view-grid-wrap">

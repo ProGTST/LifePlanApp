@@ -491,6 +491,24 @@
   filter: brightness(1.05);
 }
 
+/* 収支記録：新規時は登録（青）、修正時は更新（緑） */
+#app #header-transaction-entry-submit.transaction-entry-submit--register {
+  background-color: var(--color-button-bg, #2563eb);
+  color: var(--color-button-fg, #ffffff);
+  border: none;
+}
+#app #header-transaction-entry-submit.transaction-entry-submit--register:hover {
+  filter: brightness(1.05);
+}
+#app #header-transaction-entry-submit.transaction-entry-submit--update {
+  background-color: #16a34a;
+  color: #ffffff;
+  border: none;
+}
+#app #header-transaction-entry-submit.transaction-entry-submit--update:hover {
+  filter: brightness(1.05);
+}
+
 /* ----- メインコンテンツ ----- */
 .app-main {
   display: flex;
@@ -3652,18 +3670,86 @@
 /* 収支一覧テーブル：計画列（予/実アイコンのみ・ヘッダー名なし） */
 #transaction-history-table th:nth-child(3),
 #transaction-history-table td:nth-child(3) {
-  width: 22px;
-  min-width: 22px;
+  width: 3rem;
+  min-width: 3rem;
   box-sizing: border-box;
-  text-align: center;
+  text-align: left;
   padding-left: 0;
   padding-right: 0;
 }
 .transaction-history-plan-cell {
   vertical-align: middle;
 }
+.transaction-history-plan-cell-inner {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-wrap: nowrap;
+  min-height: 2.5rem;
+}
 .transaction-history-plan-cell .transaction-history-plan-icon {
   display: inline-flex;
+}
+
+/* 収支履歴・計画列：予定取引のステータスアイコン（計画中/完了/中止） */
+.transaction-history-plan-status-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border-radius: 4px;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+.transaction-history-plan-status-icon-inner {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  background-color: currentColor;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+}
+.transaction-history-plan-status-icon--planning {
+  background: var(--color-base-bg);
+  color: var(--color-base-fg);
+  border: 0.5px solid color-mix(in srgb, var(--color-base-fg) 50%, transparent);
+}
+.transaction-history-plan-status-icon--planning .transaction-history-plan-status-icon-inner {
+  -webkit-mask-image: url("/icon/angles-right-solid-full.svg");
+  mask-image: url("/icon/angles-right-solid-full.svg");
+}
+.transaction-history-plan-status-icon--planning-with-actual {
+  background: var(--color-accent-bg);
+  color: var(--color-accent-fg);
+  border: 0.5px solid color-mix(in srgb, var(--color-accent-bg) 75%, transparent);
+}
+.transaction-history-plan-status-icon--planning-with-actual .transaction-history-plan-status-icon-inner {
+  -webkit-mask-image: url("/icon/angles-right-solid-full.svg");
+  mask-image: url("/icon/angles-right-solid-full.svg");
+}
+.transaction-history-plan-status-icon--complete {
+  background: var(--color-accent-bg);
+  color: var(--color-accent-fg);
+  border: 0.5px solid color-mix(in srgb, var(--color-accent-bg) 75%, transparent);
+}
+.transaction-history-plan-status-icon--complete .transaction-history-plan-status-icon-inner {
+  -webkit-mask-image: url("/icon/check-solid-full.svg");
+  mask-image: url("/icon/check-solid-full.svg");
+}
+.transaction-history-plan-status-icon--canceled {
+  background: var(--gray-500, #6b7280);
+  color: #ffffff;
+  border: 0.5px solid var(--gray-500, #6b7280);
+}
+.transaction-history-plan-status-icon--canceled .transaction-history-plan-status-icon-inner {
+  -webkit-mask-image: url("/icon/xmark-solid-full.svg");
+  mask-image: url("/icon/xmark-solid-full.svg");
 }
 
 /* 収支一覧テーブル：金額列の幅を小さく・表示は折り返す */
@@ -4217,16 +4303,36 @@
   border-radius: var(--radius-md);
 }
 .schedule-view-unit {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-.schedule-view-unit-option {
   display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  font-size: 0.875rem;
+  align-items: stretch;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--color-base-bg);
+}
+/* #app button より優先：表示単位ボタン（高さ・padding は他ボタンと同一、未選択は BASE、選択中は ACCENT） */
+#app .schedule-view-unit-btn {
+  padding: 0.5rem 1rem;
+  font-size: 1rem;
+  border: 1px solid var(--gray-500);
+  background: transparent;
+  color: var(--color-base-fg);
   cursor: pointer;
+}
+#app .schedule-view-unit-btn:not(:last-child) {
+  border-right-width: 1px;
+}
+#app .schedule-view-unit-btn:hover:not(.is-active) {
+  background: var(--gray-100);
+}
+#app .schedule-view-unit-btn.is-active {
+  border-color: var(--color-accent-bg);
+  background: var(--color-accent-bg);
+  color: var(--color-accent-fg);
+}
+#app .schedule-view-unit-btn.is-active:hover {
+  background: var(--color-accent-bg);
+  color: var(--color-accent-fg);
+  opacity: 0.95;
 }
 .schedule-view-grid-wrap {
   flex: 1 1 0;
@@ -4535,12 +4641,13 @@
   text-align: center;
 }
 
-/* #app button より優先：実績状況ボタンは BASE/ACCENT で表示、高さ 22px */
+/* #app button より優先：状況ボタン（未着/進行中/完了/中止）、高さ 22px */
 #app .schedule-status-btn,
 .schedule-status-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  min-width: 2.5rem;
   height: 22px;
   min-height: 22px;
   padding: 0 0.25rem;
@@ -4552,19 +4659,29 @@
   white-space: nowrap;
   line-height: 1;
 }
-#app .schedule-status-btn--no-actual {
+#app .schedule-status-btn--not-started {
   background: var(--color-base-bg) !important;
   color: var(--color-base-fg) !important;
   border-color: color-mix(in srgb, var(--color-base-fg) 50%, transparent) !important;
 }
-#app .schedule-status-btn--has-actual {
+#app .schedule-status-btn--in-progress {
   background: var(--color-accent-bg) !important;
   color: var(--color-accent-fg) !important;
   border-color: color-mix(in srgb, var(--color-accent-bg) 75%, transparent) !important;
   cursor: pointer;
 }
-#app .schedule-status-btn--has-actual:hover {
+#app .schedule-status-btn--in-progress:hover {
   opacity: 0.9;
+}
+#app .schedule-status-btn--complete {
+  background: var(--color-accent-bg) !important;
+  color: var(--color-accent-fg) !important;
+  border-color: color-mix(in srgb, var(--color-accent-bg) 75%, transparent) !important;
+}
+#app .schedule-status-btn--canceled {
+  background: var(--gray-500, #6b7280) !important;
+  color: #ffffff !important;
+  border-color: var(--gray-500, #6b7280) !important;
 }
 
 .schedule-view-yearmonth-col {
@@ -4609,6 +4726,10 @@
   color: var(--gray-600);
   font-weight: normal;
 }
+/* 種類・取引名・日付列のセル：クリックで収支記録画面へ遷移 */
+.schedule-cell--clickable {
+  cursor: pointer;
+}
 .schedule-view-date-cell {
   min-width: 2.25rem;
   width: 2.25rem;
@@ -4616,18 +4737,24 @@
   background: var(--color-view-bg, #fff);
 }
 .schedule-view-date-cell--active {
-  background: var(--color-button-bg);
-  opacity: 0.5;
+  background: color-mix(in srgb, var(--color-button-bg, #646cff) 50%, transparent);
 }
 .schedule-view-date-cell--current {
   background: color-mix(in srgb, var(--color-button-bg, #2563eb) 22%, transparent);
 }
 .schedule-view-date-cell--current.schedule-view-date-cell--active {
-  background: var(--color-button-bg);
-  opacity: 0.5;
+  background: color-mix(in srgb, var(--color-button-bg, #646cff) 50%, transparent);
+}
+/* 実績アイコンはインライン表示にし、セルは table-cell のまま（予定セルと同じサイズを保つ）。色はボタンと同じ */
+.schedule-view-date-cell .schedule-view-date-cell-actual-icon {
+  display: inline-flex;
+  vertical-align: middle;
+  background: var(--color-button-bg, #646cff);
+  color: var(--color-button-fg, #ffffff);
+  border-color: var(--color-button-bg, #646cff);
 }
 .schedule-view-table tbody tr:hover .schedule-view-date-cell--active {
-  opacity: 0.75;
+  background: color-mix(in srgb, var(--color-button-bg, #646cff) 75%, transparent);
 }
 /* 日付列のフォーカス時背景などに負けないよう、固定列のみフォーカス時背景を明示（優先順位を上げる） */
 .schedule-view-table tbody tr:focus-within td.schedule-col-type,

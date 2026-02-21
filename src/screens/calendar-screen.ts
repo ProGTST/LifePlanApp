@@ -4,6 +4,8 @@ import {
   setTransactionHistoryInitialTab,
   setTransactionEntryEditId,
   setTransactionEntryViewOnly,
+  setTransactionEntryReturnView,
+  currentView,
   pushNavigation,
   transactionList,
   tagManagementList,
@@ -802,6 +804,7 @@ function renderWeeklyPanel(): void {
           const permType = getRowPermissionType(row);
           setTransactionEntryViewOnly(permType === "view");
           setTransactionEntryEditId(row.ID);
+          setTransactionEntryReturnView(currentView === "transaction-history-weekly" || currentView === "transaction-history-calendar" ? currentView : "transaction-history-calendar");
           pushNavigation("transaction-entry");
           showMainView("transaction-entry");
           updateCurrentMenuItem();

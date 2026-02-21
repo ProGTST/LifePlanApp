@@ -286,6 +286,17 @@ export function setTransactionEntryViewOnly(viewOnly: boolean): void {
   transactionEntryViewOnly = viewOnly;
 }
 
+/** 収支記録画面から戻る先のビューID（更新・参照登録・削除後に遷移）。null のときは "transaction-history" に戻る。 */
+export let transactionEntryReturnView: string | null = null;
+/**
+ * 収支記録画面から戻る先のビュー ID を設定する。
+ * @param view - ビュー ID（"transaction-history" | "transaction-history-weekly" | "transaction-history-calendar" | "schedule"）または null
+ * @returns なし
+ */
+export function setTransactionEntryReturnView(view: string | null): void {
+  transactionEntryReturnView = view;
+}
+
 /** 検索条件の初期値。収支履歴・カレンダー・スケジュールの3画面で共通利用。 */
 const defaultFilterState = (): FilterState => ({
   filterStatus: ["plan", "actual"],

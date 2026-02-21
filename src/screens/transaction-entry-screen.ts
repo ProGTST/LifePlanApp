@@ -1,5 +1,5 @@
 import type { TransactionRow, CategoryRow, AccountRow, AccountPermissionRow, TagRow, TagManagementRow, TransactionManagementRow, AccountHistoryRow } from "../types";
-import { currentUserId, transactionEntryEditId, setTransactionEntryEditId, transactionEntryViewOnly, pushNavigation } from "../state";
+import { currentUserId, transactionEntryEditId, setTransactionEntryEditId, transactionEntryViewOnly, transactionEntryReturnView, setTransactionEntryReturnView, pushNavigation } from "../state";
 import { createIconWrap } from "../utils/iconWrap";
 import { openOverlay, closeOverlay } from "../utils/overlay";
 import { ICON_DEFAULT_COLOR } from "../constants/colorPresets";
@@ -1371,6 +1371,11 @@ function updateTransactionEntrySubmitButtonVisibility(): void {
   if (!btn) return;
   const showSubmit = !editingTransactionId || !transactionEntryViewOnly;
   btn.classList.toggle("is-visible", showSubmit);
+  const isNew = !editingTransactionId;
+  btn.textContent = isNew ? "登録" : "更新";
+  btn.classList.toggle("transaction-entry-submit--register", isNew);
+  btn.classList.toggle("transaction-entry-submit--update", !isNew);
+  btn.setAttribute("aria-label", isNew ? "登録" : "更新");
 }
 
 function updateTransactionEntryContinuousButtonVisibility(): void {
@@ -1880,8 +1885,10 @@ export function initTransactionEntryView(): void {
           alert(getVersionConflictMessage({ allowed: false, notFound: true }));
           editingTransactionId = null;
           resetForm();
-          pushNavigation("transaction-history");
-          showMainView("transaction-history");
+          const returnView = transactionEntryReturnView || "transaction-history";
+          setTransactionEntryReturnView(null);
+          pushNavigation(returnView);
+          showMainView(returnView);
           updateCurrentMenuItem();
           return;
         }
@@ -1948,8 +1955,10 @@ export function initTransactionEntryView(): void {
         await saveTransactionManagementCsv(txMgmtCsv);
         editingTransactionId = null;
         resetForm();
-        pushNavigation("transaction-history");
-        showMainView("transaction-history");
+        const returnView = transactionEntryReturnView || "transaction-history";
+        setTransactionEntryReturnView(null);
+        pushNavigation(returnView);
+        showMainView(returnView);
         updateCurrentMenuItem();
       } else {
         const { nextId, rows } = await fetchTransactionRows(true);
@@ -2001,8 +2010,10 @@ export function initTransactionEntryView(): void {
         }
         resetForm();
         if (!continuousMode) {
-          pushNavigation("transaction-history");
-          showMainView("transaction-history");
+          const returnView = transactionEntryReturnView || "transaction-history";
+          setTransactionEntryReturnView(null);
+          pushNavigation(returnView);
+          showMainView(returnView);
           updateCurrentMenuItem();
         }
       }
@@ -2037,8 +2048,10 @@ export function initTransactionEntryView(): void {
         alert(getVersionConflictMessage({ allowed: false, notFound: true }));
         editingTransactionId = null;
         resetForm();
-        pushNavigation("transaction-history");
-        showMainView("transaction-history");
+        const returnView = transactionEntryReturnView || "transaction-history";
+        setTransactionEntryReturnView(null);
+        pushNavigation(returnView);
+        showMainView(returnView);
         updateCurrentMenuItem();
         return;
       }
@@ -2088,8 +2101,10 @@ export function initTransactionEntryView(): void {
       updateTransactionEntryDeleteButtonVisibility();
       updateTransactionEntryCopyAsNewButtonVisibility();
       updateTransactionEntryContinuousButtonVisibility();
-      pushNavigation("transaction-history");
-      showMainView("transaction-history");
+      const returnView = transactionEntryReturnView || "transaction-history";
+      setTransactionEntryReturnView(null);
+      pushNavigation(returnView);
+      showMainView(returnView);
       updateCurrentMenuItem();
     } catch (err) {
       console.error(err);
@@ -2153,8 +2168,10 @@ export function initTransactionEntryView(): void {
       updateTransactionEntryDeleteButtonVisibility();
       updateTransactionEntrySubmitButtonVisibility();
       updateTransactionEntryCopyAsNewButtonVisibility();
-      pushNavigation("transaction-history");
-      showMainView("transaction-history");
+      const returnView = transactionEntryReturnView || "transaction-history";
+      setTransactionEntryReturnView(null);
+      pushNavigation(returnView);
+      showMainView(returnView);
       updateCurrentMenuItem();
     } catch (err) {
       console.error(err);

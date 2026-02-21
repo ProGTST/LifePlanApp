@@ -4,6 +4,7 @@ import {
   tagManagementList,
   setTransactionEntryEditId,
   setTransactionEntryViewOnly,
+  setTransactionEntryReturnView,
   pushNavigation,
   historyFilterState,
   setHistoryFilterState,
@@ -19,6 +20,7 @@ import {
   getAccountById,
   getRowPermissionType,
   getTagsForTransaction,
+  getActualIdsForPlanId,
 } from "../utils/transactionDataSync";
 import { updateTransactionHistoryTabLayout, registerFilterChangeCallback } from "../utils/transactionDataLayout";
 import { applyFilters, type FilterState } from "../utils/transactionDataFilter";
@@ -129,11 +131,37 @@ function renderList(): void {
     tdCat.appendChild(catWrap);
     const tdPlan = document.createElement("td");
     tdPlan.className = "transaction-history-plan-cell";
+    const planCellInner = document.createElement("div");
+    planCellInner.className = "transaction-history-plan-cell-inner";
     const planIcon = document.createElement("span");
     planIcon.className = "transaction-history-plan-icon";
     planIcon.setAttribute("aria-label", row.PROJECT_TYPE === "actual" ? "実績" : "予定");
     planIcon.textContent = row.PROJECT_TYPE === "actual" ? "実" : "予";
-    tdPlan.appendChild(planIcon);
+    planCellInner.appendChild(planIcon);
+    if (row.PROJECT_TYPE === "plan") {
+      const planStatus = (row.PLAN_STATUS || "planning").toLowerCase();
+      let statusClass =
+        planStatus === "complete" ? "complete" : planStatus === "canceled" ? "canceled" : "planning";
+      if (statusClass === "planning" && getActualIdsForPlanId(row.ID).length > 0) {
+        statusClass = "planning-with-actual";
+      }
+      const statusWrap = document.createElement("span");
+      statusWrap.className = `transaction-history-plan-status-icon transaction-history-plan-status-icon--${statusClass}`;
+      const statusLabel =
+        statusClass === "planning"
+          ? "計画中"
+          : statusClass === "planning-with-actual"
+            ? "計画中(実績あり)"
+            : statusClass === "complete"
+              ? "完了"
+              : "中止";
+      statusWrap.setAttribute("aria-label", statusLabel);
+      const statusInner = document.createElement("span");
+      statusInner.className = "transaction-history-plan-status-icon-inner";
+      statusWrap.appendChild(statusInner);
+      planCellInner.appendChild(statusWrap);
+    }
+    tdPlan.appendChild(planCellInner);
     // 金額・取引名・種別アイコン列
     const tdData = document.createElement("td");
     const dataWrap = document.createElement("div");
@@ -223,6 +251,7 @@ function renderList(): void {
       const permType = getRowPermissionType(row);
       setTransactionEntryViewOnly(permType === "view");
       setTransactionEntryEditId(row.ID);
+      setTransactionEntryReturnView("transaction-history");
       pushNavigation("transaction-entry");
       showMainView("transaction-entry");
       updateCurrentMenuItem();
