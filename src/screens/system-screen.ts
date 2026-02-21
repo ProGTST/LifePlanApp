@@ -9,7 +9,7 @@ export function initSystemView(): void {
   registerViewHandler("system", () => {});
 
   document.getElementById("system-physical-delete-btn")?.addEventListener("click", async () => {
-    if (!confirm("論理削除済み（削除フラグが立った）取引データをファイルから完全に削除します。よろしいですか？")) return;
+    if (!confirm("論理削除された取引データをファイルから完全に削除します。よろしいですか？")) return;
     const btn = document.getElementById("system-physical-delete-btn") as HTMLButtonElement;
     const msgEl = document.getElementById("system-view-message");
     if (btn) btn.disabled = true;
@@ -17,9 +17,7 @@ export function initSystemView(): void {
     try {
       const result = await runPhysicalDelete();
       if (msgEl) {
-        msgEl.textContent = result.deletedCount > 0
-          ? `物理削除しました。削除件数：${result.deletedCount}`
-          : "削除済みデータはありませんでした。";
+        msgEl.textContent = `物理削除しました。削除件数：${result.deletedCount}`;
       }
     } catch (e) {
       if (msgEl) {
