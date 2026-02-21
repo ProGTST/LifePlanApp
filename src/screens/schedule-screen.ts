@@ -13,7 +13,6 @@ import {
 import {
   loadTransactionData,
   getCategoryById,
-  getAccountById,
   getRowPermissionType,
   getActualIdsForPlanId,
   getActualTransactionsForPlan,
@@ -499,16 +498,22 @@ function openScheduleActualListPopup(planId: string, planName: string): void {
     p.textContent = "表示できる取引実績がありません。";
     bodyEl.appendChild(p);
   } else {
-    // 取引実績を表形式で描画
+    // 取引実績を表形式で描画（取引日・カテゴリ(アイコン)・取引名・金額）
     const table = document.createElement("table");
     table.className = "schedule-actual-list-table";
     table.setAttribute("aria-label", "取引実績一覧");
     const thead = document.createElement("thead");
     const headerRow = document.createElement("tr");
-    ["取引日", "取引名", "種類", "カテゴリ", "金額", "勘定（入）", "勘定（出）", "メモ"].forEach((text) => {
+    const headerLabels = ["取引日", "", "取引名", "金額"];
+    headerLabels.forEach((text, i) => {
       const th = document.createElement("th");
       th.scope = "col";
       th.textContent = text;
+      if (i === 1) {
+        th.setAttribute("aria-label", "カテゴリ");
+        th.className = "schedule-actual-list-th-category";
+      } else if (i === 2) th.className = "schedule-actual-list-th-name";
+      else if (i === 3) th.className = "schedule-actual-list-th-amount";
       headerRow.appendChild(th);
     });
     thead.appendChild(headerRow);
@@ -518,23 +523,27 @@ function openScheduleActualListPopup(planId: string, planName: string): void {
       const tr = document.createElement("tr");
       const from = (row.TRANDATE_FROM || "").slice(0, 10).replace(/-/g, "/");
       const cat = getCategoryById(row.CATEGORY_ID);
-      const accIn = row.ACCOUNT_ID_IN ? getAccountById(row.ACCOUNT_ID_IN) : undefined;
-      const accOut = row.ACCOUNT_ID_OUT ? getAccountById(row.ACCOUNT_ID_OUT) : undefined;
-      const cells = [
-        from,
-        (row.NAME || "").trim() || "—",
-        getTypeLabel(row.TRANSACTION_TYPE || "expense"),
-        cat?.CATEGORY_NAME || "—",
-        row.AMOUNT ? Number(row.AMOUNT).toLocaleString() : "—",
-        accIn?.ACCOUNT_NAME || "—",
-        accOut?.ACCOUNT_NAME || "—",
-        (row.MEMO || "").trim() || "—",
-      ];
-      cells.forEach((text) => {
-        const td = document.createElement("td");
-        td.textContent = text;
-        tr.appendChild(td);
-      });
+
+      const dateTd = document.createElement("td");
+      dateTd.textContent = from;
+      tr.appendChild(dateTd);
+
+      const catTd = document.createElement("td");
+      catTd.className = "schedule-actual-list-col-category";
+      const catIcon = createIconWrap(cat?.COLOR || ICON_DEFAULT_COLOR, cat?.ICON_PATH, { tag: "span" });
+      catTd.appendChild(catIcon);
+      tr.appendChild(catTd);
+
+      const nameTd = document.createElement("td");
+      nameTd.className = "schedule-actual-list-col-name";
+      nameTd.textContent = (row.NAME || "").trim() || "—";
+      tr.appendChild(nameTd);
+
+      const amountTd = document.createElement("td");
+      amountTd.textContent = row.AMOUNT ? Number(row.AMOUNT).toLocaleString() : "—";
+      amountTd.className = "schedule-actual-list-col-amount";
+      tr.appendChild(amountTd);
+
       tbody.appendChild(tr);
     }
     table.appendChild(tbody);
@@ -542,6 +551,99 @@ function openScheduleActualListPopup(planId: string, planName: string): void {
   }
 
   openOverlay("schedule-actual-list-overlay");
+}
+
+/** 頻度の表示ラベル */
+const FREQUENCY_LABELS: Record<string, string> = {
+  day: "1日",
+  daily: "日ごと",
+  weekly: "週ごと",
+  monthly: "月ごと",
+  yearly: "年ごと",
+};
+
+const WEEKDAY_CODES = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"] as const;
+const MONTHLY_SPECIAL_LABELS: Record<string, string> = {
+  "-1": "月末",
+  "-2": "月末の1日前",
+  "-3": "月末の2日前",
+};
+
+/**
+ * 繰り返し（CYCLE_UNIT）を表示用文字列に変換する。
+ */
+function formatCycleUnitForDisplay(row: TransactionRow): string {
+  const frequency = (row.FREQUENCY ?? "day").toLowerCase();
+  const cycleUnit = (row.CYCLE_UNIT ?? "").trim();
+  if (!cycleUnit || frequency === "day" || frequency === "daily") return "—";
+  if (frequency === "weekly") {
+    const codes = cycleUnit.split(",").map((s) => s.trim().toUpperCase());
+    return codes
+      .map((c) => {
+        const i = WEEKDAY_CODES.indexOf(c as (typeof WEEKDAY_CODES)[number]);
+        return i >= 0 ? WEEKDAY_JA[i] : c;
+      })
+      .join(", ");
+  }
+  if (frequency === "monthly") {
+    const parts = cycleUnit.split(",").map((s) => s.trim());
+    return parts
+      .map((p) => {
+        const n = parseInt(p, 10);
+        if (n >= 1 && n <= 31) return `${n}日`;
+        return MONTHLY_SPECIAL_LABELS[p] ?? p;
+      })
+      .join(", ");
+  }
+  if (frequency === "yearly") {
+    const parts = cycleUnit.split(",").map((s) => s.trim()).filter((s) => s.length === 4);
+    return parts.map((mmdd) => `${mmdd.slice(0, 2)}/${mmdd.slice(2, 4)}`).join(", ") || "—";
+  }
+  return cycleUnit || "—";
+}
+
+/**
+ * 予定取引の対象日一覧をポップアップで表示する。
+ * @param row - 予定の取引行
+ */
+function openScheduleOccurrencePopup(row: TransactionRow): void {
+  const titleEl = document.getElementById("schedule-occurrence-title");
+  const freqEl = document.getElementById("schedule-occurrence-frequency");
+  const intervalEl = document.getElementById("schedule-occurrence-interval");
+  const cycleEl = document.getElementById("schedule-occurrence-cycle");
+  const datesWrap = document.getElementById("schedule-occurrence-dates-wrap");
+  if (!datesWrap) return;
+
+  const planName = (row.NAME || "").trim();
+  if (titleEl) titleEl.textContent = planName ? `取引予定日：${planName}` : "取引予定日";
+
+  const frequency = (row.FREQUENCY ?? "day").toLowerCase();
+  const interval = Math.max(1, parseInt(row.INTERVAL ?? "1", 10) || 1);
+
+  if (freqEl) freqEl.textContent = FREQUENCY_LABELS[frequency] ?? frequency;
+  if (intervalEl) intervalEl.textContent = String(interval);
+  if (cycleEl) cycleEl.textContent = formatCycleUnitForDisplay(row);
+
+  const dates = getPlanOccurrenceDates(row);
+  datesWrap.innerHTML = "";
+  if (dates.length === 0) {
+    const p = document.createElement("p");
+    p.className = "schedule-occurrence-dates-empty";
+    p.textContent = "対象日がありません。";
+    datesWrap.appendChild(p);
+  } else {
+    const ul = document.createElement("ul");
+    ul.className = "schedule-occurrence-dates-list";
+    ul.setAttribute("aria-label", "対象日一覧");
+    for (const d of dates) {
+      const li = document.createElement("li");
+      li.textContent = d.replace(/-/g, "/");
+      ul.appendChild(li);
+    }
+    datesWrap.appendChild(ul);
+  }
+
+  openOverlay("schedule-occurrence-overlay");
 }
 
 /**
@@ -735,10 +837,20 @@ function renderScheduleGrid(): void {
       }
     });
     const dateRangeTd = document.createElement("td");
-    dateRangeTd.className = "schedule-col-date-range";
+    dateRangeTd.className = "schedule-col-date-range schedule-cell--clickable";
+    dateRangeTd.setAttribute("role", "button");
+    dateRangeTd.tabIndex = 0;
+    dateRangeTd.setAttribute("aria-label", "取引日。対象日一覧を表示");
     const fromFmt = from ? from.replace(/-/g, "/") : "";
     const toFmt = to ? to.replace(/-/g, "/") : "";
     dateRangeTd.textContent = from && to ? (from === to ? fromFmt : `${fromFmt}～${toFmt}`) : "—";
+    dateRangeTd.addEventListener("click", () => openScheduleOccurrencePopup(row));
+    dateRangeTd.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        openScheduleOccurrencePopup(row);
+      }
+    });
     const statusTd = document.createElement("td");
     statusTd.className = "schedule-col-status";
     const planStatus = (row.PLAN_STATUS || "planning").toLowerCase();
@@ -811,12 +923,124 @@ function renderScheduleGrid(): void {
     tbody.appendChild(tr);
   });
 
+  // 集計ビューを更新（表示データの予定・実績の合計と進捗率）
+  renderScheduleSummary(rows);
+
   // 日単位・週単位・月単位のときは開始日（または開始日を含む週・月）が固定列の横に来るようスクロール
   if (unit === "day" || unit === "week" || unit === "month") {
     requestAnimationFrame(() => {
       requestAnimationFrame(() => scrollScheduleGridToStartDate());
     });
   }
+}
+
+/**
+ * 表示中の予定行から集計（予定収入/支出/残高、実績収入/支出/残高、進捗率）を算出し、集計ビューに反映する。
+ * 予定収入・予定支出は SUM(予定金額 × 対象日の日数) で計算する。対象日の日数は planOccurrence の計算による。
+ * @param rows - 表示中の予定取引の配列（getPlanRows() の戻り値）
+ */
+function renderScheduleSummary(rows: TransactionRow[]): void {
+  let planIncome = 0;
+  let planExpense = 0;
+  for (const r of rows) {
+    const type = (r.TRANSACTION_TYPE || "").toLowerCase();
+    const amount = parseFloat(String(r.AMOUNT ?? "0")) || 0;
+    const occurrenceDates = getPlanOccurrenceDates(r);
+    const count = occurrenceDates.length;
+    if (type === "income") planIncome += amount * count;
+    else if (type === "expense") planExpense += amount * count;
+  }
+  const planBalance = planIncome - planExpense;
+
+  const actualRowsById = new Map<string, TransactionRow>();
+  for (const row of rows) {
+    const actuals = getActualTransactionsForPlan(row.ID);
+    for (const a of actuals) {
+      if (!actualRowsById.has(a.ID)) actualRowsById.set(a.ID, a);
+    }
+  }
+  let actualIncome = 0;
+  let actualExpense = 0;
+  for (const a of actualRowsById.values()) {
+    const type = (a.TRANSACTION_TYPE || "").toLowerCase();
+    const amount = parseFloat(String(a.AMOUNT ?? "0")) || 0;
+    if (type === "income") actualIncome += amount;
+    else if (type === "expense") actualExpense += amount;
+  }
+  const actualBalance = actualIncome - actualExpense;
+
+  const progressRateIncome =
+    planIncome !== 0 ? (actualIncome / planIncome) * 100 : null;
+  const progressRateExpense =
+    planExpense !== 0 ? ((planExpense - actualExpense) / planExpense) * 100 : null;
+  const progressRateBalance =
+    planBalance !== 0 ? (actualBalance / planBalance) * 100 : null;
+
+  const setSummary = (id: string, text: string): void => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = text;
+  };
+  const setSummaryClass = (id: string, color: "red" | "blue" | null): void => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.remove("schedule-summary-value--red", "schedule-summary-value--blue");
+    if (color === "red") el.classList.add("schedule-summary-value--red");
+    else if (color === "blue") el.classList.add("schedule-summary-value--blue");
+  };
+
+  setSummary("schedule-summary-plan-income", planIncome.toLocaleString());
+  setSummary("schedule-summary-plan-expense", planExpense.toLocaleString());
+  setSummary("schedule-summary-plan-balance", planBalance.toLocaleString());
+  setSummaryClass("schedule-summary-plan-balance", planBalance < 0 ? "red" : null);
+
+  setSummary("schedule-summary-actual-income", actualIncome.toLocaleString());
+  setSummary("schedule-summary-actual-expense", actualExpense.toLocaleString());
+  setSummary("schedule-summary-actual-balance", actualBalance.toLocaleString());
+
+  const incomeColor =
+    progressRateIncome !== null
+      ? progressRateIncome <= 50
+        ? "red"
+        : progressRateIncome >= 101
+          ? "blue"
+          : null
+      : null;
+  const expenseColor =
+    progressRateExpense !== null
+      ? progressRateExpense <= 50
+        ? "red"
+        : progressRateExpense >= 101
+          ? "blue"
+          : null
+      : null;
+  const balanceColor =
+    progressRateBalance !== null
+      ? progressRateBalance <= 50
+        ? "red"
+        : progressRateBalance >= 101
+          ? "blue"
+          : null
+      : null;
+
+  setSummaryClass("schedule-summary-actual-income", incomeColor);
+  setSummaryClass("schedule-summary-actual-expense", expenseColor);
+  setSummaryClass("schedule-summary-actual-balance", balanceColor);
+
+  setSummary(
+    "schedule-summary-progress-rate-income",
+    progressRateIncome !== null ? `${Math.round(progressRateIncome)}%` : "—"
+  );
+  setSummary(
+    "schedule-summary-progress-rate-expense",
+    progressRateExpense !== null ? `${Math.round(progressRateExpense)}%` : "—"
+  );
+  setSummary(
+    "schedule-summary-progress-rate-balance",
+    progressRateBalance !== null ? `${Math.round(progressRateBalance)}%` : "—"
+  );
+  setSummaryClass("schedule-summary-progress-rate-income", incomeColor);
+  setSummaryClass("schedule-summary-progress-rate-expense", expenseColor);
+  setSummaryClass("schedule-summary-progress-rate-balance", balanceColor);
 }
 
 /**
@@ -902,6 +1126,16 @@ export function initScheduleView(): void {
   document.getElementById("schedule-actual-list-overlay")?.addEventListener("click", (e) => {
     if (e.target instanceof HTMLElement && e.target.id === "schedule-actual-list-overlay") {
       closeOverlay("schedule-actual-list-overlay");
+    }
+  });
+
+  // 対象日一覧オーバーレイの閉じるボタンとオーバーレイ外クリック
+  document.getElementById("schedule-occurrence-close")?.addEventListener("click", () => {
+    closeOverlay("schedule-occurrence-overlay");
+  });
+  document.getElementById("schedule-occurrence-overlay")?.addEventListener("click", (e) => {
+    if (e.target instanceof HTMLElement && e.target.id === "schedule-occurrence-overlay") {
+      closeOverlay("schedule-occurrence-overlay");
     }
   });
 }

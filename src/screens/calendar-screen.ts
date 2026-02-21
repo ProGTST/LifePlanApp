@@ -850,7 +850,7 @@ function renderWeeklyPanel(): void {
         balance < 0
           ? "transaction-history-week-block-footer-amount transaction-history-week-block-footer-amount--negative"
           : "transaction-history-week-block-footer-amount";
-      balanceCell.innerHTML = `<span class="transaction-history-week-block-footer-label">総合計</span><span class="${balanceAmountClass}">${balance.toLocaleString()}</span>`;
+      balanceCell.innerHTML = `<span class="transaction-history-week-block-footer-label">残高</span><span class="${balanceAmountClass}">${balance.toLocaleString()}</span>`;
       footerRow.appendChild(incomeCell);
       footerRow.appendChild(expenseCell);
       footerRow.appendChild(balanceCell);
@@ -1042,7 +1042,7 @@ function renderCalendarPanel(): void {
     };
     addFooterLine("収入", income);
     addFooterLine("支出", expense);
-    addFooterLine("総合計", balance, true);
+    addFooterLine("残高", balance, true);
     footer.appendChild(footerRow);
   };
   addFooterSection("予定", planIncome, planExpense, planBalance);

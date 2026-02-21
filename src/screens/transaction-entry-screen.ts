@@ -531,9 +531,9 @@ function renderTagChosenDisplay(): void {
 }
 
 function openTransactionEntryTagModal(): void {
-  const listEl = document.getElementById("transaction-entry-tag-select-list");
-  if (!listEl) return;
-  listEl.innerHTML = "";
+  const listBody = document.getElementById("transaction-entry-tag-select-list-body");
+  if (!listBody) return;
+  listBody.innerHTML = "";
   const tagSortOrderNum = (v: string | undefined): number => (v !== undefined && v !== "" ? Number(v) : 0);
   const sorted = tagRows.slice().sort((a, b) => tagSortOrderNum(a.SORT_ORDER) - tagSortOrderNum(b.SORT_ORDER));
   for (const row of sorted) {
@@ -545,7 +545,7 @@ function openTransactionEntryTagModal(): void {
       row.ICON_PATH || "",
       selectedTagIds.has(row.ID)
     );
-    listEl.appendChild(item);
+    listBody.appendChild(item);
   }
   openOverlay("transaction-entry-tag-select-overlay");
 }
@@ -680,21 +680,23 @@ function renderActualSelectList(): void {
   const listEl = document.getElementById("transaction-entry-actual-select-list");
   const weekInput = document.getElementById("transaction-entry-actual-select-week-label") as HTMLInputElement | null;
   if (!listEl || !actualSelectWeek) return;
+  const listBody = document.getElementById("transaction-entry-actual-select-list-body");
+  if (!listBody) return;
   const { start: weekStart, end: weekEnd } = actualSelectWeek;
   if (weekInput) weekInput.value = weekStart;
   const inWeek = actualSelectAllRows.filter((r) => isDateInWeek((r.TRANDATE_FROM || "").slice(0, 10), weekStart, weekEnd));
   const sorted = inWeek.slice().sort((a, b) => (b.TRANDATE_FROM || "").localeCompare(a.TRANDATE_FROM || ""));
-  listEl.innerHTML = "";
+  listBody.innerHTML = "";
   if (sorted.length === 0) {
     // 週内に実績がなければ空メッセージのみ
     const emptyEl = document.createElement("p");
     emptyEl.className = "transaction-entry-actual-select-empty";
     emptyEl.textContent = "この週は取引実績がありません。";
-    listEl.appendChild(emptyEl);
+    listBody.appendChild(emptyEl);
   } else {
     for (const row of sorted) {
       const item = createActualSelectItemRow(row, selectedActualIds.has(row.ID));
-      listEl.appendChild(item);
+      listBody.appendChild(item);
     }
   }
 }

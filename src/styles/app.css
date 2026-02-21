@@ -1313,6 +1313,76 @@
   font-weight: 600;
 }
 
+/* 収支記録：タグ選択・取引実績選択モーダル（固定ヘッダー・最大高さ50vh） */
+#transaction-entry-tag-select-overlay .transaction-history-select-modal,
+#transaction-entry-actual-select-overlay .transaction-history-select-modal {
+  max-height: 50vh;
+  display: flex;
+  flex-direction: column;
+}
+#transaction-entry-tag-select-overlay .transaction-history-select-modal .transaction-history-select-title,
+#transaction-entry-actual-select-overlay .transaction-history-select-modal .transaction-history-select-title {
+  flex-shrink: 0;
+  margin-bottom: 0.5rem;
+}
+#transaction-entry-actual-select-overlay .transaction-history-select-modal .transaction-entry-actual-select-week-picker {
+  flex-shrink: 0;
+}
+#transaction-entry-tag-select-overlay .transaction-history-select-list,
+#transaction-entry-actual-select-overlay .transaction-history-select-list {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  max-height: none;
+  margin-bottom: 0.5rem;
+}
+/* タグ選択：リストヘッダー・スクロール領域 */
+.transaction-entry-tag-select-list-wrap {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+.transaction-entry-tag-select-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0;
+  flex-shrink: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--gray-600);
+  background: var(--gray-50);
+  border-bottom: 1px solid var(--gray-200);
+}
+.transaction-entry-tag-select-header-check {
+  width: var(--icon-size, 22px);
+  min-width: var(--icon-size, 22px);
+  flex-shrink: 0;
+}
+.transaction-entry-tag-select-header-icon {
+  width: 1.25rem;
+  min-width: 1.25rem;
+  flex-shrink: 0;
+}
+.transaction-entry-tag-select-header-name {
+  flex: 1;
+  min-width: 0;
+}
+.transaction-entry-tag-select-list-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+#transaction-entry-tag-select-overlay .transaction-history-select-actions,
+#transaction-entry-actual-select-overlay .transaction-history-select-actions {
+  flex-shrink: 0;
+}
+
 .transaction-history-category-select-tabs-row {
   margin-bottom: 0.75rem;
 }
@@ -1400,7 +1470,40 @@
   outline-offset: 2px;
 }
 
-#transaction-entry-actual-select-list .transaction-entry-actual-select-empty {
+/* 取引実績選択：リストヘッダー・スクロール領域 */
+.transaction-entry-actual-select-list-wrap {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+.transaction-entry-actual-select-header {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 8rem) 6.5rem 5rem;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0;
+  flex-shrink: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--gray-600);
+  background: var(--gray-50);
+  border-bottom: 1px solid var(--gray-200);
+}
+.transaction-entry-actual-select-header-amount {
+  text-align: right;
+  padding-right: 1rem;
+}
+.transaction-entry-actual-select-list-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+#transaction-entry-actual-select-list-body .transaction-entry-actual-select-empty {
   margin: 0;
   padding: 1.5rem 0.75rem;
   text-align: center;
@@ -4392,6 +4495,44 @@
   border-radius: var(--radius-md);
   background: var(--color-view-bg, #fff);
 }
+
+/* スケジュール集計ビュー（表示データの予定・実績合計と進捗率） */
+#schedule-summary-wrap.schedule-view-summary {
+  flex: 0 0 auto;
+  margin-top: 0.75rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius-md);
+  background: var(--gray-50);
+}
+.schedule-view-summary-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 2rem;
+  margin: 0;
+}
+.schedule-view-summary-item {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+.schedule-view-summary-item dt {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--gray-600);
+}
+.schedule-view-summary-item dd {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+#schedule-summary-wrap .schedule-summary-value--red {
+  color: #b91c1c;
+}
+#schedule-summary-wrap .schedule-summary-value--blue {
+  color: #1d4ed8;
+}
+
 /* ヘッダー2行を縦スクロールで固定 */
 .schedule-view-table thead tr:first-child th {
   position: sticky;
@@ -4826,7 +4967,7 @@
 /* スケジュール：取引実績確認ポップアップ */
 .schedule-actual-list-modal {
   max-width:  min(90vw, 720px);
-  max-height: 85vh;
+  max-height: 50vh;
   display: flex;
   flex-direction: column;
 }
@@ -4860,11 +5001,140 @@
   font-weight: 600;
   background: var(--gray-50);
 }
-.schedule-actual-list-table td:nth-child(5) {
+.schedule-actual-list-body .schedule-actual-list-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--gray-50);
+  box-shadow: 0 1px 0 var(--gray-200);
+}
+.schedule-actual-list-table th.schedule-actual-list-th-category {
+  width: 2.5rem;
+  min-width: 2.5rem;
+  max-width: 2.5rem;
+  padding-left: 0.25rem;
+  padding-right: 0.25rem;
+}
+.schedule-actual-list-table .schedule-actual-list-col-category {
+  width: 2.5rem;
+  min-width: 2.5rem;
+  max-width: 2.5rem;
+  text-align: center;
+  padding-left: 0.25rem;
+  padding-right: 0.25rem;
+}
+.schedule-actual-list-table .schedule-actual-list-col-category .category-icon-wrap,
+.schedule-actual-list-table .schedule-actual-list-col-category .icon-wrap {
+  display: inline-flex;
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  min-height: 22px;
+}
+.schedule-actual-list-table .schedule-actual-list-th-name,
+.schedule-actual-list-table .schedule-actual-list-col-name {
+  width: 8rem;
+  min-width: 8rem;
+  max-width: 8rem;
+}
+.schedule-actual-list-table .schedule-actual-list-th-amount,
+.schedule-actual-list-table .schedule-actual-list-col-amount {
+  width: 5rem;
+  min-width: 5rem;
   text-align: right;
 }
 .schedule-actual-list-actions {
   display: flex;
-  justify-content: flex-end;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+/* スケジュール：対象日一覧ポップアップ */
+.schedule-occurrence-modal {
+  max-width: min(90vw, 480px);
+  max-height: 50vh;
+  display: flex;
+  flex-direction: column;
+}
+.schedule-occurrence-title {
+  margin: 0 0 1rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+.schedule-occurrence-info {
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  background: var(--gray-50);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.schedule-occurrence-info-block {
+  margin: 0;
+}
+.schedule-occurrence-info-block-1 .schedule-occurrence-info-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 2rem;
+  margin: 0;
+}
+.schedule-occurrence-info-item {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+.schedule-occurrence-info-item dt {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--gray-600);
+}
+.schedule-occurrence-info-item dd {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+.schedule-occurrence-info-block-2 {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.schedule-occurrence-cycle-label {
+  font-size: 0.875rem;
+  color: var(--gray-600);
+  text-align: left;
+  margin: 0;
+}
+.schedule-occurrence-cycle-content {
+  font-size: 0.875rem;
+  font-weight: 500;
+  margin: 0;
+  text-align: left;
+}
+.schedule-occurrence-dates-wrap {
+  overflow: auto;
+  flex: 1;
+  min-height: 0;
+  margin-bottom: 1rem;
+  max-height: 50vh;
+}
+.schedule-occurrence-dates-empty {
+  margin: 0;
+  color: var(--gray-600);
+  font-size: 0.875rem;
+}
+.schedule-occurrence-dates-list {
+  margin: 0;
+  padding-left: 1.5rem;
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+.schedule-occurrence-dates-list li {
+  margin-bottom: 0.25rem;
+}
+.schedule-occurrence-actions {
+  display: flex;
+  justify-content: center;
   gap: 0.5rem;
 }

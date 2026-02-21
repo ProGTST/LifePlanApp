@@ -198,6 +198,19 @@
                     <tbody id="schedule-tbody"></tbody>
                   </table>
                 </div>
+                <div id="schedule-summary-wrap" class="schedule-view-summary" aria-label="表示データの集計">
+                  <dl class="schedule-view-summary-list">
+                    <div class="schedule-view-summary-item"><dt>予定収入</dt><dd id="schedule-summary-plan-income">0</dd></div>
+                    <div class="schedule-view-summary-item"><dt>予定支出</dt><dd id="schedule-summary-plan-expense">0</dd></div>
+                    <div class="schedule-view-summary-item"><dt>予定残高</dt><dd id="schedule-summary-plan-balance">0</dd></div>
+                    <div class="schedule-view-summary-item"><dt>実績収入</dt><dd id="schedule-summary-actual-income">0</dd></div>
+                    <div class="schedule-view-summary-item"><dt>実績支出</dt><dd id="schedule-summary-actual-expense">0</dd></div>
+                    <div class="schedule-view-summary-item"><dt>実績残高</dt><dd id="schedule-summary-actual-balance">0</dd></div>
+                    <div class="schedule-view-summary-item"><dt>進捗率(収入)</dt><dd id="schedule-summary-progress-rate-income">—</dd></div>
+                    <div class="schedule-view-summary-item"><dt>進捗率(支出)</dt><dd id="schedule-summary-progress-rate-expense">—</dd></div>
+                    <div class="schedule-view-summary-item"><dt>進捗率(残高)</dt><dd id="schedule-summary-progress-rate-balance">—</dd></div>
+                  </dl>
+                </div>
               </div>
             </div>
 
@@ -470,7 +483,16 @@
                         <input type="date" id="transaction-entry-actual-select-week-label" class="transaction-entry-actual-select-week-label" aria-label="週を選択">
                         <button type="button" class="transaction-entry-actual-select-week-next" aria-label="次の週">▶</button>
                       </div>
-                      <div id="transaction-entry-actual-select-list" class="transaction-history-select-list"></div>
+                      <div id="transaction-entry-actual-select-list" class="transaction-history-select-list transaction-entry-actual-select-list-wrap">
+                        <div class="transaction-entry-actual-select-header" role="presentation" aria-hidden="true">
+                          <span class="transaction-entry-actual-select-header-check"></span>
+                          <span class="transaction-entry-actual-select-header-icon"></span>
+                          <span class="transaction-entry-actual-select-header-name">取引名</span>
+                          <span class="transaction-entry-actual-select-header-date">取引日</span>
+                          <span class="transaction-entry-actual-select-header-amount">金額</span>
+                        </div>
+                        <div id="transaction-entry-actual-select-list-body" class="transaction-entry-actual-select-list-body"></div>
+                      </div>
                       <div class="transaction-history-select-actions">
                         <button type="button" class="btn-secondary" id="transaction-entry-actual-select-clear">全解除</button>
                         <button type="button" class="btn-primary" id="transaction-entry-actual-select-apply">設定</button>
@@ -480,7 +502,14 @@
                   <div id="transaction-entry-tag-select-overlay" class="modal-overlay" aria-hidden="true">
                     <div class="modal-content transaction-history-select-modal" role="dialog" aria-labelledby="transaction-entry-tag-select-title" aria-modal="true" style="--icon-check: url(/icon/circle-check-solid-full.svg);">
                       <h2 id="transaction-entry-tag-select-title" class="transaction-history-select-title">タグを選択</h2>
-                      <div id="transaction-entry-tag-select-list" class="transaction-history-select-list"></div>
+                      <div id="transaction-entry-tag-select-list" class="transaction-history-select-list transaction-entry-tag-select-list-wrap">
+                        <div class="transaction-entry-tag-select-header" role="presentation" aria-hidden="true">
+                          <span class="transaction-entry-tag-select-header-check"></span>
+                          <span class="transaction-entry-tag-select-header-icon"></span>
+                          <span class="transaction-entry-tag-select-header-name">タグ名</span>
+                        </div>
+                        <div id="transaction-entry-tag-select-list-body" class="transaction-entry-tag-select-list-body"></div>
+                      </div>
                       <div class="transaction-history-select-actions">
                         <button type="button" class="btn-secondary" id="transaction-entry-tag-select-clear">全解除</button>
                         <button type="button" class="btn-primary" id="transaction-entry-tag-select-apply">設定</button>
@@ -784,6 +813,29 @@
               <div id="schedule-actual-list-body" class="schedule-actual-list-body"></div>
               <div class="schedule-actual-list-actions">
                 <button type="button" class="btn-primary" id="schedule-actual-list-close">閉じる</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- スケジュール：対象日一覧ポップアップ -->
+          <div id="schedule-occurrence-overlay" class="modal-overlay" aria-hidden="true">
+            <div class="modal-content schedule-occurrence-modal" role="dialog" aria-labelledby="schedule-occurrence-title" aria-modal="true">
+              <h2 id="schedule-occurrence-title" class="schedule-occurrence-title">取引予定日</h2>
+              <div class="schedule-occurrence-info">
+                <div class="schedule-occurrence-info-block schedule-occurrence-info-block-1">
+                  <dl class="schedule-occurrence-info-list">
+                    <div class="schedule-occurrence-info-item"><dt>頻度</dt><dd id="schedule-occurrence-frequency">—</dd></div>
+                    <div class="schedule-occurrence-info-item"><dt>間隔</dt><dd id="schedule-occurrence-interval">—</dd></div>
+                  </dl>
+                </div>
+                <div class="schedule-occurrence-info-block schedule-occurrence-info-block-2">
+                  <div class="schedule-occurrence-cycle-label">繰り返し</div>
+                  <div id="schedule-occurrence-cycle" class="schedule-occurrence-cycle-content">—</div>
+                </div>
+              </div>
+              <div id="schedule-occurrence-dates-wrap" class="schedule-occurrence-dates-wrap"></div>
+              <div class="schedule-occurrence-actions">
+                <button type="button" class="btn-primary" id="schedule-occurrence-close">閉じる</button>
               </div>
             </div>
           </div>
