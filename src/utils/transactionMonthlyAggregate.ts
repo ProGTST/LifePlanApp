@@ -23,7 +23,7 @@ const TRANSACTION_MONTHLY_HEADER = [
   "INCOME_TOTAL",
   "EXPENSE_TOTAL",
   "BALANCE_TOTAL",
-  "CARRYOVER",
+  "CARRYOVER_TOTAL",
 ];
 
 function getVisibleAccountIds(
@@ -72,14 +72,16 @@ export interface MonthlyRow {
   INCOME_TOTAL: number;
   EXPENSE_TOTAL: number;
   BALANCE_TOTAL: number;
-  /** 繰越残高（初月は0。2月目以降は、対象月より前の月の直近 CARRYOVER ＋ 対象月 BALANCE_TOTAL の累計） */
-  CARRYOVER: number;
+  /** 繰越残高（初月は0。2月目以降は、対象月より前の月の直近 CARRYOVER_TOTAL ＋ 対象月 BALANCE_TOTAL の累計） */
+  CARRYOVER_TOTAL: number;
 }
 
 export interface ComputeMonthlyResult {
   rows: MonthlyRow[];
   /** 集計対象にした取引件数（TRANSACTION.csv の条件を満たした件数） */
   eligibleCount: number;
+  /** ログインユーザーの参照可能勘定 ID の Set（TRANSACTION_MONTHLY の整合性用） */
+  visibleAccountIds: Set<string>;
 }
 
 /**
@@ -191,11 +193,11 @@ export async function computeTransactionMonthlyRows(): Promise<ComputeMonthlyRes
       INCOME_TOTAL,
       EXPENSE_TOTAL,
       BALANCE_TOTAL,
-      CARRYOVER: 0,
+      CARRYOVER_TOTAL: 0,
     });
   }
 
-  // 同一 ACCOUNT_ID, PROJECT_TYPE 内で年月順に並べ、CARRYOVER を累計で設定（初月は0、以降は「直前までの CARRYOVER ＋ 当月 BALANCE_TOTAL」の累計）
+  // 同一 ACCOUNT_ID, PROJECT_TYPE 内で年月順に並べ、CARRYOVER_TOTAL を累計で設定（初月は0、以降は「直前までの CARRYOVER_TOTAL ＋ 当月 BALANCE_TOTAL」の累計）
   const groupKey = (r: MonthlyRow) => `${r.ACCOUNT_ID},${r.PROJECT_TYPE}`;
   const byGroup = new Map<string, MonthlyRow[]>();
   for (const r of rows) {
@@ -212,16 +214,16 @@ export async function computeTransactionMonthlyRows(): Promise<ComputeMonthlyRes
     for (let i = 0; i < list.length; i++) {
       const r = list[i];
       if (i === 0) {
-        r.CARRYOVER = 0;
+        r.CARRYOVER_TOTAL = 0;
         runningSum = r.BALANCE_TOTAL;
       } else {
         runningSum += r.BALANCE_TOTAL;
-        r.CARRYOVER = runningSum;
+        r.CARRYOVER_TOTAL = runningSum;
       }
     }
   }
 
-  return { rows, eligibleCount: eligible.length };
+  return { rows, eligibleCount: eligible.length, visibleAccountIds: visibleIds };
 }
 
 /** 既存の TRANSACTION_MONTHLY の1行（ヘッダーキーでアクセスするオブジェクト） */
@@ -253,17 +255,27 @@ function existingRowToCsvLine(row: ExistingMonthlyRow): string {
 
 /**
  * 月別集計結果を TRANSACTION_MONTHLY.csv に反映する。
- * 既存データのうち、今回集計対象の ACCOUNT_ID に該当する行は削除し、
- * ACCOUNT_ID, PROJECT_TYPE, YEAR, MONTH 単位の集計データを新規登録する。
+ * 既存データのうち、参照可能勘定で今回集計に含まれない ACCOUNT_ID の行は削除し（TRANSACTION に取引が無い勘定の月別データを除去）、
+ * 今回集計対象の ACCOUNT_ID に該当する行は置き換え、ACCOUNT_ID, PROJECT_TYPE, YEAR, MONTH 単位の集計データを登録する。
+ * @param visibleAccountIds - 指定時は、この勘定 ID に属さない既存行は保持。この勘定のうち rows に含まれないものは既存行も削除して整合性を取る。
  * @returns 保存後の TRANSACTION_MONTHLY の総行数（登録件数）
  */
-export async function saveTransactionMonthlyCsv(rows: MonthlyRow[]): Promise<number> {
+export async function saveTransactionMonthlyCsv(
+  rows: MonthlyRow[],
+  visibleAccountIds?: Set<string>
+): Promise<number> {
   const now = nowDatetime();
   const user = currentUserId || "";
 
   const existing = await fetchExistingTransactionMonthly();
   const accountIdsToReplace = new Set(rows.map((r) => (r.ACCOUNT_ID || "").trim()).filter(Boolean));
-  const kept = existing.filter((row) => !accountIdsToReplace.has((row.ACCOUNT_ID || "").trim()));
+  const kept =
+    visibleAccountIds !== undefined
+      ? existing.filter((row) => {
+          const aid = (row.ACCOUNT_ID || "").trim();
+          return !visibleAccountIds.has(aid) || accountIdsToReplace.has(aid);
+        })
+      : existing.filter((row) => !accountIdsToReplace.has((row.ACCOUNT_ID || "").trim()));
 
   let nextId = 1;
   for (const row of kept) {
@@ -294,7 +306,7 @@ export async function saveTransactionMonthlyCsv(rows: MonthlyRow[]): Promise<num
         String(r.INCOME_TOTAL),
         String(r.EXPENSE_TOTAL),
         String(r.BALANCE_TOTAL),
-        String(r.CARRYOVER),
+        String(r.CARRYOVER_TOTAL),
       ].join(","),
     });
   }
@@ -314,11 +326,11 @@ export interface MonthlyAggregationResult {
 
 /**
  * 月別集計を再計算し、TRANSACTION_MONTHLY.csv に保存する。
- * 表示用の resultCount は、参照可能勘定に紐づく今回の集計件数（rows.length）を返す。
+ * 参照可能勘定のうち TRANSACTION に取引が無い勘定の月別データは削除し、TRANSACTION に合わせて整合性を取る。
  */
 export async function runMonthlyAggregation(): Promise<MonthlyAggregationResult> {
-  const { rows, eligibleCount } = await computeTransactionMonthlyRows();
-  await saveTransactionMonthlyCsv(rows);
+  const { rows, eligibleCount, visibleAccountIds } = await computeTransactionMonthlyRows();
+  await saveTransactionMonthlyCsv(rows, visibleAccountIds);
   return { eligibleCount, resultCount: rows.length };
 }
 
@@ -427,10 +439,10 @@ export function buildMonthlyDeltasForRow(
 }
 
 /**
- * 月別集計にデルタを反映する（取得 or 新規作成 → 加算/減算 → BALANCE_TOTAL 更新 → 同一勘定・計画種別内で CARRYOVER を累計で再計算 → 保存）。
+ * 月別集計にデルタを反映する（取得 or 新規作成 → 加算/減算 → BALANCE_TOTAL 更新 → 同一勘定・計画種別内で CARRYOVER_TOTAL を累計で再計算 → 保存）。
+ * 参照可能勘定のうち TRANSACTION に取引が無い勘定の月別行は削除し、TRANSACTION に合わせて整合性を取る。
  */
 export async function applyTransactionMonthlyDeltas(deltas: MonthlyDelta[]): Promise<void> {
-  if (deltas.length === 0) return;
   const existing = await fetchExistingTransactionMonthly();
   const key = (r: { ACCOUNT_ID: string; PROJECT_TYPE: string; YEAR: string; MONTH: string }) =>
     `${(r.ACCOUNT_ID || "").trim()},${(r.PROJECT_TYPE || "").toLowerCase()},${(r.YEAR || "").trim()},${(r.MONTH || "").trim()}`;
@@ -440,6 +452,7 @@ export async function applyTransactionMonthlyDeltas(deltas: MonthlyDelta[]): Pro
     expense: number;
   };
   const map = new Map<string, RowState>();
+  const keysModified = new Set<string>();
   for (const row of existing) {
     const k = key(row as { ACCOUNT_ID: string; PROJECT_TYPE: string; YEAR: string; MONTH: string });
     const inc = parseFloat(String(row.INCOME_TOTAL ?? "0")) || 0;
@@ -448,6 +461,7 @@ export async function applyTransactionMonthlyDeltas(deltas: MonthlyDelta[]): Pro
   }
   for (const d of deltas) {
     const k = `${d.accountId},${d.projectType},${d.year},${d.month}`;
+    keysModified.add(k);
     let state = map.get(k);
     if (!state) {
       state = { existing: null, income: 0, expense: 0 };
@@ -457,7 +471,41 @@ export async function applyTransactionMonthlyDeltas(deltas: MonthlyDelta[]): Pro
     state.expense += d.expenseDelta;
   }
 
-  // 各キーの BALANCE_TOTAL を確定し、同一 ACCOUNT_ID, PROJECT_TYPE 内で年月順に CARRYOVER を累計で再計算
+  // 参照可能勘定のうち TRANSACTION に取引が無い勘定の月別行を削除（TRANSACTION に合わせて整合性を取る）
+  const [txRes, accRes, permRes] = await Promise.all([
+    fetchCsv("/data/TRANSACTION.csv", CSV_NO_CACHE),
+    fetchCsv("/data/ACCOUNT.csv", CSV_NO_CACHE),
+    fetchCsv("/data/ACCOUNT_PERMISSION.csv", CSV_NO_CACHE),
+  ]);
+  const accountRows: AccountRow[] = [];
+  for (const cells of accRes.rows) {
+    if (cells.length === 0 || cells.every((c) => !c.trim())) continue;
+    accountRows.push(rowToObject(accRes.header, cells) as unknown as AccountRow);
+  }
+  const permissionRows: AccountPermissionRow[] = [];
+  for (const cells of permRes.rows) {
+    if (cells.length === 0 || cells.every((c) => !c.trim())) continue;
+    permissionRows.push(rowToObject(permRes.header, cells) as unknown as AccountPermissionRow);
+  }
+  const visibleAccountIds = getVisibleAccountIds(accountRows, permissionRows);
+  const accountIdsWithTransactions = new Set<string>();
+  for (const cells of txRes.rows) {
+    if (txRes.header.length === 0) break;
+    const row = rowToObject(txRes.header, cells) as unknown as TransactionRow;
+    if ((row.DLT_FLG || "0") === "1") continue;
+    const inId = (row.ACCOUNT_ID_IN || "").trim();
+    const outId = (row.ACCOUNT_ID_OUT || "").trim();
+    if (inId) accountIdsWithTransactions.add(inId);
+    if (outId) accountIdsWithTransactions.add(outId);
+  }
+  for (const aid of visibleAccountIds) {
+    if (accountIdsWithTransactions.has(aid)) continue;
+    for (const k of map.keys()) {
+      if (k.startsWith(`${aid},`)) map.delete(k);
+    }
+  }
+
+  // 各キーの BALANCE_TOTAL を確定し、同一 ACCOUNT_ID, PROJECT_TYPE 内で年月順に CARRYOVER_TOTAL を累計で再計算
   const sortedKeys = Array.from(map.keys()).sort();
   const groupKey = (k: string) => {
     const parts = k.split(",");
@@ -508,16 +556,18 @@ export async function applyTransactionMonthlyDeltas(deltas: MonthlyDelta[]): Pro
     const INCOME_TOTAL = state.income;
     const EXPENSE_TOTAL = state.expense;
     const BALANCE_TOTAL = INCOME_TOTAL - EXPENSE_TOTAL;
-    const CARRYOVER = carryoverByKey.get(k) ?? 0;
+    const CARRYOVER_TOTAL = carryoverByKey.get(k) ?? 0;
     if (state.existing) {
       const r = { ...state.existing } as ExistingMonthlyRow;
       r.INCOME_TOTAL = String(INCOME_TOTAL);
       r.EXPENSE_TOTAL = String(EXPENSE_TOTAL);
       r.BALANCE_TOTAL = String(BALANCE_TOTAL);
-      r.CARRYOVER = String(CARRYOVER);
-      r.UPDATE_DATETIME = now;
-      r.UPDATE_USER = user;
-      r.VERSION = String((parseInt(String(r.VERSION ?? "0"), 10) || 0) + 1);
+      r.CARRYOVER_TOTAL = String(CARRYOVER_TOTAL);
+      if (keysModified.has(k)) {
+        r.UPDATE_DATETIME = now;
+        r.UPDATE_USER = user;
+        r.VERSION = String((parseInt(String(r.VERSION ?? "0"), 10) || 0) + 1);
+      }
       const id = parseInt(String(r.ID ?? "0"), 10) || 0;
       rowsWithId.push({ id, line: existingRowToCsvLine(r) });
     } else {
@@ -538,7 +588,7 @@ export async function applyTransactionMonthlyDeltas(deltas: MonthlyDelta[]): Pro
           String(INCOME_TOTAL),
           String(EXPENSE_TOTAL),
           String(BALANCE_TOTAL),
-          String(CARRYOVER),
+          String(CARRYOVER_TOTAL),
         ].join(","),
       });
     }
