@@ -6,7 +6,7 @@ import {
   MASTER_LIST_VIEW_IDS,
 } from "../constants/index";
 import { currentView, setCurrentView, setTransactionHistoryInitialTab } from "../state";
-import { loadFormFromFilterState, applySearchAccordionStateForView } from "../screens/transaction-history-screen";
+import { loadFormFromFilterState, applySearchAccordionStateForView } from "../utils/transactionSearchForm";
 
 const viewHandlers: Record<string, () => void> = {};
 /** メニューバーの「データ最新化」押下時に呼ぶハンドラ。viewId -> fn（CSV から再取得して再描画） */
@@ -42,6 +42,15 @@ export function registerViewHandler(viewId: string, fn: () => void): void {
  */
 export function registerRefreshHandler(viewId: string, fn: () => void): void {
   refreshHandlers[viewId] = fn;
+}
+
+/**
+ * 指定ビューの登録済み refresh ハンドラを実行する。CSV 監視の通知で「最新のデータを取得」時に使用。
+ * @param viewId - ビュー ID
+ * @returns なし
+ */
+export function triggerRefreshForView(viewId: string): void {
+  refreshHandlers[viewId]?.();
 }
 
 /**

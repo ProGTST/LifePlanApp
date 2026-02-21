@@ -5,6 +5,9 @@ import {
   setTransactionEntryEditId,
   setTransactionEntryViewOnly,
   pushNavigation,
+  transactionList,
+  tagManagementList,
+  calendarFilterState,
 } from "../state";
 import { registerViewHandler, registerRefreshHandler, showMainView } from "../app/screen";
 import { updateCurrentMenuItem } from "../app/sidebar";
@@ -14,13 +17,20 @@ import { Chart, registerables, type ChartOptions } from "chart.js";
 import ChartDataLabels from "chartjs-plugin-datalabels";
 import {
   loadTransactionData,
-  getCalendarFilteredList,
   getCategoryById,
   getRowPermissionType,
+} from "../utils/transactionDataSync";
+import {
   updateTransactionHistoryTabLayout,
   setHistoryFilterDateFromTo,
   registerFilterChangeCallback,
-} from "./transaction-history-screen";
+} from "../utils/transactionDataLayout";
+import { getCalendarFilteredList } from "../utils/transactionDataFilter";
+
+/** カレンダー用の検索条件を返す（当画面用。state の calendarFilterState を参照） */
+function getCalendarFilterState() {
+  return { ...calendarFilterState };
+}
 
 /**
  * カレンダー画面（週カレンダー・月カレンダー）
@@ -298,7 +308,7 @@ function isTransactionInYearMonth(row: TransactionRow, ym: string): boolean {
  * @param ym - 指定時は、取引日がその年月に含まれる取引のみ返す（YYYY-MM）。未指定または不正時は getCalendarFilteredList の結果をそのまま返す。
  */
 function getFilteredTransactionListForCalendar(ym?: string): TransactionRow[] {
-  const list = getCalendarFilteredList();
+  const list = getCalendarFilteredList(transactionList, getCalendarFilterState(), tagManagementList);
   if (!ym || !/^\d{4}-\d{2}$/.test(ym)) return list;
   return list.filter((row) => isTransactionInYearMonth(row, ym));
 }
@@ -1107,7 +1117,7 @@ function renderCalendarPanel(): void {
 // ---------------------------------------------------------------------------
 
 /**
- * 一覧／週カレンダー／月カレンダータブを切り替え、該当パネルとグラフを表示する。
+ * 週カレンダー／月カレンダータブを切り替え、該当パネルとグラフを表示する。（一覧は別ビューで表示されるため、ここでは週/月のみ）
  */
 function switchTab(tabId: string): void {
   document.querySelectorAll(".transaction-history-tab").forEach((btn) => {

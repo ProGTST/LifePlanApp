@@ -31,6 +31,7 @@ import { initCategoryView } from "./screens/category-screen";
 import { initTagView } from "./screens/tag-screen";
 import { initProfileView } from "./screens/profile-screen";
 import { initDesignView } from "./screens/design-screen";
+import { initTransactionSearchForm } from "./utils/transactionSearchForm";
 import { initTransactionHistoryView } from "./screens/transaction-history-screen";
 import { initCalendarView } from "./screens/calendar-screen";
 import { initScheduleView } from "./screens/schedule-screen";
@@ -49,6 +50,7 @@ function initAppScreen(): void {
   initTagView();
   initProfileView();
   initDesignView();
+  initTransactionSearchForm();
   initTransactionHistoryView();
   initCalendarView();
   initScheduleView();

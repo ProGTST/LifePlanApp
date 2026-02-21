@@ -7,6 +7,7 @@
  * localStorage に保存した表示データのキー一覧に含まれる場合のみ通知する。
  */
 
+import { triggerRefreshForView } from "../app/screen";
 import { fetchCsvFromApi } from "./dataApi";
 import { parseCsvLine, rowToObject } from "./csv";
 
@@ -176,44 +177,12 @@ type GetCurrentState = () => { view: string; userId: string };
 
 /**
  * 指定画面の最新データを再取得して表示し直す。通知で「OK」押下時に呼ぶ。
+ * 各画面は registerRefreshHandler でハンドラを登録しているため、app/screen 経由で実行する。
  * @param viewId - 画面 ID（profile, design, account 等）
- * @returns Promise（各画面の loadAndRender / refresh の完了で resolve）
+ * @returns なし
  */
-async function refreshView(viewId: string): Promise<void> {
-  switch (viewId) {
-    case "profile": {
-      const { loadAndRenderProfile } = await import("../screens/profile-screen");
-      await loadAndRenderProfile();
-      break;
-    }
-    case "design": {
-      const { loadAndRenderDesign } = await import("../screens/design-screen");
-      await loadAndRenderDesign();
-      break;
-    }
-    case "account": {
-      const { loadAndRenderAccountList } = await import("../screens/account-screen");
-      await loadAndRenderAccountList();
-      break;
-    }
-    case "category": {
-      const { loadAndRenderCategoryList } = await import("../screens/category-screen");
-      await loadAndRenderCategoryList();
-      break;
-    }
-    case "tag": {
-      const { loadAndRenderTagList } = await import("../screens/tag-screen");
-      await loadAndRenderTagList();
-      break;
-    }
-    case "transaction-history": {
-      const { refreshTransactionHistory } = await import("../screens/transaction-history-screen");
-      refreshTransactionHistory();
-      break;
-    }
-    default:
-      break;
-  }
+function refreshView(viewId: string): void {
+  triggerRefreshForView(viewId);
 }
 
 /**

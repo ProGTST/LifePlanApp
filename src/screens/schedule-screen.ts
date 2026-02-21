@@ -1,19 +1,29 @@
 import type { TransactionRow } from "../types";
 import {
+  transactionList,
+  tagManagementList,
+  scheduleFilterState,
+} from "../state";
+import {
   loadTransactionData,
-  getFilteredTransactionListForSchedule,
   getCategoryById,
   getAccountById,
   getRowPermissionType,
   getActualIdsForPlanId,
   getActualTransactionsForPlan,
-  registerFilterChangeCallback,
-} from "./transaction-history-screen";
+} from "../utils/transactionDataSync";
+import { registerFilterChangeCallback } from "../utils/transactionDataLayout";
+import { getFilteredTransactionListForSchedule } from "../utils/transactionDataFilter";
 import { openOverlay, closeOverlay } from "../utils/overlay";
 import { registerViewHandler, registerRefreshHandler } from "../app/screen";
 import { setDisplayedKeys } from "../utils/csvWatch";
 import { createIconWrap } from "../utils/iconWrap";
 import { ICON_DEFAULT_COLOR } from "../constants/colorPresets";
+
+/** スケジュール用の検索条件を返す（当画面用。state の scheduleFilterState を参照） */
+function getScheduleFilterState() {
+  return { ...scheduleFilterState };
+}
 
 const WEEKDAY_JA = ["日", "月", "火", "水", "木", "金", "土"];
 
@@ -278,7 +288,7 @@ function overlaps(rowFrom: string, rowTo: string, colFrom: string, colTo: string
 }
 
 function getPlanRows(): TransactionRow[] {
-  const list = getFilteredTransactionListForSchedule();
+  const list = getFilteredTransactionListForSchedule(transactionList, getScheduleFilterState(), tagManagementList);
   const planOnly = list.filter((r) => (r.PROJECT_TYPE || "").toLowerCase() === "plan");
   return planOnly.slice().sort((a, b) => {
     const af = a.TRANDATE_FROM || "";
