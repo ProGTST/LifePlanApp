@@ -571,8 +571,12 @@
 }
 .system-view-actions {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-start;
   gap: 1rem;
+  margin-top: 0;
+}
+.system-view-actions .btn-secondary + .btn-primary {
   margin-top: 0;
 }
 .system-view-message {

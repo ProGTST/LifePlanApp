@@ -25,3 +25,4 @@ ID,VERSION,REGIST_DATETIME,REGIST_USER,UPDATE_DATETIME,UPDATE_USER,TRANSACTION_T
 27,0,2026-02-15 02:07:21,coara,2026-02-15 02:07:21,coara,expense,plan,16,子供(2人目)を小学校に通わせる,2029-01-01,2029-01-31,day,1,,1,幼稚園、もしくは、保育園,,5,planning,0
 28,0,2026-02-15 02:07:37,coara,2026-02-15 02:07:37,coara,expense,plan,16,子供(2人目)を中学校に通わせる,2029-01-01,2029-01-31,day,1,,1,幼稚園、もしくは、保育園,,5,planning,0
 29,0,2026-02-15 02:07:46,coara,2026-02-15 02:07:46,coara,expense,plan,16,子供(2人目)を高校に通わせる,2029-01-01,2029-01-31,day,1,,1,幼稚園、もしくは、保育園,,5,planning,0
+30,2,2026-02-21 21:16:37,testuser001,2026-02-21 21:16:40,testuser001,expense,actual,1,カップラーメン,2026-02-21,2026-02-21,day,1,,200,,,10,complete,1

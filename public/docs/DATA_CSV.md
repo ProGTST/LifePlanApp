@@ -355,6 +355,7 @@ LifePlanGant で扱う収支・タグ・勘定項目のデータは、`data/` �
 | INCOME_TOTAL | 収入の合計 | 当該勘定・計画種別・年月の収入合計 |
 | EXPENSE_TOTAL | 支出合計 | 当該勘定・計画種別・年月の支出合計 |
 | BALANCE_TOTAL | 残高合計 | 収入合計－支出合計（または集計ルールに従う残高） |
+| CARRYOVER | 繰越残高 | 初月は 0。2月目以降は「前月の CARRYOVER ＋ 当月の BALANCE_TOTAL」の累計（当該勘定・計画種別・年月順） |
 
 ---
 

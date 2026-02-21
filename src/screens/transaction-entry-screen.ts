@@ -13,6 +13,7 @@ import {
   checkVersionBeforeUpdate,
   getVersionConflictMessage,
 } from "../utils/csvVersionCheck.ts";
+import { updateTransactionMonthlyForTransaction } from "../utils/transactionMonthlyAggregate";
 
 const CSV_NO_CACHE: RequestInit = { cache: "reload" };
 
@@ -186,10 +187,9 @@ async function fetchAccountPermissionList(noCache = false): Promise<AccountPermi
 }
 
 /**
- * TRANSACTION.csv を取得し、未削除の取引行の配列と次に使う ID を返す。
- * 論理削除（DLT_FLG=1）の行は返却対象に含めない。
+ * TRANSACTION.csv を取得し、取引行の配列（削除済み含む）と次に使う ID を返す。
  * @param noCache - true のときキャッシュを使わない
- * @returns Promise。nextId と取引行の配列（未削除のみ）
+ * @returns Promise。nextId と取引行の配列（全件）
  */
 async function fetchTransactionRows(noCache = false): Promise<{ nextId: number; rows: TransactionRow[] }> {
   const init = noCache ? CSV_NO_CACHE : undefined;
@@ -200,9 +200,16 @@ async function fetchTransactionRows(noCache = false): Promise<{ nextId: number; 
     const row = rowToObject(header, cells) as unknown as TransactionRow;
     const n = parseInt(row.ID ?? "0", 10);
     if (!Number.isNaN(n) && n > maxId) maxId = n;
-    if ((row.DLT_FLG || "0") !== "1") list.push(row);
+    list.push(row);
   }
   return { nextId: maxId + 1, rows: list };
+}
+
+/**
+ * 取引行の配列から未削除（DLT_FLG≠1）の行のみを返す。
+ */
+function getNonDeletedTransactionRows(rows: TransactionRow[]): TransactionRow[] {
+  return rows.filter((r) => (r.DLT_FLG || "0") !== "1");
 }
 
 /**
@@ -719,7 +726,8 @@ function openTransactionEntryActualModal(): void {
       fetchAccountPermissionList(true),
     ]);
     const visibleIds = getVisibleAccountIds(accList, permList);
-    const txRows = filterTransactionsByVisibleAccounts(txResult.rows, visibleIds);
+    const nonDeleted = getNonDeletedTransactionRows(txResult.rows);
+    const txRows = filterTransactionsByVisibleAccounts(nonDeleted, visibleIds);
     // 種別が一致し、実績かつ編集中でない取引のみ対象
     const actualRows = txRows.filter(
       (r) =>
@@ -1437,7 +1445,7 @@ async function loadFormForEdit(transactionId: string): Promise<void> {
     fetchTransactionManagementRows(true),
     fetchTransactionRows(true),
   ]);
-  const txRows = txResult.rows;
+  const txRows = getNonDeletedTransactionRows(txResult.rows);
   const row = txRows.find((r) => r.ID === transactionId);
   if (!row) return;
   const type = row.TRANSACTION_TYPE || "expense";
@@ -1919,6 +1927,11 @@ export function initTransactionEntryView(): void {
           const oldAmt = parseFloat(String(existing.AMOUNT ?? "0")) || 0;
           await updateAccountBalancesForActual(editingTransactionId!, "update", typeRow, outId, inId, newAmt, oldAmt);
         }
+        await updateTransactionMonthlyForTransaction(
+          updatedRow as unknown as TransactionRow,
+          "update",
+          existing
+        );
         const { nextId: nextMgmtId, rows: mgmtRows } = await fetchTagManagementRows(true);
         const userId = currentUserId ?? "";
         const others = mgmtRows.filter((r) => r.TRANSACTION_ID !== editingTransactionId);
@@ -1976,6 +1989,7 @@ export function initTransactionEntryView(): void {
           const amt = parseFloat(String((newRow as Record<string, string>).AMOUNT ?? "0")) || 0;
           await updateAccountBalancesForActual(newTransactionId, "register", typeNew, outIdNew, inIdNew, amt);
         }
+        await updateTransactionMonthlyForTransaction(newRow as unknown as TransactionRow, "register");
         if (selectedTagIds.size > 0) {
           const { nextId: nextMgmtId, rows: mgmtRows } = await fetchTagManagementRows(true);
           const userId = currentUserId ?? "";
@@ -2086,6 +2100,7 @@ export function initTransactionEntryView(): void {
         const amtDel = parseFloat(String(row.AMOUNT ?? "0")) || 0;
         await updateAccountBalancesForActual(editingTransactionId!, "delete", typeDel, outIdDel, inIdDel, amtDel);
       }
+      await updateTransactionMonthlyForTransaction(row, "delete");
       const { rows: mgmtRows } = await fetchTagManagementRows(true);
       const newMgmtRows = mgmtRows
         .filter((r) => r.TRANSACTION_ID !== editingTransactionId)
@@ -2131,6 +2146,7 @@ export function initTransactionEntryView(): void {
         const amtCopy = parseFloat(String((newRow as Record<string, string>).AMOUNT ?? "0")) || 0;
         await updateAccountBalancesForActual(newTransactionId, "register", typeCopy, outIdCopy, inIdCopy, amtCopy);
       }
+      await updateTransactionMonthlyForTransaction(newRow as unknown as TransactionRow, "register");
       if (selectedTagIds.size > 0) {
         const { nextId: nextMgmtId, rows: mgmtRows } = await fetchTagManagementRows(true);
         const userId = currentUserId ?? "";
