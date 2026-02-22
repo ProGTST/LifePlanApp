@@ -693,7 +693,7 @@ async function renderCharts(ym: string): Promise<void> {
     },
   };
 
-  // 残高推移グラフ：集計開始金額=前月の TRANSACTION_MONTHLY.BALANCE_TOTAL（勘定・表示月の前月で一致）。実績/予定とも収入・支出・振替を日別集計（収入=INに加算、支出=OUTから減算、振替=IN加算・OUT減算）。
+  // 残高推移グラフ：集計開始金額=前月の実績 TRANSACTION_MONTHLY.CARRYOVER_TOTAL（勘定・表示月の前月で一致）。実績/予定とも収入・支出・振替を日別集計（収入=INに加算、支出=OUTから減算、振替=IN加算・OUT減算）。
   const balanceCanvas = document.getElementById("transaction-history-chart-balance") as HTMLCanvasElement | null;
   const balanceSelect = document.getElementById("transaction-history-chart-balance-account") as HTMLSelectElement | null;
   if (balanceCanvas && balanceSelect) {
@@ -714,7 +714,7 @@ async function renderCharts(ym: string): Promise<void> {
 
     const selectedAccountId = balanceSelect.value || "";
     if (selectedAccountId) {
-      // 集計開始金額 = 表示月の前月の実績 BALANCE_TOTAL（TRANSACTION_MONTHLY）。実績・予定ともこの値から開始
+      // 集計開始金額 = 表示月の前月の実績 CARRYOVER_TOTAL（TRANSACTION_MONTHLY）。実績・予定ともこの値から開始
       const [y, m] = ym.split("-").map((s) => parseInt(s, 10));
       const prevMonth = m === 1 ? 12 : m - 1;
       const prevYear = m === 1 ? y - 1 : y;
@@ -726,7 +726,7 @@ async function renderCharts(ym: string): Promise<void> {
         const pm = (row.MONTH || "").trim().padStart(2, "0");
         if (aid !== selectedAccountId || `${py}-${pm}` !== prevYm) continue;
         if ((row.PROJECT_TYPE || "").toLowerCase() !== "actual") continue;
-        carryoverFromActual = parseFloat(String(row.BALANCE_TOTAL ?? "0")) || 0;
+        carryoverFromActual = parseFloat(String(row.CARRYOVER_TOTAL ?? "0")) || 0;
         break;
       }
       const accData = getChartDataForMonthByAccount(ym, selectedAccountId);
@@ -1304,7 +1304,7 @@ function renderCalendarPanel(): void {
 /**
  * 月カレンダー・週カレンダー右上ブロック（transaction-history-tabs-row-right）に前月繰越・残高差・実績率を表示する。
  * いずれも自分の勘定の取引のみ対象。権限付与勘定は含めない。
- * 前月繰越 = 前月の TRANSACTION_MONTHLY の BALANCE_TOTAL の合計（自分の勘定のみ。PROJECT_TYPE=plan は集計対象外で actual のみ）
+ * 前月繰越 = 前月の TRANSACTION_MONTHLY の CARRYOVER_TOTAL の合計。前月にデータがなければ表示月より以前の最新の月の CARRYOVER_TOTAL を表示（自分の勘定のみ。PROJECT_TYPE=plan は集計対象外で actual のみ）
  * 残高差 = 実績の総合計 - 予定の総合計（自分の勘定のみ）
  * 実績率 = 実績の総合計 / 予定の総合計 * 100（予定の総合計が0のときは「—」）
  */
@@ -1318,6 +1318,7 @@ async function renderCalendarSummaryRight(): Promise<void> {
   }
   const year = parseInt(ym[1], 10);
   const month = parseInt(ym[2], 10);
+  const currentYm = `${year}-${String(month).padStart(2, "0")}`;
   const { planIncome, planExpense, actualIncome, actualExpense } = getCalendarMonthTotals(year, month);
   const planTotal = planIncome - planExpense;
   const actualTotal = actualIncome - actualExpense;
@@ -1326,19 +1327,28 @@ async function renderCalendarSummaryRight(): Promise<void> {
     planTotal !== 0 ? (actualTotal / planTotal) * 100 : null;
   const rateText = rate !== null ? `${Math.round(rate)}%` : "—";
 
-  let carryoverTotal = 0;
-  const prevMonth = month === 1 ? 12 : month - 1;
-  const prevYear = month === 1 ? year - 1 : year;
-  const prevYm = `${prevYear}-${String(prevMonth).padStart(2, "0")}`;
   const visibleIds = getVisibleAccountIdsForCharts();
   const monthlyRows = await getTransactionMonthlyRows();
+  const rowsBeforeCurrent: { rowYm: string; row: Record<string, string> }[] = [];
   for (const row of monthlyRows) {
     if ((row.PROJECT_TYPE || "").toLowerCase() !== "actual") continue;
     const aid = (row.ACCOUNT_ID || "").trim();
     const py = (row.YEAR || "").trim();
     const pm = (row.MONTH || "").trim().padStart(2, "0");
-    if (!visibleIds.has(aid) || `${py}-${pm}` !== prevYm) continue;
-    carryoverTotal += parseFloat(String(row.BALANCE_TOTAL ?? "0")) || 0;
+    const rowYm = `${py}-${pm}`;
+    if (!visibleIds.has(aid) || rowYm >= currentYm) continue;
+    rowsBeforeCurrent.push({ rowYm, row });
+  }
+  const latestYm =
+    rowsBeforeCurrent.length > 0
+      ? rowsBeforeCurrent.map((r) => r.rowYm).sort().pop()!
+      : null;
+  let carryoverTotal = 0;
+  if (latestYm) {
+    for (const { rowYm, row } of rowsBeforeCurrent) {
+      if (rowYm !== latestYm) continue;
+      carryoverTotal += parseFloat(String(row.CARRYOVER_TOTAL ?? "0")) || 0;
+    }
   }
 
   rightEl.innerHTML = "";

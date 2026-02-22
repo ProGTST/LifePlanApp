@@ -31,10 +31,10 @@ let selectedTagIds: Set<string> = new Set();
 let selectedActualIds: Set<string> = new Set();
 /** 実績選択チップ表示用: id・名称・カテゴリーID（selectedActualIds と同期） */
 let selectedActualDisplayInfo: { id: string; name: string; categoryId: string }[] = [];
-/** 実績選択モーダル用: 全実績行（週でフィルタ前） */
+/** 実績選択モーダル用: 全実績行（年月でフィルタ前） */
 let actualSelectAllRows: TransactionRow[] = [];
-/** 実績選択モーダル用: 現在表示している週範囲 */
-let actualSelectWeek: { start: string; end: string } | null = null;
+/** 実績選択モーダル用: 現在表示している年月（YYYY-MM） */
+let actualSelectYM: string | null = null;
 let editingTransactionId: string | null = null;
 
 /** 月ごとの繰り返しで選択した対象日（1～31, -1=月末, -2=月末の1日前, -3=月末の2日前） */
@@ -144,6 +144,27 @@ function formatWeekLabel(weekStart: string, weekEnd: string): string {
 /** 日付が週範囲内か（以上・以下）で判定する。 */
 function isDateInWeek(dateStr: string, weekStart: string, weekEnd: string): boolean {
   return dateStr >= weekStart && dateStr <= weekEnd;
+}
+
+/** 指定年月（YYYY-MM）の月初日・月末日を返す。実績選択モーダルの月範囲用。 */
+function getMonthDateRange(ym: string): { firstDay: string; lastDay: string } | null {
+  const m = ym.match(/^(\d{4})-(\d{2})$/);
+  if (!m) return null;
+  const year = parseInt(m[1], 10);
+  const month = parseInt(m[2], 10);
+  const lastDate = new Date(year, month, 0).getDate();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return {
+    firstDay: `${ym}-01`,
+    lastDay: `${ym}-${pad(lastDate)}`,
+  };
+}
+
+/** 実績取引の対象日（YYYY-MM-DD）。TRANDATE_TO を優先し、未設定時は TRANDATE_FROM。 */
+function getActualTargetDate(row: TransactionRow): string {
+  const from = (row.TRANDATE_FROM || "").trim().slice(0, 10);
+  const to = (row.TRANDATE_TO || "").trim().slice(0, 10);
+  return (to || from) || "";
 }
 
 /**
@@ -792,7 +813,7 @@ function createActualSelectItemRow(row: TransactionRow, isSelected: boolean): HT
   wrap.appendChild(nameSpan);
   const dateSpan = document.createElement("span");
   dateSpan.className = "transaction-entry-actual-select-date";
-  dateSpan.textContent = row.TRANDATE_FROM || "—";
+  dateSpan.textContent = getActualTargetDate(row) || "—";
   wrap.appendChild(dateSpan);
   const amountWrap = document.createElement("span");
   amountWrap.className = "transaction-entry-actual-select-amount-wrap";
@@ -820,44 +841,48 @@ function createActualSelectItemRow(row: TransactionRow, isSelected: boolean): HT
 }
 
 /**
- * 実績選択モーダルで週を切り替える前に、現在表示中の週の選択状態だけを selectedActualIds に反映する。
- * 他週で選択した ID はそのまま残す。
+ * 実績選択モーダルで年月を切り替える前に、現在表示中のリストの選択状態を selectedActualIds に反映する。
+ * 他月で選択した ID はそのまま残す。
  */
 function mergeActualSelectionFromModal(): void {
   const listEl = document.getElementById("transaction-entry-actual-select-list");
   if (!listEl) return;
   const items = listEl.querySelectorAll<HTMLElement>(".transaction-history-select-item");
-  const currentWeekIds = new Set(
+  const currentListIds = new Set(
     Array.from(items)
       .map((el) => el.getAttribute("data-id"))
       .filter((id): id is string => id != null)
   );
   const selectedInDom = new Set(getSelectedActualIdsFromModal());
   selectedActualIds = new Set([
-    ...[...selectedActualIds].filter((id) => !currentWeekIds.has(id)),
+    ...[...selectedActualIds].filter((id) => !currentListIds.has(id)),
     ...selectedInDom,
   ]);
 }
 
 /**
- * 実績選択モーダルのリストと週ラベルを、actualSelectAllRows と actualSelectWeek に従って描画する。
+ * 実績選択モーダルのリストと年月ラベルを、actualSelectAllRows と actualSelectYM に従って描画する。
  */
 function renderActualSelectList(): void {
   const listEl = document.getElementById("transaction-entry-actual-select-list");
-  const weekInput = document.getElementById("transaction-entry-actual-select-week-label") as HTMLInputElement | null;
-  if (!listEl || !actualSelectWeek) return;
+  const ymInput = document.getElementById("transaction-entry-actual-select-ym-label") as HTMLInputElement | null;
+  if (!listEl || !actualSelectYM) return;
   const listBody = document.getElementById("transaction-entry-actual-select-list-body");
   if (!listBody) return;
-  const { start: weekStart, end: weekEnd } = actualSelectWeek;
-  if (weekInput) weekInput.value = weekStart;
-  const inWeek = actualSelectAllRows.filter((r) => isDateInWeek((r.TRANDATE_FROM || "").slice(0, 10), weekStart, weekEnd));
-  const sorted = inWeek.slice().sort((a, b) => (b.TRANDATE_FROM || "").localeCompare(a.TRANDATE_FROM || ""));
+  const range = getMonthDateRange(actualSelectYM);
+  if (!range) return;
+  if (ymInput) ymInput.value = actualSelectYM;
+  const { firstDay, lastDay } = range;
+  const inMonth = actualSelectAllRows.filter((r) => {
+    const d = getActualTargetDate(r);
+    return d >= firstDay && d <= lastDay;
+  });
+  const sorted = inMonth.slice().sort((a, b) => getActualTargetDate(b).localeCompare(getActualTargetDate(a)));
   listBody.innerHTML = "";
   if (sorted.length === 0) {
-    // 週内に実績がなければ空メッセージのみ
     const emptyEl = document.createElement("p");
     emptyEl.className = "transaction-entry-actual-select-empty";
-    emptyEl.textContent = "この週は取引実績がありません。";
+    emptyEl.textContent = "この月は取引実績がありません。";
     listBody.appendChild(emptyEl);
   } else {
     for (const row of sorted) {
@@ -868,9 +893,6 @@ function renderActualSelectList(): void {
 }
 
 function openTransactionEntryActualModal(): void {
-  // 取引種別・日付から週範囲を決め、実績一覧を取得してモーダルを開く
-  const listEl = document.getElementById("transaction-entry-actual-select-list");
-  if (!listEl) return;
   const planType = (getTypeInput()?.value ?? "expense").toLowerCase();
   const dateFromEl = document.getElementById("transaction-entry-date-from") as HTMLInputElement | null;
   const dateEl = document.getElementById("transaction-entry-date") as HTMLInputElement | null;
@@ -878,6 +900,7 @@ function openTransactionEntryActualModal(): void {
   const today = new Date();
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
   const initialDate = planStart || todayStr;
+  const initialYM = initialDate.slice(0, 7);
   (async () => {
     const [txResult, accList, permList] = await Promise.all([
       fetchTransactionRows(true),
@@ -887,7 +910,6 @@ function openTransactionEntryActualModal(): void {
     const visibleIds = getVisibleAccountIds(accList, permList);
     const nonDeleted = getNonDeletedTransactionRows(txResult.rows);
     const txRows = filterTransactionsByVisibleAccounts(nonDeleted, visibleIds);
-    // 種別が一致し、実績かつ編集中でない取引のみ対象
     const actualRows = txRows.filter(
       (r) =>
         (r.PROJECT_TYPE || "").toLowerCase() === "actual" &&
@@ -895,7 +917,7 @@ function openTransactionEntryActualModal(): void {
         r.ID !== editingTransactionId
     );
     actualSelectAllRows = actualRows;
-    actualSelectWeek = getWeekRangeFromDate(initialDate);
+    actualSelectYM = initialYM;
     renderActualSelectList();
     openOverlay("transaction-entry-actual-select-overlay");
   })();
@@ -2116,6 +2138,26 @@ export function initTransactionEntryView(): void {
       alert(accountError);
       return;
     }
+    if (editingTransactionId) {
+      const { rows } = await fetchTransactionRows(true);
+      const existing = rows.find((r) => r.ID === editingTransactionId);
+      if (!existing) {
+        alert(getVersionConflictMessage({ allowed: false, notFound: true }));
+        editingTransactionId = null;
+        resetForm();
+        const returnView = transactionEntryReturnView || "transaction-history";
+        setTransactionEntryReturnView(null);
+        pushNavigation(returnView);
+        showMainView(returnView);
+        updateCurrentMenuItem();
+        return;
+      }
+      const updatedRowForConfirm = buildUpdatedRow(form, existing);
+      const projectTypeChanged =
+        (existing.PROJECT_TYPE ?? "").toLowerCase() !== (updatedRowForConfirm.PROJECT_TYPE ?? "").toLowerCase();
+      if (projectTypeChanged && !confirm("計画が変更されていますが、よろしいでしょうか？")) return;
+      if (!confirm("取引を更新しますか？")) return;
+    }
     try {
       if (editingTransactionId) {
         const { rows } = await fetchTransactionRows(true);
@@ -2429,9 +2471,15 @@ export function initTransactionEntryView(): void {
   document.getElementById("transaction-entry-tag-open-btn")?.addEventListener("click", () => openTransactionEntryTagModal());
   document.getElementById("transaction-entry-actual-open-btn")?.addEventListener("click", () => openTransactionEntryActualModal());
   document.getElementById("transaction-entry-actual-select-apply")?.addEventListener("click", () => {
-    const selected = getSelectedActualsFromModal();
-    selectedActualIds = new Set(selected.map((a) => a.id));
-    selectedActualDisplayInfo = selected;
+    mergeActualSelectionFromModal();
+    selectedActualDisplayInfo = Array.from(selectedActualIds)
+      .map((id) => {
+        const row = actualSelectAllRows.find((r) => r.ID === id);
+        return row
+          ? { id: row.ID, name: (row.NAME || "").trim() || "—", categoryId: row.CATEGORY_ID || "" }
+          : null;
+      })
+      .filter((a): a is { id: string; name: string; categoryId: string } => a != null);
     renderActualChosenDisplay();
     closeTransactionEntryActualModal();
   });
@@ -2443,30 +2491,28 @@ export function initTransactionEntryView(): void {
         el.setAttribute("aria-pressed", "false");
       });
   });
-  document.querySelector(".transaction-entry-actual-select-week-prev")?.addEventListener("click", () => {
-    if (!actualSelectWeek) return;
+  document.querySelector(".transaction-entry-actual-select-ym-prev")?.addEventListener("click", () => {
+    if (!actualSelectYM) return;
     mergeActualSelectionFromModal();
-    actualSelectWeek = {
-      start: addDays(actualSelectWeek.start, -7),
-      end: addDays(actualSelectWeek.end, -7),
-    };
+    const [y, m] = actualSelectYM.split("-").map(Number);
+    const d = new Date(y, m - 2, 1);
+    actualSelectYM = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
     renderActualSelectList();
   });
-  document.querySelector(".transaction-entry-actual-select-week-next")?.addEventListener("click", () => {
-    if (!actualSelectWeek) return;
+  document.querySelector(".transaction-entry-actual-select-ym-next")?.addEventListener("click", () => {
+    if (!actualSelectYM) return;
     mergeActualSelectionFromModal();
-    actualSelectWeek = {
-      start: addDays(actualSelectWeek.start, 7),
-      end: addDays(actualSelectWeek.end, 7),
-    };
+    const [y, m] = actualSelectYM.split("-").map(Number);
+    const d = new Date(y, m, 1);
+    actualSelectYM = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
     renderActualSelectList();
   });
-  document.getElementById("transaction-entry-actual-select-week-label")?.addEventListener("change", (e) => {
+  document.getElementById("transaction-entry-actual-select-ym-label")?.addEventListener("change", (e) => {
     const input = e.target as HTMLInputElement;
     const value = (input?.value || "").trim();
-    if (value) {
+    if (value && /^\d{4}-\d{2}$/.test(value)) {
       mergeActualSelectionFromModal();
-      actualSelectWeek = getWeekRangeFromDate(value);
+      actualSelectYM = value;
       renderActualSelectList();
     }
   });

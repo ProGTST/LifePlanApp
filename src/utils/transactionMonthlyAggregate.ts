@@ -23,6 +23,7 @@ const TRANSACTION_MONTHLY_HEADER = [
   "INCOME_TOTAL",
   "EXPENSE_TOTAL",
   "BALANCE_TOTAL",
+  "PREV_CARRYOVER_TOTAL",
   "CARRYOVER_TOTAL",
 ];
 
@@ -72,6 +73,8 @@ export interface MonthlyRow {
   INCOME_TOTAL: number;
   EXPENSE_TOTAL: number;
   BALANCE_TOTAL: number;
+  /** 前月の繰越残高（初月は0。2月目以降は、前月の CARRYOVER_TOTAL） */
+  PREV_CARRYOVER_TOTAL: number;
   /** 繰越残高（初月は0。2月目以降は、対象月より前の月の直近 CARRYOVER_TOTAL ＋ 対象月 BALANCE_TOTAL の累計） */
   CARRYOVER_TOTAL: number;
 }
@@ -193,11 +196,12 @@ export async function computeTransactionMonthlyRows(): Promise<ComputeMonthlyRes
       INCOME_TOTAL,
       EXPENSE_TOTAL,
       BALANCE_TOTAL,
+      PREV_CARRYOVER_TOTAL: 0,
       CARRYOVER_TOTAL: 0,
     });
   }
 
-  // 同一 ACCOUNT_ID, PROJECT_TYPE 内で年月順に並べ、CARRYOVER_TOTAL を累計で設定（初月は0、以降は「直前までの CARRYOVER_TOTAL ＋ 当月 BALANCE_TOTAL」の累計）
+  // 同一 ACCOUNT_ID, PROJECT_TYPE 内で年月順に並べ、PREV_CARRYOVER_TOTAL と CARRYOVER_TOTAL を設定
   const groupKey = (r: MonthlyRow) => `${r.ACCOUNT_ID},${r.PROJECT_TYPE}`;
   const byGroup = new Map<string, MonthlyRow[]>();
   for (const r of rows) {
@@ -214,9 +218,11 @@ export async function computeTransactionMonthlyRows(): Promise<ComputeMonthlyRes
     for (let i = 0; i < list.length; i++) {
       const r = list[i];
       if (i === 0) {
-        r.CARRYOVER_TOTAL = 0;
+        r.PREV_CARRYOVER_TOTAL = 0;
+        r.CARRYOVER_TOTAL = r.BALANCE_TOTAL;
         runningSum = r.BALANCE_TOTAL;
       } else {
+        r.PREV_CARRYOVER_TOTAL = list[i - 1].CARRYOVER_TOTAL;
         runningSum += r.BALANCE_TOTAL;
         r.CARRYOVER_TOTAL = runningSum;
       }
@@ -312,6 +318,7 @@ export async function saveTransactionMonthlyCsv(
         String(r.INCOME_TOTAL),
         String(r.EXPENSE_TOTAL),
         String(r.BALANCE_TOTAL),
+        String(r.PREV_CARRYOVER_TOTAL),
         String(r.CARRYOVER_TOTAL),
       ].join(","),
     });
@@ -519,6 +526,7 @@ export async function applyTransactionMonthlyDeltas(deltas: MonthlyDelta[]): Pro
     byGroup.get(g)!.push(k);
   }
   const carryoverByKey = new Map<string, number>();
+  const prevCarryoverByKey = new Map<string, number>();
   for (const keysOfGroup of byGroup.values()) {
     keysOfGroup.sort((a, b) => {
       const [, , yA, mA] = a.split(",");
@@ -531,6 +539,7 @@ export async function applyTransactionMonthlyDeltas(deltas: MonthlyDelta[]): Pro
       const k = keysOfGroup[i];
       const state = map.get(k)!;
       const BALANCE_TOTAL = state.income - state.expense;
+      prevCarryoverByKey.set(k, i === 0 ? 0 : carryoverByKey.get(keysOfGroup[i - 1]) ?? 0);
       if (i === 0) {
         carryoverByKey.set(k, 0);
         runningSum = BALANCE_TOTAL;
@@ -558,11 +567,13 @@ export async function applyTransactionMonthlyDeltas(deltas: MonthlyDelta[]): Pro
     const EXPENSE_TOTAL = state.expense;
     const BALANCE_TOTAL = INCOME_TOTAL - EXPENSE_TOTAL;
     const CARRYOVER_TOTAL = carryoverByKey.get(k) ?? 0;
+    const PREV_CARRYOVER_TOTAL = prevCarryoverByKey.get(k) ?? 0;
     if (state.existing) {
       const r = { ...state.existing } as ExistingMonthlyRow;
       r.INCOME_TOTAL = String(INCOME_TOTAL);
       r.EXPENSE_TOTAL = String(EXPENSE_TOTAL);
       r.BALANCE_TOTAL = String(BALANCE_TOTAL);
+      r.PREV_CARRYOVER_TOTAL = String(PREV_CARRYOVER_TOTAL);
       r.CARRYOVER_TOTAL = String(CARRYOVER_TOTAL);
       if (keysModified.has(k)) {
         r.UPDATE_DATETIME = now;
@@ -589,6 +600,7 @@ export async function applyTransactionMonthlyDeltas(deltas: MonthlyDelta[]): Pro
           String(INCOME_TOTAL),
           String(EXPENSE_TOTAL),
           String(BALANCE_TOTAL),
+          String(PREV_CARRYOVER_TOTAL),
           String(CARRYOVER_TOTAL),
         ].join(","),
       });

@@ -1351,7 +1351,7 @@
   flex-shrink: 0;
   margin-bottom: 0.5rem;
 }
-#transaction-entry-actual-select-overlay .transaction-history-select-modal .transaction-entry-actual-select-week-picker {
+#transaction-entry-actual-select-overlay .transaction-history-select-modal .transaction-entry-actual-select-ym-picker {
   flex-shrink: 0;
 }
 #transaction-entry-tag-select-overlay .transaction-history-select-list,
@@ -1457,8 +1457,8 @@
   box-sizing: border-box;
 }
 
-/* 取引実績選択：週選択ピッカー */
-.transaction-entry-actual-select-week-picker {
+/* 取引実績選択：年月選択ピッカー */
+.transaction-entry-actual-select-ym-picker {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1466,7 +1466,7 @@
   padding: 0.5rem 0;
   margin-bottom: 0.25rem;
 }
-.transaction-entry-actual-select-week-picker button {
+.transaction-entry-actual-select-ym-picker button {
   padding: 0.25rem 0.5rem;
   font-size: 0.875rem;
   border: 1px solid var(--gray-300);
@@ -1475,10 +1475,10 @@
   color: var(--gray-700);
   cursor: pointer;
 }
-.transaction-entry-actual-select-week-picker button:hover {
+.transaction-entry-actual-select-ym-picker button:hover {
   background: var(--gray-100);
 }
-.transaction-entry-actual-select-week-label {
+.transaction-entry-actual-select-ym-label {
   font-size: 0.875rem;
   font-weight: 500;
   color: var(--gray-800);
@@ -1491,7 +1491,7 @@
   background: var(--gray-50);
   box-sizing: border-box;
 }
-.transaction-entry-actual-select-week-picker .transaction-entry-actual-select-week-label:focus {
+.transaction-entry-actual-select-ym-picker .transaction-entry-actual-select-ym-label:focus {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
 }
