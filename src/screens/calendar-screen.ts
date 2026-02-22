@@ -1,4 +1,5 @@
 import type { TransactionRow } from "../types";
+import type { SchedulePlanStatus } from "../state";
 import {
   transactionHistoryInitialTab,
   setTransactionHistoryInitialTab,
@@ -11,6 +12,7 @@ import {
   transactionList,
   tagManagementList,
   calendarFilterState,
+  calendarPlanStatuses,
 } from "../state";
 import { registerViewHandler, registerRefreshHandler, showMainView } from "../app/screen";
 import { updateCurrentMenuItem } from "../app/sidebar";
@@ -247,11 +249,19 @@ function isTransactionInYearMonth(row: TransactionRow, ym: string): boolean {
 }
 
 /**
- * カレンダー用の検索条件でフィルター適用後、さらに指定年月に含まれる取引のみに絞った一覧を返す。
- * @param ym - 指定時は、取引日がその年月に含まれる取引のみ返す（YYYY-MM）。未指定または不正時は getCalendarFilteredList の結果をそのまま返す。
+ * カレンダー用の検索条件でフィルター適用後、ステータス（計画中/完了/中止）で絞り込み、さらに指定年月に含まれる取引のみに絞った一覧を返す。
+ * @param ym - 指定時は、取引日がその年月に含まれる取引のみ返す（YYYY-MM）。未指定または不正時は年月絞り込みを行わない。
  */
 function getFilteredTransactionListForCalendar(ym?: string): TransactionRow[] {
-  const list = getCalendarFilteredList(transactionList, getCalendarFilterState(), tagManagementList);
+  let list = getCalendarFilteredList(transactionList, getCalendarFilterState(), tagManagementList);
+  // ステータス（計画中/完了/中止）で絞り込み。予定のみ対象。選択なしの場合は予定は全表示。
+  if (calendarPlanStatuses.length > 0) {
+    const statusNormalized = (s: string) => (s || "planning").toLowerCase() as SchedulePlanStatus;
+    list = list.filter((row) => {
+      if ((row.PROJECT_TYPE || "").toLowerCase() !== "plan") return true;
+      return calendarPlanStatuses.includes(statusNormalized(row.PLAN_STATUS || "planning"));
+    });
+  }
   if (!ym || !/^\d{4}-\d{2}$/.test(ym)) return list;
   return list.filter((row) => isTransactionInYearMonth(row, ym));
 }

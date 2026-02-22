@@ -329,9 +329,15 @@ export function setScheduleFilterState(partial: Partial<FilterState> | FilterSta
   Object.assign(scheduleFilterState, partial);
 }
 
-/** スケジュール画面でのみ使用する予定ステータス（計画中/完了/中止）。複数選択。 */
+/** スケジュール・カレンダー画面で使用する予定ステータス（計画中/完了/中止）。複数選択。 */
 export type SchedulePlanStatus = "planning" | "complete" | "canceled";
+/** スケジュール画面用。初期表示は計画中のみON。 */
 export let schedulePlanStatuses: SchedulePlanStatus[] = ["planning"];
 export function setSchedulePlanStatuses(value: SchedulePlanStatus[]): void {
   schedulePlanStatuses = value;
+}
+/** カレンダー画面用。初期表示は計画中・完了がON。 */
+export let calendarPlanStatuses: SchedulePlanStatus[] = ["planning", "complete"];
+export function setCalendarPlanStatuses(value: SchedulePlanStatus[]): void {
+  calendarPlanStatuses = value;
 }

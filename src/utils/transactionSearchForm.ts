@@ -10,10 +10,12 @@ import {
   calendarFilterState,
   scheduleFilterState,
   schedulePlanStatuses,
+  calendarPlanStatuses,
   setHistoryFilterState,
   setCalendarFilterState,
   setScheduleFilterState,
   setSchedulePlanStatuses,
+  setCalendarPlanStatuses,
 } from "../state";
 import type { SchedulePlanStatus } from "../state";
 import { runFilterChangeCallbacks } from "./transactionDataLayout";
@@ -74,6 +76,34 @@ function setActiveFilterState(partial: Partial<FilterState>): void {
   setHistoryFilterState(partial);
 }
 
+/** 現在のビューに応じた予定ステータス（計画中/完了/中止）の配列を返す。 */
+function getActivePlanStatuses(): SchedulePlanStatus[] {
+  if (currentView === "schedule") return [...schedulePlanStatuses];
+  if (
+    currentView === "transaction-history-weekly" ||
+    currentView === "transaction-history-calendar"
+  ) {
+    return [...calendarPlanStatuses];
+  }
+  return [...schedulePlanStatuses];
+}
+
+/** 現在のビューに応じて予定ステータスを更新する。 */
+function setActivePlanStatuses(value: SchedulePlanStatus[]): void {
+  if (currentView === "schedule") {
+    setSchedulePlanStatuses(value);
+    return;
+  }
+  if (
+    currentView === "transaction-history-weekly" ||
+    currentView === "transaction-history-calendar"
+  ) {
+    setCalendarPlanStatuses(value);
+    return;
+  }
+  setSchedulePlanStatuses(value);
+}
+
 /**
  * フィルター変更を通知し、登録済みコールバック（一覧・カレンダー・スケジュールの再描画）を実行する。
  * @returns なし
@@ -116,7 +146,8 @@ export function loadFormFromFilterState(viewId: string): void {
   if (freeTextEl) freeTextEl.value = state.filterFreeText;
   syncFilterButtons();
   updateChosenDisplays();
-  if (viewId === "schedule") syncPlanStatusButtons();
+  // スケジュール・カレンダーではステータス（計画中/完了/中止）行を表示するため、ボタンの ON/OFF を state に同期
+  if (viewId === "schedule" || isCalendar) syncPlanStatusButtons();
 }
 
 /**
@@ -160,9 +191,10 @@ function syncFilterButtons(): void {
 function syncPlanStatusButtons(): void {
   const searchArea = document.getElementById("transaction-history-common");
   if (!searchArea) return;
+  const active = getActivePlanStatuses();
   searchArea.querySelectorAll(".transaction-history-filter-btn[data-plan-status]").forEach((b) => {
     const value = (b as HTMLButtonElement).dataset.planStatus as SchedulePlanStatus;
-    b.classList.toggle("is-active", schedulePlanStatuses.includes(value));
+    b.classList.toggle("is-active", active.includes(value));
   });
 }
 
@@ -567,6 +599,12 @@ function resetConditions(): void {
   if (currentView === "schedule") {
     setSchedulePlanStatuses(["planning"]);
     syncPlanStatusButtons();
+  } else if (
+    currentView === "transaction-history-weekly" ||
+    currentView === "transaction-history-calendar"
+  ) {
+    setCalendarPlanStatuses(["planning", "complete"]);
+    syncPlanStatusButtons();
   }
   updateChosenDisplays();
   notifyFilterChange();
@@ -717,14 +755,15 @@ export function initTransactionSearchForm(): void {
       notifyFilterChange();
     });
   });
-  // スケジュール用ステータス（計画中/完了/中止）ボタン押下で複数選択トグル
+  // スケジュール・カレンダー用ステータス（計画中/完了/中止）ボタン押下で複数選択トグル
   searchArea?.querySelectorAll(".transaction-history-filter-btn[data-plan-status]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const value = (btn as HTMLButtonElement).dataset.planStatus as SchedulePlanStatus;
-      const next = schedulePlanStatuses.includes(value)
-        ? schedulePlanStatuses.filter((s) => s !== value)
-        : [...schedulePlanStatuses, value];
-      setSchedulePlanStatuses(next);
+      const active = getActivePlanStatuses();
+      const next = active.includes(value)
+        ? active.filter((s) => s !== value)
+        : [...active, value];
+      setActivePlanStatuses(next);
       syncPlanStatusButtons();
       notifyFilterChange();
     });

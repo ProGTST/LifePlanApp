@@ -134,7 +134,10 @@ export function showMainView(viewId: string): void {
   }
   const planStatusRow = document.getElementById("transaction-history-plan-status-row");
   if (planStatusRow) {
-    const showPlanStatus = viewId === "schedule";
+    const showPlanStatus =
+      viewId === "schedule" ||
+      viewId === "transaction-history-weekly" ||
+      viewId === "transaction-history-calendar";
     planStatusRow.classList.toggle("is-hidden", !showPlanStatus);
     planStatusRow.setAttribute("aria-hidden", showPlanStatus ? "false" : "true");
   }
