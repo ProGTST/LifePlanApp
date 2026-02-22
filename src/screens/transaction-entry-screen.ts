@@ -1660,16 +1660,25 @@ async function loadFormForEdit(transactionId: string): Promise<void> {
   if (accountInEl) accountInEl.value = row.ACCOUNT_ID_IN || "";
   if (accountOutEl) accountOutEl.value = row.ACCOUNT_ID_OUT || "";
   fillCategorySelect(type);
-  fillAccountSelects(editableAccountIds);
+  // 編集時は取引の勘定をドロップダウンに含める（権限付与の参照のみ勘定でも正しく表示するため）
+  const accountIdsForSelect = new Set(editableAccountIds);
+  if ((row.ACCOUNT_ID_IN || "").trim()) accountIdsForSelect.add((row.ACCOUNT_ID_IN || "").trim());
+  if ((row.ACCOUNT_ID_OUT || "").trim()) accountIdsForSelect.add((row.ACCOUNT_ID_OUT || "").trim());
+  fillAccountSelects(accountIdsForSelect);
   updateAccountRowsVisibility(type);
+  // 編集時: updateAccountRowsVisibility 内の fillAccountSelects(editableAccountIds) で勘定が上書きされるため、取引の勘定を再反映する（参照のみ勘定でも正しく表示）
+  if (accountInEl) accountInEl.value = row.ACCOUNT_ID_IN || "";
+  if (accountOutEl) accountOutEl.value = row.ACCOUNT_ID_OUT || "";
   if (type === "expense") {
     const firstIn = getFirstEditableAccountId("in");
     if (accountInEl) accountInEl.value = firstIn;
+    updateAccountTriggerDisplay("out", row.ACCOUNT_ID_OUT || "");
     updateAccountTriggerDisplay("in", firstIn);
   } else if (type === "income") {
     const firstOut = getFirstEditableAccountId("out");
     if (accountOutEl) accountOutEl.value = firstOut;
     updateAccountTriggerDisplay("out", firstOut);
+    updateAccountTriggerDisplay("in", row.ACCOUNT_ID_IN || "");
   } else {
     updateAccountTriggerDisplay("out", row.ACCOUNT_ID_OUT || "");
     updateAccountTriggerDisplay("in", row.ACCOUNT_ID_IN || "");
@@ -2046,7 +2055,7 @@ export function initTransactionEntryView(): void {
       updateTransactionEntryCopyAsNewButtonVisibility();
       updatePlanOnlyRowsVisibility(getStatusInput()?.value ?? "actual");
       updateActualRowVisibility();
-      setTransactionEntryReadonly(transactionEntryViewOnly);
+      setTransactionEntryReadonly(editId ? transactionEntryViewOnly : false);
     })();
   });
 

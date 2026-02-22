@@ -1,6 +1,7 @@
 import type { TransactionRow } from "../types";
 import type { SchedulePlanStatus } from "../state";
 import {
+  currentUserId,
   transactionList,
   transactionTagList,
   scheduleFilterState,
@@ -12,6 +13,7 @@ import {
 } from "../state";
 import {
   loadTransactionData,
+  getAccountRows,
   getCategoryById,
   getRowPermissionType,
   getActualIdsForPlanId,
@@ -36,6 +38,32 @@ import { ICON_DEFAULT_COLOR } from "../constants/colorPresets";
  */
 function getScheduleFilterState() {
   return { ...scheduleFilterState };
+}
+
+/**
+ * 集計に含める「自分の勘定のみ」の ID の Set。
+ * 権限付与された勘定項目（他ユーザー勘定で ACCOUNT_PERMISSION で共有されているもの）は含めず、集計対象にしない。
+ */
+function getOwnAccountIdsForSchedule(): Set<string> {
+  const ids = new Set<string>();
+  const me = currentUserId;
+  if (!me) return ids;
+  getAccountRows()
+    .filter((a) => (a.USER_ID || "").trim() === me)
+    .forEach((a) => ids.add(a.ID));
+  return ids;
+}
+
+/**
+ * 取引が自分の勘定のみに紐づくか（権限付与勘定を含まないか）。集計対象判定に使用。
+ * ACCOUNT_ID_IN / ACCOUNT_ID_OUT のいずれかが「自分の勘定」でない場合は false（集計対象外）。
+ */
+function isRowOnlyOwnAccounts(row: TransactionRow, ownAccountIds: Set<string>): boolean {
+  const inId = (row.ACCOUNT_ID_IN || "").trim();
+  const outId = (row.ACCOUNT_ID_OUT || "").trim();
+  if (inId && !ownAccountIds.has(inId)) return false;
+  if (outId && !ownAccountIds.has(outId)) return false;
+  return true;
 }
 
 const WEEKDAY_JA = ["日", "月", "火", "水", "木", "金", "土"];
@@ -1036,13 +1064,16 @@ function renderScheduleGrid(): void {
 /**
  * 表示中の予定行から集計（予定収入/支出/残高、実績収入/支出/残高、進捗率）を算出し、集計ビューに反映する。
  * 予定収入・予定支出は SUM(予定金額 × 対象日の日数) で計算する。対象日の日数は planOccurrence の計算による。
+ * 権限付与された勘定項目の取引データは集計対象に含めない（自分の勘定に紐づく取引のみ集計）。
  * @param rows - 表示中の予定取引の配列（getPlanRows() の戻り値）
  */
 function renderScheduleSummary(rows: TransactionRow[]): void {
+  const ownAccountIds = getOwnAccountIdsForSchedule();
   let planIncome = 0;
   let planExpense = 0;
   const excludeCompleted = !schedulePlanStatuses.includes("complete");
   for (const r of rows) {
+    if (!isRowOnlyOwnAccounts(r, ownAccountIds)) continue; // 権限付与勘定の取引は集計しない
     const type = (r.TRANSACTION_TYPE || "").toLowerCase();
     const amount = parseFloat(String(r.AMOUNT ?? "0")) || 0;
     const occurrenceDates = getPlanOccurrenceDatesForDisplay(r, excludeCompleted);
@@ -1056,6 +1087,7 @@ function renderScheduleSummary(rows: TransactionRow[]): void {
   for (const row of rows) {
     const actuals = getActualTransactionsForPlan(row.ID);
     for (const a of actuals) {
+      if (!isRowOnlyOwnAccounts(a, ownAccountIds)) continue; // 権限付与勘定の実績は集計しない
       if (!actualRowsById.has(a.ID)) actualRowsById.set(a.ID, a);
     }
   }

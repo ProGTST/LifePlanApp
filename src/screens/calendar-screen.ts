@@ -25,7 +25,6 @@ import {
   getCategoryById,
   getRowPermissionType,
   getAccountRows,
-  getPermissionRows,
 } from "../utils/transactionDataSync";
 import {
   updateTransactionHistoryTabLayout,
@@ -44,16 +43,28 @@ function getCalendarFilterState() {
   return { ...calendarFilterState };
 }
 
-/** ログインユーザーが参照できる勘定 ID の Set（残高グラフの勘定プルダウン用） */
+/** カレンダー内で参照する勘定 ID の Set（自分が持つ勘定のみ。残高グラフの勘定プルダウン・前月繰越・集計に使用） */
 function getVisibleAccountIdsForCharts(): Set<string> {
   const ids = new Set<string>();
   const me = currentUserId;
   if (!me) return ids;
   const accountRows = getAccountRows();
-  const permissionRows = getPermissionRows();
   accountRows.filter((a) => a.USER_ID === me).forEach((a) => ids.add(a.ID));
-  permissionRows.filter((p) => p.USER_ID === me).forEach((p) => ids.add(p.ACCOUNT_ID));
   return ids;
+}
+
+/** 週カレンダーのフッター集計に含める「自分の勘定のみ」の ID の Set。権限付与勘定はフッターには含めない。 */
+function getOwnAccountIdsForFooter(): Set<string> {
+  return getVisibleAccountIdsForCharts();
+}
+
+/** 取引が自分の勘定のみに紐づくか（権限付与勘定を含まないか）。フッター集計の対象判定に使用。 */
+function isRowOnlyOwnAccounts(row: TransactionRow, ownAccountIds: Set<string>): boolean {
+  const inId = (row.ACCOUNT_ID_IN || "").trim();
+  const outId = (row.ACCOUNT_ID_OUT || "").trim();
+  if (inId && !ownAccountIds.has(inId)) return false;
+  if (outId && !ownAccountIds.has(outId)) return false;
+  return true;
 }
 
 /**
@@ -239,18 +250,39 @@ function getFilteredTransactionListForCalendar(ym?: string): TransactionRow[] {
   return list.filter((row) => isTransactionInYearMonth(row, ym));
 }
 
+/**
+ * 週ブロック用。勘定フィルタをかけず、参照可能な勘定（自分の勘定＋権限付与された勘定）の取引をすべて含む一覧を返す。
+ * カレンダーで「勘定」を指定していても、週ブロックには権限付与勘定の取引も表示する。
+ */
+function getFilteredTransactionListForCalendarIncludingPermission(ym?: string): TransactionRow[] {
+  const stateWithoutAccountFilter = { ...getCalendarFilterState(), filterAccountIds: [] };
+  let list = getCalendarFilteredList(transactionList, stateWithoutAccountFilter, transactionTagList);
+  if (calendarPlanStatuses.length > 0) {
+    const statusNormalized = (s: string) => (s || "planning").toLowerCase() as SchedulePlanStatus;
+    list = list.filter((row) => {
+      if ((row.PROJECT_TYPE || "").toLowerCase() !== "plan") return true;
+      return calendarPlanStatuses.includes(statusNormalized(row.PLAN_STATUS || "planning"));
+    });
+  }
+  if (!ym || !/^\d{4}-\d{2}$/.test(ym)) return list;
+  return list.filter((row) => isTransactionInYearMonth(row, ym));
+}
+
 // ---------------------------------------------------------------------------
 // カレンダー集計（日付セル・月合計・週範囲・グラフ用データ）
 // ---------------------------------------------------------------------------
 
 /**
- * 指定日付の日付セル用サマリ（予定件数・実績件数・収支金額）を集計する。
+ * 指定日付の日付セル用サマリ（予定件数・実績件数・収支金額）を集計する。権限付与勘定の取引は含めない（自分の勘定のみ）。
  */
 function getCalendarDaySummary(
   dateStr: string,
   ym?: string
 ): { planCount: number; actualCount: number; incomeAmount: number; expenseAmount: number; transferAmount: number } {
-  const filtered = getFilteredTransactionListForCalendar(ym);
+  const ownAccountIds = getOwnAccountIdsForFooter();
+  const filtered = getFilteredTransactionListForCalendar(ym).filter((row) =>
+    isRowOnlyOwnAccounts(row, ownAccountIds)
+  );
   const summary = { planCount: 0, actualCount: 0, incomeAmount: 0, expenseAmount: 0, transferAmount: 0 };
 
   for (const row of filtered) {
@@ -304,7 +336,7 @@ function getCalendarDaySummary(
 }
 
 /**
- * 指定月の月合計（予定・実績の収入・支出）を集計する。フッター表示用。
+ * 指定月の月合計（予定・実績の収入・支出）を集計する。フッター表示・前月繰越ブロック用。権限付与勘定の取引は含めない（自分の勘定のみ）。
  */
 function getCalendarMonthTotals(
   year: number,
@@ -314,7 +346,8 @@ function getCalendarMonthTotals(
   const range = getMonthDateRange(monthStr);
   if (!range) return { planIncome: 0, planExpense: 0, actualIncome: 0, actualExpense: 0 };
   const { firstDay, lastDay } = range;
-  const filtered = getFilteredTransactionListForCalendar(monthStr);
+  const ownAccountIds = getOwnAccountIdsForFooter();
+  const filtered = getFilteredTransactionListForCalendar(monthStr).filter((row) => isRowOnlyOwnAccounts(row, ownAccountIds));
   const totals = { planIncome: 0, planExpense: 0, actualIncome: 0, actualExpense: 0 };
 
   for (const row of filtered) {
@@ -347,11 +380,12 @@ function getCalendarMonthTotals(
 
 /**
  * 指定日付範囲に発生日が含まれる取引のみ返す。週カレンダーの週ブロック用。
+ * 権限付与された勘定の取引も含めるため、勘定フィルタをかけないリストを参照する。
  */
 function getTransactionsInRange(from: string, to: string, ym?: string): TransactionRow[] {
   const from10 = from.slice(0, 10);
   const to10 = to.slice(0, 10);
-  const filtered = getFilteredTransactionListForCalendar(ym);
+  const filtered = getFilteredTransactionListForCalendarIncludingPermission(ym);
   return filtered.filter((row) => {
     if (row.PROJECT_TYPE === "actual") {
       const actualDate = getActualTargetDate(row);
@@ -389,7 +423,7 @@ function toCategoryChartItems(rec: Record<string, number>): Array<{ id: string; 
 }
 
 /**
- * 指定月のグラフ用データ（日別棒グラフ・カテゴリ別円グラフ）を集計する。
+ * 指定月のグラフ用データ（日別棒グラフ・カテゴリ別円グラフ）を集計する。権限付与勘定の取引は含めない（自分の勘定のみ）。
  */
 function getChartDataForMonth(ym: string): {
   labels: string[];
@@ -425,7 +459,8 @@ function getChartDataForMonth(ym: string): {
   const actualIncomeCat: Record<string, number> = {};
   const actualExpenseCat: Record<string, number> = {};
 
-  const filtered = getFilteredTransactionListForCalendar(ym);
+  const ownAccountIds = getOwnAccountIdsForFooter();
+  const filtered = getFilteredTransactionListForCalendar(ym).filter((row) => isRowOnlyOwnAccounts(row, ownAccountIds));
   for (const row of filtered) {
     const { type, amount } = getTransactionTypeAndAmount(row);
     const catId = row.CATEGORY_ID || "";
@@ -480,7 +515,7 @@ function getChartDataForMonth(ym: string): {
 }
 
 /**
- * 指定月・指定勘定のグラフ用データ（日別の収入・支出）を集計する。残高推移グラフ用。
+ * 指定月・指定勘定のグラフ用データ（日別の収入・支出）を集計する。残高推移グラフ用。権限付与勘定の取引は含めない（自分の勘定のみ）。
  */
 function getChartDataForMonthByAccount(
   ym: string,
@@ -504,11 +539,14 @@ function getChartDataForMonthByAccount(
     planExpenseByDay.push(0);
     actualExpenseByDay.push(0);
   }
-  const filtered = getFilteredTransactionListForCalendar(ym).filter((row) => {
-    const inId = (row.ACCOUNT_ID_IN || "").trim();
-    const outId = (row.ACCOUNT_ID_OUT || "").trim();
-    return inId === accountId || outId === accountId;
-  });
+  const ownAccountIds = getOwnAccountIdsForFooter();
+  const filtered = getFilteredTransactionListForCalendar(ym)
+    .filter((row) => isRowOnlyOwnAccounts(row, ownAccountIds))
+    .filter((row) => {
+      const inId = (row.ACCOUNT_ID_IN || "").trim();
+      const outId = (row.ACCOUNT_ID_OUT || "").trim();
+      return inId === accountId || outId === accountId;
+    });
   for (const row of filtered) {
     const { type, amount } = getTransactionTypeAndAmount(row);
     const from = row.TRANDATE_FROM || "";
@@ -612,7 +650,7 @@ async function renderCharts(ym: string): Promise<void> {
     },
   };
 
-  // 残高推移グラフ：集計開始金額=前月の TRANSACTION_MONTHLY.CARRYOVER_TOTAL（勘定・表示月の前月で一致）。実績/予定とも収入・支出・振替を日別集計（収入=INに加算、支出=OUTから減算、振替=IN加算・OUT減算）。
+  // 残高推移グラフ：集計開始金額=前月の TRANSACTION_MONTHLY.BALANCE_TOTAL（勘定・表示月の前月で一致）。実績/予定とも収入・支出・振替を日別集計（収入=INに加算、支出=OUTから減算、振替=IN加算・OUT減算）。
   const balanceCanvas = document.getElementById("transaction-history-chart-balance") as HTMLCanvasElement | null;
   const balanceSelect = document.getElementById("transaction-history-chart-balance-account") as HTMLSelectElement | null;
   if (balanceCanvas && balanceSelect) {
@@ -633,7 +671,7 @@ async function renderCharts(ym: string): Promise<void> {
 
     const selectedAccountId = balanceSelect.value || "";
     if (selectedAccountId) {
-      // 集計開始金額 = 表示月の前月の CARRYOVER_TOTAL（TRANSACTION_MONTHLY の当月末累計のため、月初残高は前月の繰越）
+      // 集計開始金額 = 表示月の前月の BALANCE_TOTAL（TRANSACTION_MONTHLY）
       const [y, m] = ym.split("-").map((s) => parseInt(s, 10));
       const prevMonth = m === 1 ? 12 : m - 1;
       const prevYear = m === 1 ? y - 1 : y;
@@ -645,9 +683,9 @@ async function renderCharts(ym: string): Promise<void> {
         const py = (row.YEAR || "").trim();
         const pm = (row.MONTH || "").trim().padStart(2, "0");
         if (aid !== selectedAccountId || `${py}-${pm}` !== prevYm) continue;
-        const carry = parseFloat(String(row.CARRYOVER_TOTAL ?? "0")) || 0;
-        if ((row.PROJECT_TYPE || "").toLowerCase() === "plan") carryoverPlan = carry;
-        else if ((row.PROJECT_TYPE || "").toLowerCase() === "actual") carryoverActual = carry;
+        const bal = parseFloat(String(row.BALANCE_TOTAL ?? "0")) || 0;
+        if ((row.PROJECT_TYPE || "").toLowerCase() === "plan") carryoverPlan = bal;
+        else if ((row.PROJECT_TYPE || "").toLowerCase() === "actual") carryoverActual = bal;
       }
       const accData = getChartDataForMonthByAccount(ym, selectedAccountId);
       const planBalance: number[] = [];
@@ -856,6 +894,7 @@ async function renderCharts(ym: string): Promise<void> {
 
 /**
  * 週カレンダーパネルを描画する。選択月の週一覧を取得し、週ごとにブロック（タイトル・取引リスト・フッター）を生成する。
+ * 取引リストは参照可能な勘定（自分の勘定＋権限付与された勘定）の取引を表示。フッターの集計は自分の勘定のみを含める。
  */
 function renderWeeklyPanel(): void {
   const container = document.getElementById("transaction-history-weekly-blocks");
@@ -921,7 +960,8 @@ function renderWeeklyPanel(): void {
       }
     }
 
-    // 表示した取引から週の予定・実績の収入・支出合計を算出
+    // 表示した取引から週の予定・実績の収入・支出合計を算出（フッターには自分の勘定のみ。権限付与勘定の取引は集計に含めない）
+    const ownAccountIds = getOwnAccountIdsForFooter();
     let planIncome = 0;
     let planExpense = 0;
     let actualIncome = 0;
@@ -929,6 +969,7 @@ function renderWeeklyPanel(): void {
     for (const items of byDate.values()) {
       for (const { row, showAmount } of items) {
         if (!showAmount) continue;
+        if (!isRowOnlyOwnAccounts(row, ownAccountIds)) continue;
         const { type, amount } = getTransactionTypeAndAmount(row);
         const isPlan = row.PROJECT_TYPE === "plan";
         if (type === "income") {
@@ -954,7 +995,7 @@ function renderWeeklyPanel(): void {
       dayGroup.appendChild(dayTitle);
       const dayItems = document.createElement("div");
       dayItems.className = "transaction-history-week-day-items";
-      for (const { row, showAmount } of byDate.get(dateStr)!) {
+      for (const { row } of byDate.get(dateStr)!) {
         const item = document.createElement("div");
         item.className = "transaction-history-week-block-item";
         const permType = getRowPermissionType(row);
@@ -982,7 +1023,7 @@ function renderWeeklyPanel(): void {
         item.appendChild(nameSpan);
         const amountSpan = document.createElement("span");
         amountSpan.className = "transaction-history-week-block-amount";
-        amountSpan.textContent = showAmount && row.AMOUNT ? Number(row.AMOUNT).toLocaleString() : "0";
+        amountSpan.textContent = row.AMOUNT ? Number(row.AMOUNT).toLocaleString() : "0";
         item.appendChild(amountSpan);
         const openEntry = (): void => {
           const permType = getRowPermissionType(row);
@@ -1056,6 +1097,7 @@ function renderWeeklyPanel(): void {
 
 /**
  * 月カレンダーパネルを描画する。曜日ヘッダー・日付セル（サマリ表示）・月合計フッターを生成する。
+ * 日付セルのサマリと月合計は自分の勘定の取引のみ集計。権限付与勘定は含めない。
  */
 function renderCalendarPanel(): void {
   const grid = document.getElementById("transaction-history-calendar-grid");
@@ -1184,7 +1226,7 @@ function renderCalendarPanel(): void {
     grid.appendChild(cell);
   }
 
-  // 月合計フッター（予定・実績の収入・支出・総合計）を追加
+  // 月合計フッター（予定・実績の収入・支出・総合計）を追加。自分の勘定の取引のみ集計。
   const panel = grid.parentElement;
   const existingFooter = document.getElementById("transaction-history-calendar-footer");
   if (existingFooter) existingFooter.remove();
@@ -1234,8 +1276,9 @@ function renderCalendarPanel(): void {
 
 /**
  * 月カレンダー・週カレンダー右上ブロック（transaction-history-tabs-row-right）に前月繰越・残高差・実績率を表示する。
- * 前月繰越 = 前月の TRANSACTION_MONTHLY の CARRYOVER_TOTAL の合計（表示対象勘定のみ）
- * 残高差 = 実績の総合計(実績収入-実績支出) - 予定の総合計(予定収入-予定支出)
+ * いずれも自分の勘定の取引のみ対象。権限付与勘定は含めない。
+ * 前月繰越 = 前月の TRANSACTION_MONTHLY の BALANCE_TOTAL の合計（自分の勘定のみ）
+ * 残高差 = 実績の総合計 - 予定の総合計（自分の勘定のみ）
  * 実績率 = 実績の総合計 / 予定の総合計 * 100（予定の総合計が0のときは「—」）
  */
 async function renderCalendarSummaryRight(): Promise<void> {
@@ -1267,7 +1310,7 @@ async function renderCalendarSummaryRight(): Promise<void> {
     const py = (row.YEAR || "").trim();
     const pm = (row.MONTH || "").trim().padStart(2, "0");
     if (!visibleIds.has(aid) || `${py}-${pm}` !== prevYm) continue;
-    carryoverTotal += parseFloat(String(row.CARRYOVER_TOTAL ?? "0")) || 0;
+    carryoverTotal += parseFloat(String(row.BALANCE_TOTAL ?? "0")) || 0;
   }
 
   rightEl.innerHTML = "";
