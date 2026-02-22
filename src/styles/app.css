@@ -4641,17 +4641,25 @@
 /* スケジュール集計ビュー（表示データの予定・実績合計と進捗率） */
 #schedule-summary-wrap.schedule-view-summary {
   flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
   margin-top: 0.75rem;
   padding: 0.75rem 1rem;
   border: 1px solid var(--gray-300);
   border-radius: var(--radius-md);
   background: var(--gray-50);
 }
-.schedule-view-summary-list {
+.schedule-view-summary-list.schedule-view-summary-row {
   display: flex;
   flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 1rem 2rem;
   margin: 0;
+}
+.schedule-view-summary-list.schedule-view-summary-row + .schedule-view-summary-list.schedule-view-summary-row {
+  padding-top: 0.25rem;
+  border-top: 1px solid var(--gray-200);
 }
 .schedule-view-summary-item {
   display: flex;
@@ -4660,13 +4668,16 @@
 }
 .schedule-view-summary-item dt {
   margin: 0;
+  min-width: 6.5em;
   font-size: 0.875rem;
   color: var(--gray-600);
 }
 .schedule-view-summary-item dd {
   margin: 0;
+  min-width: 6.5em;
   font-size: 1rem;
   font-weight: 600;
+  text-align: right;
 }
 #schedule-summary-wrap .schedule-summary-value--red {
   color: #b91c1c;
