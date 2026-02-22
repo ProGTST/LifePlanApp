@@ -190,13 +190,16 @@
                   </div>
                 </div>
                 <div class="schedule-view-grid-wrap">
-                  <table class="schedule-view-table" id="schedule-table" aria-label="スケジュール">
-                    <thead>
-                      <tr id="schedule-yearmonth-row"></tr>
-                      <tr id="schedule-head-row"></tr>
-                    </thead>
-                    <tbody id="schedule-tbody"></tbody>
-                  </table>
+                  <div class="schedule-view-table-inner">
+                    <table class="schedule-view-table" id="schedule-table" aria-label="スケジュール">
+                      <thead>
+                        <tr id="schedule-yearmonth-row"></tr>
+                        <tr id="schedule-head-row"></tr>
+                      </thead>
+                      <tbody id="schedule-tbody"></tbody>
+                    </table>
+                    <div class="schedule-connector-overlays" id="schedule-connector-overlays" aria-hidden="true"></div>
+                  </div>
                 </div>
                 <div id="schedule-summary-wrap" class="schedule-view-summary" aria-label="表示データの集計">
                   <dl class="schedule-view-summary-list schedule-view-summary-row">

@@ -484,17 +484,53 @@ function getActualIconColumnIndices(
   return [...new Set(indices)].sort((x, y) => x - y);
 }
 
+/** スケジュール表の固定列数（種類・カテゴリ・取引名・金額・取引日・状況）。日付列はこの次から。 */
+const SCHEDULE_FIXED_COL_COUNT = 6;
+
 /**
- * 実績アイコン列の「間」にある列インデックス（アイコン同士を線でつなぐセル）を返す。
+ * 実績アイコンが複数列ある行について、オーバーレイで1本の線を描画する。
+ * テーブル描画後の requestAnimationFrame から呼ぶ想定。
  */
-function getConnectorColumnIndices(iconColIndices: number[]): Set<number> {
-  const set = new Set<number>();
-  for (let k = 0; k < iconColIndices.length - 1; k++) {
-    const a = iconColIndices[k];
-    const b = iconColIndices[k + 1];
-    for (let i = a + 1; i < b; i++) set.add(i);
-  }
-  return set;
+function renderScheduleConnectorOverlays(): void {
+  const container = document.getElementById("schedule-connector-overlays");
+  const tbody = document.getElementById("schedule-tbody");
+  if (!container || !tbody) return;
+
+  container.innerHTML = "";
+
+  const containerRect = container.getBoundingClientRect();
+  if (containerRect.width === 0 || containerRect.height === 0) return;
+
+  const rows = tbody.querySelectorAll("tr[data-actual-icon-cols]");
+  rows.forEach((tr) => {
+    const attr = tr.getAttribute("data-actual-icon-cols");
+    if (!attr) return;
+    const indices = attr.split(",").map((s) => parseInt(s.trim(), 10)).filter((n) => !Number.isNaN(n));
+    if (indices.length < 2) return;
+
+    const firstCol = indices[0];
+    const lastCol = indices[indices.length - 1];
+    const firstCell = tr.children[SCHEDULE_FIXED_COL_COUNT + firstCol] as HTMLElement | undefined;
+    const lastCell = tr.children[SCHEDULE_FIXED_COL_COUNT + lastCol] as HTMLElement | undefined;
+    if (!firstCell || !lastCell) return;
+
+    const firstIcon = firstCell.querySelector(".schedule-view-date-cell-actual-icon") as HTMLElement | null;
+    const lastIcon = lastCell.querySelector(".schedule-view-date-cell-actual-icon") as HTMLElement | null;
+    const firstRect = (firstIcon ?? firstCell).getBoundingClientRect();
+    const lastRect = (lastIcon ?? lastCell).getBoundingClientRect();
+
+    // 線は最初の実績アイコンの右端〜最後の実績アイコンの左端で描画（アイコンに重ならない）
+    const left = firstRect.right - containerRect.left;
+    const width = Math.max(0, lastRect.left - firstRect.right);
+    const top = firstRect.top - containerRect.top + firstRect.height / 2 - 1;
+    const height = 2;
+
+    const line = document.createElement("div");
+    line.className = "schedule-connector-line";
+    line.setAttribute("aria-hidden", "true");
+    line.style.cssText = `left:${left}px;top:${top}px;width:${width}px;height:${height}px;`;
+    container.appendChild(line);
+  });
 }
 
 /**
@@ -1057,10 +1093,12 @@ function renderScheduleGrid(): void {
     tr.appendChild(amountTd);
     tr.appendChild(dateRangeTd);
     tr.appendChild(statusTd);
-    // 実績アイコンが複数列にまたがる場合、その間の列に線を表示するための列インデックス
+    // 実績アイコンが複数列にまたがる場合、オーバーレイで線を引くため列インデックスを tr に持たせる
     const actualIconColIndices = getActualIconColumnIndices(row.ID, columns, unit);
-    const connectorColIndices = getConnectorColumnIndices(actualIconColIndices);
-    // 各日付列にセルを追加。対象日計算に基づき対象セルのみアクティブクラス・クリック可能。今日なら current クラス。実績の対象日には「実」アイコンを表示。別日の実績アイコン同士の間には線を表示
+    if (actualIconColIndices.length >= 2) {
+      tr.setAttribute("data-actual-icon-cols", actualIconColIndices.join(","));
+    }
+    // 各日付列にセルを追加。対象日計算に基づき対象セルのみアクティブクラス・クリック可能。今日なら current クラス。実績の対象日には「実」アイコンを表示
     columns.forEach((col, colIndex) => {
       const td = document.createElement("td");
       const isTargetCell = isCellActiveForPlan(row, col, unit);
@@ -1092,16 +1130,15 @@ function renderScheduleGrid(): void {
         actualIcon.setAttribute("aria-label", "実績");
         actualIcon.textContent = "実";
         td.appendChild(actualIcon);
-      } else if (connectorColIndices.has(colIndex)) {
-        td.classList.add("schedule-view-date-cell--connector");
-        const connector = document.createElement("span");
-        connector.className = "schedule-view-date-cell-connector";
-        connector.setAttribute("aria-hidden", "true");
-        td.appendChild(connector);
       }
       tr.appendChild(td);
     });
     tbody.appendChild(tr);
+  });
+
+  // 実績アイコンが複数列ある行について、オーバーレイで1本の線を描画（レイアウト後に位置計算）
+  requestAnimationFrame(() => {
+    renderScheduleConnectorOverlays();
   });
 
   // 集計ビューを更新（表示データの予定・実績の合計と進捗率）
@@ -1303,6 +1340,18 @@ export function initScheduleView(): void {
 
   document.getElementById("schedule-scroll-reset-btn")?.addEventListener("click", () => {
     scrollScheduleGridToStartDate();
+  });
+
+  // リサイズ時に実績つなぎ線オーバーレイの位置を再計算
+  let overlayResizeTimer: ReturnType<typeof setTimeout> | null = null;
+  window.addEventListener("resize", () => {
+    if (overlayResizeTimer) clearTimeout(overlayResizeTimer);
+    overlayResizeTimer = setTimeout(() => {
+      overlayResizeTimer = null;
+      if (document.getElementById("view-schedule")?.classList.contains("main-view--hidden") === false) {
+        renderScheduleConnectorOverlays();
+      }
+    }, 150);
   });
 
   // 取引実績オーバーレイの閉じるボタンとオーバーレイ外クリック
