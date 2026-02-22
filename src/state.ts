@@ -1,5 +1,5 @@
 import { DEFAULT_VIEW } from "./constants/index";
-import type { AccountRow, AccountPermissionRow, CategoryRow, TagRow, TransactionRow, TagManagementRow } from "./types.ts";
+import type { AccountRow, AccountPermissionRow, CategoryRow, TagRow, TransactionRow, TransactionTagRow } from "./types.ts";
 import type { FilterState } from "./utils/transactionDataFilter";
 
 /** ログイン中のユーザーID */
@@ -254,14 +254,14 @@ export function setTransactionList(list: TransactionRow[]): void {
 }
 
 /** タグ管理：収支とタグの対応（収支履歴のタグ検索で使用） */
-export let tagManagementList: TagManagementRow[] = [];
+export let transactionTagList: TransactionTagRow[] = [];
 /**
  * タグ管理一覧（収支とタグの対応）を設定する。
  * @param list - タグ管理行の配列
  * @returns なし
  */
-export function setTagManagementList(list: TagManagementRow[]): void {
-  tagManagementList = list;
+export function setTransactionTagList(list: TransactionTagRow[]): void {
+  transactionTagList = list;
 }
 
 /** 収支記録画面で編集する取引ID（null のときは新規登録） */

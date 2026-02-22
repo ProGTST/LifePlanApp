@@ -135,33 +135,6 @@ function addDays(dateStr: string, delta: number): string {
 }
 
 /**
- * 日付文字列に月数を加算した日付を YYYY-MM-DD で返す。
- * @param ymd - 基準日（YYYY-MM-DD）
- * @param delta - 加算する月数
- * @returns 計算後の日付文字列
- */
-function addMonths(ymd: string, delta: number): string {
-  const [y, m, d] = ymd.slice(0, 10).split("-").map(Number);
-  const date = new Date(y, m - 1, d);
-  date.setMonth(date.getMonth() + delta);
-  const yy = date.getFullYear();
-  const mm = String(date.getMonth() + 1).padStart(2, "0");
-  const dd = String(date.getDate()).padStart(2, "0");
-  return `${yy}-${mm}-${dd}`;
-}
-
-/**
- * 指定日付を含む週の日曜日を YYYY-MM-DD で返す（週は日曜始まり）。
- * @param ymd - 日付（YYYY-MM-DD）
- * @returns その週の日曜日の日付文字列
- */
-function getSundayOfWeek(ymd: string): string {
-  const [y, m, d] = ymd.slice(0, 10).split("-").map(Number);
-  const date = new Date(y, m - 1, d);
-  return addDays(ymd.slice(0, 10), -date.getDay());
-}
-
-/**
  * 指定年月に含まれる週の一覧を返す。各週は日曜〜土曜で、月の日付範囲でクリップする。
  */
 function getWeeksInMonth(

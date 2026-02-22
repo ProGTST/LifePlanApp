@@ -2,7 +2,7 @@
  * 収支履歴・カレンダーで共通利用する検索条件型とフィルター適用ユーティリティ（transactionDataFilter）。
  */
 import type { TransactionRow } from "../types";
-import type { TagManagementRow } from "../types";
+import type { TransactionTagRow } from "../types";
 
 /** 収支履歴・スケジュールで検索条件を個別に保持するための型 */
 export interface FilterState {
@@ -22,13 +22,13 @@ export interface FilterState {
  * 指定した検索条件を適用し、ソート済みの配列を返す。
  * @param rows - 取引行の配列
  * @param state - 検索条件
- * @param tagManagementList - タグ紐付け一覧（タグフィルタ用）
+ * @param transactionTagList - タグ紐付け一覧（タグフィルタ用）
  * @returns フィルター適用・ソート後の配列
  */
 export function applyFilters(
   rows: TransactionRow[],
   state: FilterState,
-  tagManagementList: TagManagementRow[]
+  transactionTagList: TransactionTagRow[]
 ): TransactionRow[] {
   const filtered = rows.filter((row) => {
     if (state.filterStatus.length > 0 && !state.filterStatus.includes(row.PROJECT_TYPE as "plan" | "actual")) return false;
@@ -56,7 +56,7 @@ export function applyFilters(
       if (!name.includes(q) && !memo.includes(q)) return false;
     }
     if (state.filterTagIds.length > 0) {
-      const tagIds = tagManagementList.filter((t) => t.TRANSACTION_ID === row.ID).map((t) => t.TAG_ID);
+      const tagIds = transactionTagList.filter((t) => t.TRANSACTION_ID === row.ID).map((t) => t.TAG_ID);
       if (!state.filterTagIds.some((id) => tagIds.includes(id))) return false;
     }
     if (state.filterAccountIds.length > 0) {
@@ -86,30 +86,30 @@ export function applyFilters(
  * 週・月カレンダー画面で選択年月による絞り込みは行わない。年月フィルタは calendar-screen 側で行う。
  * @param transactionList - 取引一覧
  * @param calendarFilterState - カレンダー用検索条件
- * @param tagManagementList - タグ紐付け一覧
+ * @param transactionTagList - タグ紐付け一覧
  * @returns カレンダー用検索条件を適用した取引一覧（年月での絞り込み前）
  */
 export function getCalendarFilteredList(
   transactionList: TransactionRow[],
   calendarFilterState: FilterState,
-  tagManagementList: TagManagementRow[]
+  transactionTagList: TransactionTagRow[]
 ): TransactionRow[] {
   const stateNoDate = { ...calendarFilterState, filterDateFrom: "", filterDateTo: "" };
-  return applyFilters(transactionList, stateNoDate, tagManagementList);
+  return applyFilters(transactionList, stateNoDate, transactionTagList);
 }
 
 /**
  * スケジュール用の検索条件でフィルター適用後の取引一覧を返す。計画（予定/実績）は絞り込まない。
  * @param transactionList - 取引一覧
  * @param scheduleFilterState - スケジュール用検索条件
- * @param tagManagementList - タグ紐付け一覧
+ * @param transactionTagList - タグ紐付け一覧
  * @returns フィルター適用・ソート後の取引配列
  */
 export function getFilteredTransactionListForSchedule(
   transactionList: TransactionRow[],
   scheduleFilterState: FilterState,
-  tagManagementList: TagManagementRow[]
+  transactionTagList: TransactionTagRow[]
 ): TransactionRow[] {
   const state = { ...scheduleFilterState, filterStatus: ["plan", "actual"] as ("plan" | "actual")[] };
-  return applyFilters(transactionList, state, tagManagementList);
+  return applyFilters(transactionList, state, transactionTagList);
 }
