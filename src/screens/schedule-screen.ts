@@ -453,6 +453,51 @@ function isActualTargetInColumn(
 }
 
 /**
+ * 予定に紐づく実績の対象日が表示される列インデックスの一覧を返す（重複除去・昇順）。
+ * 別日に複数実績がある場合、アイコンが離れた列に表示される。
+ */
+function getActualIconColumnIndices(
+  planId: string,
+  columns: { dateFrom: string; dateTo: string }[],
+  unit: ScheduleUnit
+): number[] {
+  const actuals = getActualTransactionsForPlan(planId);
+  const indices: number[] = [];
+  for (const a of actuals) {
+    const target = getActualTargetDate(a);
+    if (!target) continue;
+    for (let i = 0; i < columns.length; i++) {
+      const col = columns[i];
+      if (unit === "day") {
+        if (col.dateFrom === col.dateTo && target === col.dateFrom) {
+          indices.push(i);
+          break;
+        }
+      } else {
+        if (target >= col.dateFrom && target <= col.dateTo) {
+          indices.push(i);
+          break;
+        }
+      }
+    }
+  }
+  return [...new Set(indices)].sort((x, y) => x - y);
+}
+
+/**
+ * 実績アイコン列の「間」にある列インデックス（アイコン同士を線でつなぐセル）を返す。
+ */
+function getConnectorColumnIndices(iconColIndices: number[]): Set<number> {
+  const set = new Set<number>();
+  for (let k = 0; k < iconColIndices.length - 1; k++) {
+    const a = iconColIndices[k];
+    const b = iconColIndices[k + 1];
+    for (let i = a + 1; i < b; i++) set.add(i);
+  }
+  return set;
+}
+
+/**
  * スケジュール用フィルターで絞り込んだ「予定」のみを、開始日・終了日・登録日時でソートして返す。
  * @returns 予定の取引行の配列
  */
@@ -1012,8 +1057,11 @@ function renderScheduleGrid(): void {
     tr.appendChild(amountTd);
     tr.appendChild(dateRangeTd);
     tr.appendChild(statusTd);
-    // 各日付列にセルを追加。対象日計算に基づき対象セルのみアクティブクラス・クリック可能。今日なら current クラス。実績の対象日には「実」アイコンを表示
-    columns.forEach((col) => {
+    // 実績アイコンが複数列にまたがる場合、その間の列に線を表示するための列インデックス
+    const actualIconColIndices = getActualIconColumnIndices(row.ID, columns, unit);
+    const connectorColIndices = getConnectorColumnIndices(actualIconColIndices);
+    // 各日付列にセルを追加。対象日計算に基づき対象セルのみアクティブクラス・クリック可能。今日なら current クラス。実績の対象日には「実」アイコンを表示。別日の実績アイコン同士の間には線を表示
+    columns.forEach((col, colIndex) => {
       const td = document.createElement("td");
       const isTargetCell = isCellActiveForPlan(row, col, unit);
       td.className = "schedule-view-date-cell";
@@ -1038,12 +1086,18 @@ function renderScheduleGrid(): void {
       if (isCurrentDay || isCurrentWeek || isCurrentMonth) {
         td.classList.add("schedule-view-date-cell--current");
       }
-      if (isActualTargetInColumn(row.ID, col, unit)) {
+      if (actualIconColIndices.includes(colIndex)) {
         const actualIcon = document.createElement("span");
         actualIcon.className = "transaction-history-plan-icon schedule-view-date-cell-actual-icon";
         actualIcon.setAttribute("aria-label", "実績");
         actualIcon.textContent = "実";
         td.appendChild(actualIcon);
+      } else if (connectorColIndices.has(colIndex)) {
+        td.classList.add("schedule-view-date-cell--connector");
+        const connector = document.createElement("span");
+        connector.className = "schedule-view-date-cell-connector";
+        connector.setAttribute("aria-hidden", "true");
+        td.appendChild(connector);
       }
       tr.appendChild(td);
     });
