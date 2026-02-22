@@ -10,7 +10,7 @@ import {
   pushNavigation,
   currentUserId,
   transactionList,
-  tagManagementList,
+  transactionTagList,
   calendarFilterState,
   calendarPlanStatuses,
 } from "../state";
@@ -226,7 +226,7 @@ function isTransactionInYearMonth(row: TransactionRow, ym: string): boolean {
  * @param ym - 指定時は、取引日がその年月に含まれる取引のみ返す（YYYY-MM）。未指定または不正時は年月絞り込みを行わない。
  */
 function getFilteredTransactionListForCalendar(ym?: string): TransactionRow[] {
-  let list = getCalendarFilteredList(transactionList, getCalendarFilterState(), tagManagementList);
+  let list = getCalendarFilteredList(transactionList, getCalendarFilterState(), transactionTagList);
   // ステータス（計画中/完了/中止）で絞り込み。予定のみ対象。選択なしの場合は予定は全表示。
   if (calendarPlanStatuses.length > 0) {
     const statusNormalized = (s: string) => (s || "planning").toLowerCase() as SchedulePlanStatus;

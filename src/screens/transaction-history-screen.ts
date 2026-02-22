@@ -1,7 +1,7 @@
 import type { TransactionRow, AccountRow } from "../types";
 import {
   transactionList,
-  tagManagementList,
+  transactionTagList,
   setTransactionEntryEditId,
   setTransactionEntryViewOnly,
   setTransactionEntryReturnView,
@@ -102,7 +102,7 @@ function renderList(): void {
   if (!tbody) return;
   tbody.innerHTML = "";
   // 収支履歴用検索条件でフィルター・ソートし、表示キーを記録
-  const filtered = applyFilters(transactionList, getHistoryFilterState(), tagManagementList);
+  const filtered = applyFilters(transactionList, getHistoryFilterState(), transactionTagList);
   setDisplayedKeys("transaction-history", filtered.map((row) => row.ID));
   // フィルター済みの取引を1行ずつ描画
   filtered.forEach((row) => {
@@ -193,7 +193,7 @@ function renderList(): void {
     // タグ列（紐付きタグをラベルで列挙）
     const tdTags = document.createElement("td");
     tdTags.className = "transaction-history-tags-cell";
-    const tags = getTagsForTransaction(row.ID, tagManagementList);
+    const tags = getTagsForTransaction(row.ID, transactionTagList);
     if (tags.length > 0) {
       const tagLabelWrap = document.createElement("span");
       tagLabelWrap.className = "transaction-history-tags-label-wrap";

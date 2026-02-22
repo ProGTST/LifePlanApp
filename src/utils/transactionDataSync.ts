@@ -10,7 +10,7 @@ import type {
   TransactionTagRow,
   TransactionManagementRow,
 } from "../types";
-import { currentUserId, setTransactionList, setTagManagementList, transactionList } from "../state";
+import { currentUserId, setTransactionList, setTransactionTagList, transactionList } from "../state";
 import { fetchCsv, rowToObject } from "./csv";
 import { sortOrderNum } from "./dragSort";
 
@@ -194,7 +194,7 @@ export function loadTransactionData(noCache = false): Promise<void> {
     fetchAccountPermissionList(noCache),
     fetchTransactionTagList(noCache),
     fetchTransactionManagementList(noCache),
-  ]).then(([txList, catList, tagList, accList, permList, tagMgmt, txMgmt]) => {
+  ]).then(([txList, catList, tagList, accList, permList, txTag, txMgmt]) => {
     // 参照可能な勘定 ID を算出し、削除フラグ未設定かつ参照可能な取引のみ state に設定
     const visibleIds = getVisibleAccountIds(accList, permList);
     const notDeleted = txList.filter((r) => (r.DLT_FLG || "0") !== "1");
@@ -205,7 +205,7 @@ export function loadTransactionData(noCache = false): Promise<void> {
     tagRows = tagList;
     accountRows = accList;
     permissionRows = permList;
-    setTagManagementList(tagMgmt);
+    setTransactionTagList(txTag);
     transactionManagementRows = txMgmt;
   });
 }
@@ -281,7 +281,7 @@ export function getActualTransactionsForPlan(planId: string): TransactionRow[] {
 /**
  * 取引に紐づくタグの一覧を返す（TRANSACTION_TAG と TAG から取得）。
  * @param transactionId - 取引 ID
- * @param tagManagementList - タグ紐付け一覧
+ * @param transactionTagList - タグ紐付け一覧
  * @returns タグ行の配列
  */
 export function getTagsForTransaction(

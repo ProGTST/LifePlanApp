@@ -2,7 +2,7 @@ import type { TransactionRow } from "../types";
 import type { SchedulePlanStatus } from "../state";
 import {
   transactionList,
-  tagManagementList,
+  transactionTagList,
   scheduleFilterState,
   schedulePlanStatuses,
   setTransactionEntryEditId,
@@ -424,7 +424,7 @@ function isActualTargetInColumn(
  */
 function getPlanRows(): TransactionRow[] {
   // スケジュール用検索条件でフィルターし、予定（PROJECT_TYPE=plan）のみに絞る
-  const list = getFilteredTransactionListForSchedule(transactionList, getScheduleFilterState(), tagManagementList);
+  const list = getFilteredTransactionListForSchedule(transactionList, getScheduleFilterState(), transactionTagList);
   const planOnly = list.filter((r) => (r.PROJECT_TYPE || "").toLowerCase() === "plan");
   // ステータス（計画中/完了/中止）で絞り込み。未設定は計画中扱い。選択なしの場合は全表示
   const statusNormalized = (s: string) => (s || "planning").toLowerCase() as SchedulePlanStatus;
