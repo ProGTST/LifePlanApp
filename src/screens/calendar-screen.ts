@@ -1220,8 +1220,8 @@ function renderCalendarPanel(): void {
 }
 
 /**
- * 月カレンダー・週カレンダー右上ブロック（transaction-history-tabs-row-right）に前月繰越合計・残高差・実績率を表示する。
- * 前月繰越合計 = 前月の TRANSACTION_MONTHLY の CARRYOVER_TOTAL の合計（表示対象勘定のみ）
+ * 月カレンダー・週カレンダー右上ブロック（transaction-history-tabs-row-right）に前月繰越・残高差・実績率を表示する。
+ * 前月繰越 = 前月の TRANSACTION_MONTHLY の CARRYOVER_TOTAL の合計（表示対象勘定のみ）
  * 残高差 = 実績の総合計(実績収入-実績支出) - 予定の総合計(予定収入-予定支出)
  * 実績率 = 実績の総合計 / 予定の総合計 * 100（予定の総合計が0のときは「—」）
  */
@@ -1266,7 +1266,7 @@ async function renderCalendarSummaryRight(): Promise<void> {
   }
   const carryoverSpan = document.createElement("span");
   carryoverSpan.className = "transaction-history-summary-right-item";
-  carryoverSpan.appendChild(document.createTextNode("前月繰越合計 "));
+  carryoverSpan.appendChild(document.createTextNode("前月繰越 "));
   const carryoverValue = document.createElement("span");
   carryoverValue.className = "transaction-history-summary-right-value";
   carryoverValue.textContent = carryoverTotal.toLocaleString();
