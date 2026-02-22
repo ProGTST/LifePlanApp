@@ -30,13 +30,14 @@ ID,VERSION,REGIST_DATETIME,REGIST_USER,UPDATE_DATETIME,UPDATE_USER,TRANSACTION_T
 32,2,2026-02-21 22:59:00,testuser001,2026-02-21 23:00:14,testuser001,transfer,actual,23,引き出し,2026-02-02,2026-02-02,day,1,,100000,,10,11,,complete,0
 33,0,2026-02-21 23:00:07,testuser001,2026-02-21 23:00:07,testuser001,income,actual,5,預金残高,2026-02-01,2026-02-01,day,1,,400000,,11,,,complete,0
 34,0,2026-02-21 23:00:42,testuser001,2026-02-21 23:00:42,testuser001,expense,actual,1,朝飯,2026-02-02,2026-02-02,day,1,,500,,,10,,complete,0
-35,0,2026-02-21 23:00:55,testuser001,2026-02-21 23:00:55,testuser001,expense,actual,1,昼飯,2026-02-02,2026-02-02,day,1,,1000,,,10,,complete,0
+35,2,2026-02-21 23:00:55,testuser001,2026-02-22 09:02:58,testuser001,expense,actual,1,昼飯,2026-02-02,2026-02-02,day,1,,1000,,,10,,complete,1
 36,0,2026-02-21 23:01:07,testuser001,2026-02-21 23:01:07,testuser001,expense,actual,1,晩飯,2026-02-02,2026-02-02,day,1,,1000,,,10,,complete,0
 37,1,2026-02-21 23:01:56,testuser001,2026-02-21 23:02:20,testuser001,expense,actual,16,引き落とし,2026-02-05,2026-02-05,day,1,,50000,,,11,,complete,0
 38,0,2026-02-21 23:02:07,testuser001,2026-02-21 23:02:07,testuser001,expense,actual,13,引き落とし,2026-02-05,2026-02-05,day,1,,80000,,,11,,complete,0
 39,2,2026-02-21 23:02:12,testuser001,2026-02-21 23:02:16,testuser001,expense,actual,16,引き落とし,2026-02-05,2026-02-05,day,1,,50000,,,11,,complete,1
 40,15,2026-02-21 23:03:06,testuser001,2026-02-22 08:39:44,testuser001,expense,plan,1,朝飯,2026-02-02,2026-02-28,daily,1,,500,,,10,"2026-02-22,2026-02-24",planning,0
 41,2,2026-02-21 23:03:28,testuser001,2026-02-21 23:03:28,testuser001,expense,plan,1,昼飯,2026-02-02,2026-02-28,daily,1,,1000,,,10,,planning,0
-42,0,2026-02-21 23:03:41,testuser001,2026-02-21 23:03:41,testuser001,expense,plan,1,晩飯,2026-02-02,2026-02-28,daily,1,,1000,,,10,,planning,0
+42,2,2026-02-21 23:03:41,testuser001,2026-02-22 09:02:55,testuser001,expense,plan,1,晩飯,2026-02-02,2026-02-28,daily,1,,1000,,,10,,planning,1
 43,3,2026-02-22 03:13:08,testuser001,2026-02-22 03:15:54,testuser001,income,plan,5,預金残高,2026-02-01,2026-02-01,day,0,,300000,,11,,,planning,0
 44,6,2026-02-22 03:16:30,testuser001,2026-02-22 03:44:28,testuser001,income,plan,5,預金残高,2026-02-04,2026-02-04,day,0,,10000,,11,,,complete,0
+45,0,2026-02-22 09:07:40,testuser001,2026-02-22 09:07:40,testuser001,expense,actual,1,晩飯,2026-02-02,2026-02-02,day,1,,1000,,,10,,complete,0

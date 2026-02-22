@@ -25,10 +25,22 @@ import {
 import { updateTransactionHistoryTabLayout, registerFilterChangeCallback } from "../utils/transactionDataLayout";
 import { applyFilters, type FilterState } from "../utils/transactionDataFilter";
 import { loadFormFromFilterState } from "../utils/transactionSearchForm";
+import {
+  getTotalPages,
+  clampPage,
+  getPageSlice,
+  renderPagination,
+} from "../utils/pagination";
 
 // ---------------------------------------------------------------------------
 // 定数・状態
 // ---------------------------------------------------------------------------
+
+/** 収支履歴一覧の1ページあたりの最大件数 */
+const TRANSACTION_HISTORY_PAGE_SIZE = 10;
+
+/** 収支履歴一覧の現在ページ（1始まり）。フィルター変更時にリセットする。 */
+let transactionHistoryCurrentPage = 1;
 
 /** 一覧のタグラベルで色未設定時に使う背景色 */
 const CHOSEN_LABEL_DEFAULT_BG = "#646cff";
@@ -101,11 +113,14 @@ function renderList(): void {
   const tbody = document.getElementById("transaction-history-tbody");
   if (!tbody) return;
   tbody.innerHTML = "";
-  // 収支履歴用検索条件でフィルター・ソートし、表示キーを記録
+  // 収支履歴用検索条件でフィルター・ソート
   const filtered = applyFilters(transactionList, getHistoryFilterState(), transactionTagList);
-  setDisplayedKeys("transaction-history", filtered.map((row) => row.ID));
-  // フィルター済みの取引を1行ずつ描画
-  filtered.forEach((row) => {
+  const totalPages = getTotalPages(filtered.length, TRANSACTION_HISTORY_PAGE_SIZE);
+  transactionHistoryCurrentPage = clampPage(transactionHistoryCurrentPage, totalPages);
+  const pageSlice = getPageSlice(filtered, transactionHistoryCurrentPage, TRANSACTION_HISTORY_PAGE_SIZE);
+  setDisplayedKeys("transaction-history", pageSlice.map((row) => row.ID));
+  // 現在ページの取引を1行ずつ描画
+  pageSlice.forEach((row) => {
     const tr = document.createElement("tr");
     if (isPlanDateToPast(row)) tr.classList.add("transaction-history-row--past-plan");
     const permType = getRowPermissionType(row);
@@ -260,6 +275,31 @@ function renderList(): void {
     });
     tbody.appendChild(tr);
   });
+  renderTransactionHistoryPagination(filtered.length, transactionHistoryCurrentPage);
+}
+
+/**
+ * 収支履歴一覧のページネーションUIを描画する（共通 renderPagination を利用）。
+ */
+function renderTransactionHistoryPagination(totalItems: number, page: number): void {
+  renderPagination({
+    totalItems,
+    page,
+    pageSize: TRANSACTION_HISTORY_PAGE_SIZE,
+    infoTopId: "transaction-history-pagination-info-top",
+    wrapId: "transaction-history-pagination",
+    onPrevPage: () => {
+      transactionHistoryCurrentPage -= 1;
+      renderList();
+    },
+    onNextPage: () => {
+      transactionHistoryCurrentPage += 1;
+      renderList();
+    },
+    prevBtnClass: "transaction-history-pagination-prev btn-secondary",
+    nextBtnClass: "transaction-history-pagination-next btn-secondary",
+    pageInfoClass: "transaction-history-pagination-page-info",
+  });
 }
 
 /**
@@ -316,5 +356,8 @@ function loadAndShow(forceReloadFromCsv = false): void {
 export function initTransactionHistoryView(): void {
   registerViewHandler("transaction-history", loadAndShow);
   registerRefreshHandler("transaction-history", () => loadAndShow(true));
-  registerFilterChangeCallback(renderList);
+  registerFilterChangeCallback(() => {
+    transactionHistoryCurrentPage = 1;
+    renderList();
+  });
 }

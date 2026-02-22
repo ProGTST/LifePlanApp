@@ -296,6 +296,9 @@
               <div class="view-body">
                 <section class="transaction-history-data" aria-label="データ表示">
                   <div id="transaction-history-list-panel" class="transaction-history-panel" role="region" aria-label="収支履歴一覧">
+                    <div class="transaction-history-list-header" aria-hidden="true">
+                      <span id="transaction-history-pagination-info-top" class="transaction-history-pagination-info-top"></span>
+                    </div>
                     <table class="data-table" id="transaction-history-table" aria-label="収支履歴">
                       <thead>
                         <tr>
@@ -311,6 +314,7 @@
                       </thead>
                       <tbody id="transaction-history-tbody"></tbody>
                     </table>
+                    <div id="transaction-history-pagination" class="transaction-history-pagination" aria-label="ページネーション"></div>
                   </div>
                 </section>
               </div>
