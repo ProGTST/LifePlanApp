@@ -19,8 +19,11 @@ import {
 } from "../utils/transactionDataSync";
 import { registerFilterChangeCallback } from "../utils/transactionDataLayout";
 import { getFilteredTransactionListForSchedule } from "../utils/transactionDataFilter";
-import { getPlanOccurrenceDatesForDisplay } from "../utils/planOccurrence";
+import { getPlanOccurrenceDates, getPlanOccurrenceDatesForDisplay } from "../utils/planOccurrence";
 import { openOverlay, closeOverlay } from "../utils/overlay";
+import { fetchCsv, rowToObject } from "../utils/csv";
+import { transactionListToCsv } from "../utils/csvExport";
+import { saveCsvViaApi } from "../utils/dataApi";
 import { registerViewHandler, registerRefreshHandler, showMainView } from "../app/screen";
 import { updateCurrentMenuItem } from "../app/sidebar";
 import { setDisplayedKeys } from "../utils/csvWatch";
@@ -41,6 +44,9 @@ type ScheduleUnit = "day" | "week" | "month";
 
 /** 表示単位の前回値。単位切り替え時に過去・未来をその単位の初期値に戻すために使用 */
 let lastScheduleUnit: ScheduleUnit | null = null;
+
+/** 取引予定日ポップアップで編集中の予定行（設定ボタンで COMPLETED_PLANDATE を保存するときに使用） */
+let occurrencePopupPlanRow: TransactionRow | null = null;
 
 interface DateColumn {
   key: string;
@@ -615,6 +621,8 @@ function openScheduleOccurrencePopup(row: TransactionRow): void {
   const datesWrap = document.getElementById("schedule-occurrence-dates-wrap");
   if (!datesWrap) return;
 
+  occurrencePopupPlanRow = row;
+
   const planName = (row.NAME || "").trim();
   if (titleEl) titleEl.textContent = planName ? `取引予定日：${planName}` : "取引予定日";
 
@@ -625,8 +633,14 @@ function openScheduleOccurrencePopup(row: TransactionRow): void {
   if (intervalEl) intervalEl.textContent = String(interval);
   if (cycleEl) cycleEl.textContent = formatCycleUnitForDisplay(row);
 
-  const excludeCompleted = !schedulePlanStatuses.includes("complete");
-  const dates = getPlanOccurrenceDatesForDisplay(row, excludeCompleted);
+  const dates = getPlanOccurrenceDates(row);
+  const completedRaw = (row.COMPLETED_PLANDATE ?? "").trim();
+  const completedSet = new Set<string>();
+  if (completedRaw) {
+    for (const p of completedRaw.split(",").map((s) => s.trim().slice(0, 10))) {
+      if (/^\d{4}-\d{2}-\d{2}$/.test(p)) completedSet.add(p);
+    }
+  }
   const amount = parseFloat(String(row.AMOUNT ?? "0")) || 0;
   const amountFmt =
     amount === 0 ? "0" : amount.toLocaleString(undefined, { maximumFractionDigits: 0 });
@@ -643,12 +657,16 @@ function openScheduleOccurrencePopup(row: TransactionRow): void {
     table.setAttribute("aria-label", "対象日一覧");
     const thead = document.createElement("thead");
     const headerRow = document.createElement("tr");
+    const thComplete = document.createElement("th");
+    thComplete.scope = "col";
+    thComplete.textContent = "完了";
     const thDate = document.createElement("th");
     thDate.scope = "col";
     thDate.textContent = "取引予定日";
     const thAmount = document.createElement("th");
     thAmount.scope = "col";
     thAmount.textContent = "金額";
+    headerRow.appendChild(thComplete);
     headerRow.appendChild(thDate);
     headerRow.appendChild(thAmount);
     thead.appendChild(headerRow);
@@ -656,11 +674,38 @@ function openScheduleOccurrencePopup(row: TransactionRow): void {
     const tbody = document.createElement("tbody");
     for (const d of dates) {
       const tr = document.createElement("tr");
+      const tdComplete = document.createElement("td");
+      const isSelected = completedSet.has(d);
+      const checkBtn = document.createElement("button");
+      checkBtn.type = "button";
+      checkBtn.className = "schedule-occurrence-complete-check-btn";
+      checkBtn.setAttribute("data-date", d);
+      checkBtn.setAttribute("aria-label", `完了：${d.replace(/-/g, "/")}`);
+      checkBtn.setAttribute("aria-pressed", isSelected ? "true" : "false");
+      if (isSelected) checkBtn.classList.add("is-selected");
+      const checkIcon = document.createElement("span");
+      checkIcon.className = "schedule-occurrence-complete-check-icon";
+      checkIcon.setAttribute("aria-hidden", "true");
+      checkBtn.appendChild(checkIcon);
+      const handleToggle = (): void => {
+        const pressed = checkBtn.getAttribute("aria-pressed") === "true";
+        const next = !pressed;
+        checkBtn.setAttribute("aria-pressed", String(next));
+        checkBtn.classList.toggle("is-selected", next);
+      };
+      checkBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        handleToggle();
+      });
+      tdComplete.appendChild(checkBtn);
       const tdDate = document.createElement("td");
+      tdDate.className = "schedule-occurrence-dates-date-cell";
       tdDate.textContent = d.replace(/-/g, "/");
+      tdDate.addEventListener("click", () => handleToggle());
       const tdAmount = document.createElement("td");
       tdAmount.textContent = amountFmt;
       tdAmount.className = "schedule-occurrence-dates-amount";
+      tr.appendChild(tdComplete);
       tr.appendChild(tdDate);
       tr.appendChild(tdAmount);
       tbody.appendChild(tr);
@@ -1179,9 +1224,46 @@ export function initScheduleView(): void {
     }
   });
 
-  // 対象日一覧オーバーレイの閉じるボタンとオーバーレイ外クリック
-  document.getElementById("schedule-occurrence-close")?.addEventListener("click", () => {
-    closeOverlay("schedule-occurrence-overlay");
+  // 対象日一覧オーバーレイの設定ボタン：チェックされた日付を COMPLETED_PLANDATE に保存
+  document.getElementById("schedule-occurrence-apply")?.addEventListener("click", async () => {
+    const row = occurrencePopupPlanRow;
+    if (!row?.ID) {
+      closeOverlay("schedule-occurrence-overlay");
+      return;
+    }
+    const wrap = document.getElementById("schedule-occurrence-dates-wrap");
+    const checkBtns = wrap?.querySelectorAll<HTMLButtonElement>(".schedule-occurrence-complete-check-btn.is-selected");
+    const completedDates: string[] = [];
+    checkBtns?.forEach((btn) => {
+      const d = btn.getAttribute("data-date")?.trim().slice(0, 10);
+      if (d && /^\d{4}-\d{2}-\d{2}$/.test(d)) completedDates.push(d);
+    });
+    const newCompletedPlanDate = completedDates.sort().join(",");
+
+    try {
+      const { header, rows } = await fetchCsv("/data/TRANSACTION.csv", { cache: "reload" });
+      if (header.length === 0 || !rows.length) {
+        closeOverlay("schedule-occurrence-overlay");
+        return;
+      }
+      const allRows = rows.map((cells) => rowToObject(header, cells));
+      const target = allRows.find((r) => (r.ID ?? "").trim() === String(row.ID).trim());
+      if (!target) {
+        closeOverlay("schedule-occurrence-overlay");
+        return;
+      }
+      target.COMPLETED_PLANDATE = newCompletedPlanDate;
+      target.VERSION = String((parseInt(target.VERSION ?? "0", 10) || 0) + 1);
+      const csv = transactionListToCsv(allRows);
+      await saveCsvViaApi("TRANSACTION.csv", csv);
+      occurrencePopupPlanRow = null;
+      closeOverlay("schedule-occurrence-overlay");
+      await loadTransactionData(true);
+      renderScheduleGrid();
+    } catch {
+      occurrencePopupPlanRow = null;
+      closeOverlay("schedule-occurrence-overlay");
+    }
   });
   document.getElementById("schedule-occurrence-overlay")?.addEventListener("click", (e) => {
     if (e.target instanceof HTMLElement && e.target.id === "schedule-occurrence-overlay") {

@@ -5190,15 +5190,77 @@
 .schedule-occurrence-dates-table th,
 .schedule-occurrence-dates-table td {
   padding: 0.35rem 0.5rem;
-  border: 1px solid var(--gray-200);
   text-align: left;
+  border-bottom: 1px solid var(--gray-200);
+}
+/* 完了列：タグ選択画面の .transaction-history-select-item と同じレイアウト（flex・中央揃え・余白） */
+.schedule-occurrence-dates-table th:first-child,
+.schedule-occurrence-dates-table td:first-child {
+  width: 2rem;
+  max-width: 2rem;
+  padding: 0.35rem 0.25rem;
+  text-align: center;
+  vertical-align: middle;
+}
+.schedule-occurrence-dates-table td:first-child {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+#app .schedule-occurrence-dates-table td:first-child .schedule-occurrence-complete-check-btn {
+  flex-shrink: 0;
 }
 .schedule-occurrence-dates-table thead th {
   background: var(--gray-100);
   font-weight: 600;
+  box-shadow: 0 1px 0 var(--gray-200);
 }
 .schedule-occurrence-dates-table .schedule-occurrence-dates-amount {
   text-align: right;
+}
+/* 取引予定日ポップアップ：完了列のチェックボタン（#app button を上書きし、タグ選択と同様の見た目に） */
+#app .schedule-occurrence-dates-table .schedule-occurrence-complete-check-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--icon-size, 22px);
+  height: var(--icon-size, 22px);
+  margin: 0;
+  padding: 0;
+  border: none;
+  font-size: inherit;
+  background: var(--color-base-bg) !important;
+  color: var(--color-base-fg);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+  transition: box-shadow 0.15s;
+}
+#app .schedule-occurrence-dates-table .schedule-occurrence-complete-check-btn .schedule-occurrence-complete-check-icon {
+  display: block;
+  width: var(--icon-size, 22px);
+  height: var(--icon-size, 22px);
+  flex-shrink: 0;
+  background-color: var(--color-base-fg) !important;
+  -webkit-mask-image: var(--icon-check);
+  mask-image: var(--icon-check);
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  transition: background-color 0.15s;
+}
+#app .schedule-occurrence-dates-table .schedule-occurrence-complete-check-btn.is-selected .schedule-occurrence-complete-check-icon {
+  background-color: var(--color-accent-bg) !important;
+}
+#app .schedule-occurrence-dates-table .schedule-occurrence-complete-check-btn:hover:not(:disabled) {
+  box-shadow: 0 0 0 1px var(--color-base-fg);
+}
+.schedule-occurrence-dates-table .schedule-occurrence-dates-date-cell {
+  cursor: pointer;
 }
 .schedule-occurrence-actions {
   display: flex;

@@ -35,7 +35,7 @@ ID,VERSION,REGIST_DATETIME,REGIST_USER,UPDATE_DATETIME,UPDATE_USER,TRANSACTION_T
 37,1,2026-02-21 23:01:56,testuser001,2026-02-21 23:02:20,testuser001,expense,actual,16,引き落とし,2026-02-05,2026-02-05,day,1,,50000,,,11,,complete,0
 38,0,2026-02-21 23:02:07,testuser001,2026-02-21 23:02:07,testuser001,expense,actual,13,引き落とし,2026-02-05,2026-02-05,day,1,,80000,,,11,,complete,0
 39,2,2026-02-21 23:02:12,testuser001,2026-02-21 23:02:16,testuser001,expense,actual,16,引き落とし,2026-02-05,2026-02-05,day,1,,50000,,,11,,complete,1
-40,0,2026-02-21 23:03:06,testuser001,2026-02-21 23:03:06,testuser001,expense,plan,1,朝飯,2026-02-02,2026-02-28,daily,1,,500,,,10,,planning,0
+40,3,2026-02-21 23:03:06,testuser001,2026-02-21 23:03:06,testuser001,expense,plan,1,朝飯,2026-02-02,2026-02-28,daily,1,,500,,,10,"2026-02-22,2026-02-24",planning,0
 41,0,2026-02-21 23:03:28,testuser001,2026-02-21 23:03:28,testuser001,expense,plan,1,昼飯,2026-02-02,2026-02-28,daily,1,,1000,,,10,,planning,0
 42,0,2026-02-21 23:03:41,testuser001,2026-02-21 23:03:41,testuser001,expense,plan,1,晩飯,2026-02-02,2026-02-28,daily,1,,1000,,,10,,planning,0
 43,2,2026-02-22 03:13:08,testuser001,2026-02-22 03:15:54,testuser001,income,plan,5,預金残高,2026-02-01,2026-02-01,day,0,,300000,,11,,,planning,0
