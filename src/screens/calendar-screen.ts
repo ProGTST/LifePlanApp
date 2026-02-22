@@ -684,8 +684,10 @@ async function renderCharts(ym: string): Promise<void> {
                 const data = datasets[ctx.datasetIndex].data as number[];
                 const i = ctx.dataIndex;
                 if (ctx.datasetIndex === 2) {
-                  const v = data[i];
-                  return v !== null && v !== undefined && v !== 0;
+                  if (i === 0) return false;
+                  const prev = data[i - 1];
+                  const curr = data[i];
+                  return prev !== curr;
                 }
                 if (i === 0) return false;
                 const prev = data[i - 1];
@@ -1218,11 +1220,12 @@ function renderCalendarPanel(): void {
 }
 
 /**
- * 月カレンダー・週カレンダー右上ブロック（transaction-history-tabs-row-right）に残高差・実績率を表示する。
+ * 月カレンダー・週カレンダー右上ブロック（transaction-history-tabs-row-right）に前月繰越合計・残高差・実績率を表示する。
+ * 前月繰越合計 = 前月の TRANSACTION_MONTHLY の CARRYOVER_TOTAL の合計（表示対象勘定のみ）
  * 残高差 = 実績の総合計(実績収入-実績支出) - 予定の総合計(予定収入-予定支出)
  * 実績率 = 実績の総合計 / 予定の総合計 * 100（予定の総合計が0のときは「—」）
  */
-function renderCalendarSummaryRight(): void {
+async function renderCalendarSummaryRight(): Promise<void> {
   const rightEl = document.querySelector(".transaction-history-tabs-row-right");
   if (!rightEl) return;
   const ym = selectedCalendarYM?.match(/^(\d{4})-(\d{2})$/);
@@ -1239,6 +1242,21 @@ function renderCalendarSummaryRight(): void {
   const rate =
     planTotal !== 0 ? (actualTotal / planTotal) * 100 : null;
   const rateText = rate !== null ? `${Math.round(rate)}%` : "—";
+
+  let carryoverTotal = 0;
+  const prevMonth = month === 1 ? 12 : month - 1;
+  const prevYear = month === 1 ? year - 1 : year;
+  const prevYm = `${prevYear}-${String(prevMonth).padStart(2, "0")}`;
+  const visibleIds = getVisibleAccountIdsForCharts();
+  const monthlyRows = await getTransactionMonthlyRows();
+  for (const row of monthlyRows) {
+    const aid = (row.ACCOUNT_ID || "").trim();
+    const py = (row.YEAR || "").trim();
+    const pm = (row.MONTH || "").trim().padStart(2, "0");
+    if (!visibleIds.has(aid) || `${py}-${pm}` !== prevYm) continue;
+    carryoverTotal += parseFloat(String(row.CARRYOVER_TOTAL ?? "0")) || 0;
+  }
+
   rightEl.innerHTML = "";
   rightEl.classList.remove("transaction-history-summary-right--rate-low", "transaction-history-summary-right--rate-high");
   if (rate !== null && rate <= 50) {
@@ -1246,6 +1264,14 @@ function renderCalendarSummaryRight(): void {
   } else if (rate !== null && rate >= 101) {
     rightEl.classList.add("transaction-history-summary-right--rate-high");
   }
+  const carryoverSpan = document.createElement("span");
+  carryoverSpan.className = "transaction-history-summary-right-item";
+  carryoverSpan.appendChild(document.createTextNode("前月繰越合計 "));
+  const carryoverValue = document.createElement("span");
+  carryoverValue.className = "transaction-history-summary-right-value";
+  carryoverValue.textContent = carryoverTotal.toLocaleString();
+  carryoverSpan.appendChild(carryoverValue);
+  rightEl.appendChild(carryoverSpan);
   const diffSpan = document.createElement("span");
   diffSpan.className = "transaction-history-summary-right-item";
   diffSpan.appendChild(document.createTextNode("残高差 "));
@@ -1305,7 +1331,7 @@ function switchTab(tabId: string): void {
     if (tabId === "weekly") renderWeeklyPanel();
     else if (tabId === "calendar") renderCalendarPanel();
     void renderCharts(selectedCalendarYM);
-    renderCalendarSummaryRight();
+    void renderCalendarSummaryRight();
   } else if (rightWrap) {
     rightWrap.textContent = "";
   }
@@ -1320,11 +1346,11 @@ export function refreshCalendarView(): void {
   if (tab === "weekly") {
     renderWeeklyPanel();
     if (selectedCalendarYM) void renderCharts(selectedCalendarYM);
-    renderCalendarSummaryRight();
+    void renderCalendarSummaryRight();
   } else if (tab === "calendar") {
     renderCalendarPanel();
     if (selectedCalendarYM) void renderCharts(selectedCalendarYM);
-    renderCalendarSummaryRight();
+    void renderCalendarSummaryRight();
   }
 }
 
@@ -1348,7 +1374,7 @@ function loadAndShowCalendar(forceReloadFromCsv = false): void {
         }
         renderWeeklyPanel();
         if (selectedCalendarYM) void renderCharts(selectedCalendarYM);
-        renderCalendarSummaryRight();
+        void renderCalendarSummaryRight();
       } else if (activeTab?.dataset.tab === "calendar") {
         if (!selectedCalendarYM) {
           const now = new Date();
@@ -1356,7 +1382,7 @@ function loadAndShowCalendar(forceReloadFromCsv = false): void {
         }
         renderCalendarPanel();
         if (selectedCalendarYM) void renderCharts(selectedCalendarYM);
-        renderCalendarSummaryRight();
+        void renderCalendarSummaryRight();
       }
     }
   });
@@ -1391,7 +1417,7 @@ export function initCalendarView(): void {
     else if (tab === "calendar") renderCalendarPanel();
     if (tab === "weekly" || tab === "calendar") {
       void renderCharts(ym);
-      renderCalendarSummaryRight();
+      void renderCalendarSummaryRight();
     }
   }
   calendarPrev?.addEventListener("click", () => {
