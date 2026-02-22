@@ -142,7 +142,9 @@ function renderList(): void {
       const planStatus = (row.PLAN_STATUS || "planning").toLowerCase();
       let statusClass =
         planStatus === "complete" ? "complete" : planStatus === "canceled" ? "canceled" : "planning";
-      if (statusClass === "planning" && getActualIdsForPlanId(row.ID).length > 0) {
+      const hasActual = getActualIdsForPlanId(row.ID).length > 0;
+      const hasCompletedPlanDate = (row.COMPLETED_PLANDATE ?? "").trim() !== "";
+      if (statusClass === "planning" && (hasActual || hasCompletedPlanDate)) {
         statusClass = "planning-with-actual";
       }
       const statusWrap = document.createElement("span");

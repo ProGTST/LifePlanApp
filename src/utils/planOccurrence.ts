@@ -42,7 +42,8 @@ export function getPlanOccurrenceDates(row: TransactionRow): string[] {
   const to = (row.TRANDATE_TO || "").trim().slice(0, 10);
   if (!from || !to || from.length < 10 || to.length < 10 || from > to) return [];
   const frequency = (row.FREQUENCY ?? "day").toLowerCase();
-  const interval = Math.max(1, parseInt(row.INTERVAL ?? "1", 10) || 1);
+  const intervalRaw = parseInt(row.INTERVAL ?? "1", 10);
+  const interval = Number.isNaN(intervalRaw) || intervalRaw < 0 ? 1 : intervalRaw;
   const cycleUnit = (row.CYCLE_UNIT ?? "").trim();
   const pad = (n: number) => String(n).padStart(2, "0");
 
@@ -51,8 +52,9 @@ export function getPlanOccurrenceDates(row: TransactionRow): string[] {
     return [to];
   }
 
-  // 頻度＝日ごと: FROM から間隔日ごとに TO まで列挙
+  // 頻度＝日ごと: 間隔0の場合は取引開始日のみ。それ以外は FROM から間隔日ごとに TO まで列挙
   if (frequency === "daily") {
+    if (interval === 0) return [from];
     const out: string[] = [];
     let d = from;
     while (d <= to) {
@@ -62,42 +64,46 @@ export function getPlanOccurrenceDates(row: TransactionRow): string[] {
     return out;
   }
 
-  // 頻度＝週ごと: FROM を含む週から間隔週ごと、CYCLE_UNIT の曜日のみ
+  // 頻度＝週ごと: 対象曜日未設定の場合は発生日なし。間隔0の場合は取引開始日を含む最初の週のみ。
   if (frequency === "weekly") {
-    const weekdays = cycleUnit ? cycleUnit.split(",").map((s) => s.trim().toUpperCase()) : [];
+    const weekdays = cycleUnit ? cycleUnit.split(",").map((s) => s.trim().toUpperCase()).filter(Boolean) : [];
+    if (weekdays.length === 0) return [];
     const weekdaySet = new Set(weekdays);
     const weekSunday = getSundayOfWeek(from);
+    const weekEnd = addDays(weekSunday, 6);
+    const effectiveTo = interval === 0 ? (weekEnd < to ? weekEnd : to) : to;
     const out: string[] = [];
     let weekStart = weekSunday;
-    while (weekStart <= to) {
-      const weekEnd = addDays(weekStart, 6);
-      if (weekEnd < from) {
-        weekStart = addDays(weekStart, 7 * interval);
+    while (weekStart <= effectiveTo) {
+      const currentWeekEnd = addDays(weekStart, 6);
+      if (currentWeekEnd < from) {
+        weekStart = addDays(weekStart, 7 * (interval || 1));
         continue;
       }
       for (let i = 0; i < 7; i++) {
         const d = addDays(weekStart, i);
-        if (d < from || d > to) continue;
+        if (d < from || d > effectiveTo) continue;
         const date = new Date(parseInt(d.slice(0, 4), 10), parseInt(d.slice(5, 7), 10) - 1, parseInt(d.slice(8, 10), 10));
         const code = WEEKDAY_CODES[date.getDay()];
-        if (weekdaySet.size === 0 || weekdaySet.has(code)) out.push(d);
+        if (weekdaySet.has(code)) out.push(d);
       }
+      if (interval === 0) break;
       weekStart = addDays(weekStart, 7 * interval);
     }
     return out;
   }
 
-  // 頻度＝月ごと: FROM の月から間隔月ごと、CYCLE_UNIT の日（または月末等）のみ
+  // 頻度＝月ごと: 対象日未設定の場合は発生日なし。間隔0の場合は取引開始日を含む最初の月のみ。
   if (frequency === "monthly") {
-    const daySpecs = cycleUnit ? cycleUnit.split(",").map((s) => s.trim()) : [];
+    const daySpecs = cycleUnit ? cycleUnit.split(",").map((s) => s.trim()).filter(Boolean) : [];
+    if (daySpecs.length === 0) return [];
     const out: string[] = [];
     let monthFirst = from.slice(0, 7) + "-01";
-    const toFirst = to.slice(0, 7) + "-01";
+    const toFirst = interval === 0 ? monthFirst : (to.slice(0, 7) + "-01");
     while (monthFirst <= toFirst) {
       const [y, m] = monthFirst.split("-").map(Number);
       const lastDate = new Date(y, m, 0).getDate();
-      const daysToAdd = daySpecs.length > 0 ? daySpecs : ["1"];
-      for (const spec of daysToAdd) {
+      for (const spec of daySpecs) {
         const n = parseInt(spec, 10);
         let day: number;
         if (Number.isNaN(n) || n === 0) continue;
@@ -109,23 +115,21 @@ export function getPlanOccurrenceDates(row: TransactionRow): string[] {
         const d = `${y}-${pad(m)}-${pad(day)}`;
         if (d >= from && d <= to) out.push(d);
       }
+      if (interval === 0) break;
       monthFirst = addMonths(monthFirst, interval).slice(0, 7) + "-01";
     }
     return out;
   }
 
-  // 頻度＝年ごと: FROM の年から間隔年ごと、CYCLE_UNIT の MMDD のみ
+  // 頻度＝年ごと: 対象日付未設定の場合は発生日なし。間隔0の場合は取引開始日を含む最初の年のみ。
   if (frequency === "yearly") {
     const mmddList = cycleUnit ? cycleUnit.split(",").map((s) => s.trim()).filter((s) => s.length === 4) : [];
+    if (mmddList.length === 0) return [];
     const out: string[] = [];
     const fromY = parseInt(from.slice(0, 4), 10);
     const toY = parseInt(to.slice(0, 4), 10);
-    for (let y = fromY; y <= toY; y += interval) {
-      if (mmddList.length === 0) {
-        const d = `${y}-${from.slice(5, 7)}-${from.slice(8, 10)}`;
-        if (d >= from && d <= to) out.push(d);
-        continue;
-      }
+    const yearStep = interval === 0 ? 1 : interval;
+    for (let y = fromY; y <= toY; y += yearStep) {
       for (const mmdd of mmddList) {
         const m = parseInt(mmdd.slice(0, 2), 10);
         const day = parseInt(mmdd.slice(2, 4), 10);
@@ -134,6 +138,7 @@ export function getPlanOccurrenceDates(row: TransactionRow): string[] {
         const d = `${y}-${mmdd.slice(0, 2)}-${pad(Math.min(day, lastD))}`;
         if (d >= from && d <= to) out.push(d);
       }
+      if (interval === 0) break;
     }
     return out;
   }

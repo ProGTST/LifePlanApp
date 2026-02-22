@@ -948,12 +948,14 @@ function renderScheduleGrid(): void {
     statusTd.className = "schedule-col-status";
     const planStatus = (row.PLAN_STATUS || "planning").toLowerCase();
     const hasActual = getActualIdsForPlanId(row.ID).length > 0;
+    const hasCompletedPlanDate = (row.COMPLETED_PLANDATE ?? "").trim() !== "";
+    const hasActualOrCompletedPlanDate = hasActual || hasCompletedPlanDate;
     const statusLabel =
       planStatus === "complete"
         ? "完了"
         : planStatus === "canceled"
           ? "中止"
-          : hasActual
+          : hasActualOrCompletedPlanDate
             ? "進行中"
             : "未着";
     const statusModifier =
@@ -961,15 +963,18 @@ function renderScheduleGrid(): void {
         ? "complete"
         : planStatus === "canceled"
           ? "canceled"
-          : hasActual
+          : hasActualOrCompletedPlanDate
             ? "in-progress"
             : "not-started";
     const statusBtn = document.createElement("button");
     statusBtn.type = "button";
     statusBtn.className = `schedule-status-btn schedule-status-btn--${statusModifier}`;
     statusBtn.textContent = statusLabel;
-    statusBtn.setAttribute("aria-label", hasActual ? "取引実績を確認" : statusLabel);
-    if (hasActual) {
+    statusBtn.setAttribute(
+      "aria-label",
+      hasActualOrCompletedPlanDate ? "取引実績を確認" : statusLabel
+    );
+    if (hasActualOrCompletedPlanDate) {
       statusBtn.addEventListener("click", () => openScheduleActualListPopup(row.ID, row.NAME || ""));
     }
     statusTd.appendChild(statusBtn);
