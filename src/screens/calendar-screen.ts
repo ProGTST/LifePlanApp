@@ -513,16 +513,24 @@ function getChartDataForMonthByAccount(
     const { type, amount } = getTransactionTypeAndAmount(row);
     const from = row.TRANDATE_FROM || "";
     const to = row.TRANDATE_TO || "";
+    const inId = (row.ACCOUNT_ID_IN || "").trim();
+    const outId = (row.ACCOUNT_ID_OUT || "").trim();
 
+    // 実績: 取引日が表示月内、勘定が ACCOUNT_ID_IN または ACCOUNT_ID_OUT に一致。支出=OUTから減算、収入=INに加算、振替=IN加算・OUT減算
     if (row.PROJECT_TYPE === "actual") {
       const actualDate = getActualTargetDate(row);
       if (!actualDate || actualDate < firstDay || actualDate > lastDay) continue;
       const dayIdx = parseInt(actualDate.slice(8, 10), 10) - 1;
       if (dayIdx < 0 || dayIdx >= labels.length) continue;
-      if (type === "income") actualIncomeByDay[dayIdx] += amount;
-      else if (type === "expense") actualExpenseByDay[dayIdx] += amount;
+      if (type === "income" && inId === accountId) actualIncomeByDay[dayIdx] += amount;
+      else if (type === "expense" && outId === accountId) actualExpenseByDay[dayIdx] += amount;
+      else if (type === "transfer") {
+        if (outId === accountId) actualExpenseByDay[dayIdx] += amount;
+        if (inId === accountId) actualIncomeByDay[dayIdx] += amount;
+      }
       continue;
     }
+    // 予定: 取引発生日が表示月内、勘定が IN/OUT のいずれかと一致。発生日ごとに集計。支出=OUTから減算、収入=INに加算、振替=IN加算・OUT減算
     if (!from || !to) continue;
     const excludeCompleted = !calendarPlanStatuses.includes("complete");
     const occurrences = getPlanOccurrenceDatesForDisplay(row, excludeCompleted);
@@ -530,8 +538,12 @@ function getChartDataForMonthByAccount(
       if (d < firstDay || d > lastDay) continue;
       const dayIdx = parseInt(d.slice(8, 10), 10) - 1;
       if (dayIdx < 0 || dayIdx >= labels.length) continue;
-      if (type === "income") planIncomeByDay[dayIdx] += amount;
-      else if (type === "expense") planExpenseByDay[dayIdx] += amount;
+      if (type === "income" && inId === accountId) planIncomeByDay[dayIdx] += amount;
+      else if (type === "expense" && outId === accountId) planExpenseByDay[dayIdx] += amount;
+      else if (type === "transfer") {
+        if (outId === accountId) planExpenseByDay[dayIdx] += amount;
+        if (inId === accountId) planIncomeByDay[dayIdx] += amount;
+      }
     }
   }
   return { labels, planIncomeByDay, actualIncomeByDay, planExpenseByDay, actualExpenseByDay };
@@ -600,7 +612,7 @@ async function renderCharts(ym: string): Promise<void> {
     },
   };
 
-  // 残高推移グラフ：TRANSACTION_MONTHLY から繰越を取得し、勘定別の予定・実績折れ線を描画
+  // 残高推移グラフ：集計開始金額=前月の TRANSACTION_MONTHLY.CARRYOVER_TOTAL（勘定・表示月の前月で一致）。実績/予定とも収入・支出・振替を日別集計（収入=INに加算、支出=OUTから減算、振替=IN加算・OUT減算）。
   const balanceCanvas = document.getElementById("transaction-history-chart-balance") as HTMLCanvasElement | null;
   const balanceSelect = document.getElementById("transaction-history-chart-balance-account") as HTMLSelectElement | null;
   if (balanceCanvas && balanceSelect) {
@@ -621,13 +633,18 @@ async function renderCharts(ym: string): Promise<void> {
 
     const selectedAccountId = balanceSelect.value || "";
     if (selectedAccountId) {
+      // 集計開始金額 = 表示月の前月の CARRYOVER_TOTAL（TRANSACTION_MONTHLY の当月末累計のため、月初残高は前月の繰越）
+      const [y, m] = ym.split("-").map((s) => parseInt(s, 10));
+      const prevMonth = m === 1 ? 12 : m - 1;
+      const prevYear = m === 1 ? y - 1 : y;
+      const prevYm = `${prevYear}-${String(prevMonth).padStart(2, "0")}`;
       let carryoverPlan = 0;
       let carryoverActual = 0;
       for (const row of monthlyRows) {
         const aid = (row.ACCOUNT_ID || "").trim();
         const py = (row.YEAR || "").trim();
         const pm = (row.MONTH || "").trim().padStart(2, "0");
-        if (aid !== selectedAccountId || `${py}-${pm}` !== ym) continue;
+        if (aid !== selectedAccountId || `${py}-${pm}` !== prevYm) continue;
         const carry = parseFloat(String(row.CARRYOVER_TOTAL ?? "0")) || 0;
         if ((row.PROJECT_TYPE || "").toLowerCase() === "plan") carryoverPlan = carry;
         else if ((row.PROJECT_TYPE || "").toLowerCase() === "actual") carryoverActual = carry;
@@ -683,16 +700,12 @@ async function renderCharts(ym: string): Promise<void> {
                 const datasets = ctx.chart.data.datasets;
                 const data = datasets[ctx.datasetIndex].data as number[];
                 const i = ctx.dataIndex;
-                if (ctx.datasetIndex === 2) {
-                  if (i === 0) return false;
-                  const prev = data[i - 1];
-                  const curr = data[i];
-                  return prev !== curr;
-                }
-                if (i === 0) return false;
-                const prev = data[i - 1];
                 const curr = data[i];
-                return prev !== curr;
+                if (curr === null || curr === undefined || typeof curr !== "number" || Number.isNaN(curr)) return false;
+                const prev = i > 0 ? data[i - 1] : null;
+                const prevNum = prev !== null && prev !== undefined && typeof prev === "number" ? prev : null;
+                const changed = prevNum === null || Math.abs(curr - prevNum) > 1e-6;
+                return changed;
               },
               formatter: (value: number) => (value === null || value === undefined ? "" : value.toLocaleString()),
               color: "#333",

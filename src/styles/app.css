@@ -4019,10 +4019,11 @@
   mask-image: url("/icon/xmark-solid-full.svg");
 }
 
-/* 収支一覧テーブル：金額列の幅を小さく・表示は折り返す */
+/* 収支一覧テーブル：金額列の幅を広めに・表示は折り返す */
 #transaction-history-table th:nth-child(4),
 #transaction-history-table td:nth-child(4) {
-  width: 5rem;
+  width: 7rem;
+  min-width: 7rem;
   box-sizing: border-box;
   text-align: right;
 }
@@ -4035,7 +4036,7 @@
 /* 収支一覧テーブル：タグ列 */
 #transaction-history-table th:nth-child(6),
 #transaction-history-table td:nth-child(6) {
-  width: 10rem;
+  width: 8rem;
   box-sizing: border-box;
 }
 .transaction-history-tags-cell {

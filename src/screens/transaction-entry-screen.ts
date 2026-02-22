@@ -1504,12 +1504,14 @@ function resetForm(): void {
   if (categoryEl) categoryEl.value = "";
   if (accountOutEl) accountOutEl.value = "";
   if (accountInEl) accountInEl.value = "";
+  updateCategoryTriggerDisplay("");
   setTypeAndSync("expense");
   setStatusAndSync("actual");
   setPlanStatus("planning");
   setFrequency("day");
   setInterval(1);
   setCycleUnit("");
+  selectedMonthlyDays = new Set();
   setTodayToAllDateInputs();
   updateAccountTriggerDisplay("out", getAccountOutValueEl()?.value ?? "");
   updateAccountTriggerDisplay("in", getAccountInValueEl()?.value ?? "");
