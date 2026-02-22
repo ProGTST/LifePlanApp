@@ -49,7 +49,7 @@
 | 項目名     | TRANSACTION.NAME             | 文字列 | ○    | —                               | 例: 給与, スーパー                    |
 | 出金元     | TRANSACTION.ACCOUNT_ID_OUT   | 文字列 | 条件付き | ACCOUNT.ID                      | 支出・振替時必須                       |
 | 入金先     | TRANSACTION.ACCOUNT_ID_IN    | 文字列 | 条件付き | ACCOUNT.ID                      | 収入・振替時必須                       |
-| タグ      | TAG_MANAGEMENT               | 複数  | —    | TAG.ID                          | 複数選択。TAG_MANAGEMENT で紐付け       |
+| タグ      | TRANSACTION_TAG               | 複数  | —    | TAG.ID                          | 複数選択。TRANSACTION_TAG で紐付け       |
 | 金額      | TRANSACTION.AMOUNT           | 数値  | ○    | —                               | 単位はアプリで統一（円等）                  |
 | メモ      | TRANSACTION.MEMO             | 文字列 | —    | —                               | 任意                             |
 | 頻度      | TRANSACTION.FREQUENCY        | 列挙  | 予定時  | day/daily/weekly/monthly/yearly | 繰り返し予定用                        |
@@ -68,7 +68,7 @@
 | 表示データ | **TAG.csv を全件取得**し、SORT_ORDER 順で一覧表示。参照権限による絞り込みはなし（タグマスタは全ユーザー共通）。 |
 | UI | モーダル内にタグ一覧（チェックボックス風）。各タグは ID・名称・色等を表示。既に選択中のタグはチェック済みで表示。 |
 | 操作 | 「全解除」で選択をクリア、「設定」で選択結果をフォームに反映してモーダルを閉じる。オーバーレイ外クリックで閉じる。 |
-| 反映 | 選択した TAG_ID の集合が、保存時に TAG_MANAGEMENT に TRANSACTION_ID と紐付けて登録される（既存紐付けは上書き）。 |
+| 反映 | 選択した TAG_ID の集合が、保存時に TRANSACTION_TAG に TRANSACTION_ID と紐付けて登録される（既存紐付けは上書き）。 |
 
 ---
 
@@ -92,7 +92,7 @@
 
 | 操作      | 条件                  | 処理内容                                                                                                                                   | 備考                           |
 | ------- | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- |
-| 保存ボタン押下 | 必須項目OK、バージョン一致（編集時） | 新規: TRANSACTION に追加、TAG_MANAGEMENT 更新、実績時は ACCOUNT 残高・ACCOUNT_HISTORY 更新。編集: 同様に TRANSACTION 更新、タグ・紐付け・残高を整合。POST /api/data で各 CSV を保存 | トランザクション制御はアプリ側で複数 CSV を順次保存 |
+| 保存ボタン押下 | 必須項目OK、バージョン一致（編集時） | 新規: TRANSACTION に追加、TRANSACTION_TAG 更新、実績時は ACCOUNT 残高・ACCOUNT_HISTORY 更新。編集: 同様に TRANSACTION 更新、タグ・紐付け・残高を整合。POST /api/data で各 CSV を保存 | トランザクション制御はアプリ側で複数 CSV を順次保存 |
 | リセット    | —                   | フォームを初期状態に戻す（新規時は空、編集時は取得データに戻す）                                                                                                       |                              |
 | 削除ボタン   | 編集時、該当行が自分の権限で削除可   | 論理削除（DLT_FLG=1）または物理削除。実績の場合は勘定残高を戻し ACCOUNT_HISTORY に delete を記録。TRANSACTION.csv 等を保存                                                 | バージョンチェックあり                  |
 | 取引種別変更  | —                   | カテゴリ・勘定の選択肢を種別に合わせて更新。出金元/入金先の表示を切替                                                                                                    |                              |
@@ -122,9 +122,9 @@
 | メソッド | パス                                                                                                                                        | 概要           |
 | ---- | ----------------------------------------------------------------------------------------------------------------------------------------- | ------------ |
 | GET  | /api/data/TRANSACTION.csv                                                                                                                 | 取引一覧（編集時など）  |
-| GET  | /api/data/CATEGORY.csv, ACCOUNT.csv, ACCOUNT_PERMISSION.csv, TAG.csv, TAG_MANAGEMENT.csv, TRANSACTION_MANAGEMENT.csv, ACCOUNT_HISTORY.csv | マスタ・紐付け・残高履歴 |
+| GET  | /api/data/CATEGORY.csv, ACCOUNT.csv, ACCOUNT_PERMISSION.csv, TAG.csv, TRANSACTION_TAG.csv, TRANSACTION_MANAGEMENT.csv, ACCOUNT_HISTORY.csv | マスタ・紐付け・残高履歴 |
 | POST | /api/data/TRANSACTION.csv                                                                                                                 | 取引 CSV 保存    |
-| POST | /api/data/TAG_MANAGEMENT.csv                                                                                                              | タグ紐付け保存      |
+| POST | /api/data/TRANSACTION_TAG.csv                                                                                                              | タグ紐付け保存      |
 | POST | /api/data/TRANSACTION_MANAGEMENT.csv                                                                                                      | 予定-実績紐付け保存   |
 | POST | /api/data/ACCOUNT_HISTORY.csv                                                                                                             | 残高履歴保存       |
 | POST | /api/data/ACCOUNT.csv                                                                                                                     | 勘定残高更新時      |
@@ -135,9 +135,9 @@
 
 | 種別     | テーブル（ファイル）                                                                                                       | 備考                     |
 | ------ | ---------------------------------------------------------------------------------------------------------------- | ---------------------- |
-| 使用テーブル | TRANSACTION, CATEGORY, ACCOUNT, ACCOUNT_PERMISSION, TAG, TAG_MANAGEMENT, TRANSACTION_MANAGEMENT, ACCOUNT_HISTORY | フォーム表示・選択肢・紐付け         |
+| 使用テーブル | TRANSACTION, CATEGORY, ACCOUNT, ACCOUNT_PERMISSION, TAG, TRANSACTION_TAG, TRANSACTION_MANAGEMENT, ACCOUNT_HISTORY | フォーム表示・選択肢・紐付け         |
 | 参照テーブル | 同上                                                                                                               | 更新時は参照のうえで書き戻し         |
-| 更新対象   | TRANSACTION, TAG_MANAGEMENT, TRANSACTION_MANAGEMENT, ACCOUNT_HISTORY, ACCOUNT                                    | 新規・更新・削除に応じて複数 CSV を更新 |
+| 更新対象   | TRANSACTION, TRANSACTION_TAG, TRANSACTION_MANAGEMENT, ACCOUNT_HISTORY, ACCOUNT                                    | 新規・更新・削除に応じて複数 CSV を更新 |
 
 
 ### 6.3 各テーブル更新時のルール・処理条件
@@ -147,13 +147,13 @@
 | テーブル（ファイル） | 更新するタイミング | 条件・ルール | 処理内容 |
 |----------------------|--------------------|--------------|----------|
 | **TRANSACTION** | 保存（新規・編集）・削除 | 常に。新規時は nextId で ID 採番。編集・削除時は対象行の VERSION をチェック。 | **新規**: 1行追加（全項目をフォーム値で設定。DLT_FLG=0）。**編集**: 対象行の項目をフォーム値で上書き（ID は不変。DLT_FLG は既存を維持）。**削除**: 論理削除の場合は当該行の DLT_FLG を 1 にし VERSION をインクリメント。物理削除の場合は行を削除。 |
-| **TAG_MANAGEMENT** | 保存（新規・編集） | タグを1つ以上選択していても0個でも実行する。**当該取引（TRANSACTION_ID）に紐づく既存行はすべて削除**したうえで、フォームで選択中の TAG_ID ごとに1行ずつ新規追加。 | 当該 TRANSACTION_ID の既存紐付けを削除し、選択タグ分の (TRANSACTION_ID, TAG_ID) を追加。一意制約 (TRANSACTION_ID, TAG_ID) を満たす。編集時は「その取引のタグ」を丸ごと置き換え。 |
+| **TRANSACTION_TAG** | 保存（新規・編集） | タグを1つ以上選択していても0個でも実行する。**当該取引（TRANSACTION_ID）に紐づく既存行はすべて削除**したうえで、フォームで選択中の TAG_ID ごとに1行ずつ新規追加。 | 当該 TRANSACTION_ID の既存紐付けを削除し、選択タグ分の (TRANSACTION_ID, TAG_ID) を追加。一意制約 (TRANSACTION_ID, TAG_ID) を満たす。編集時は「その取引のタグ」を丸ごと置き換え。 |
 | **TRANSACTION_MANAGEMENT** | 保存（新規・編集）で予定の場合のみ | **PROJECT_TYPE = plan（予定）**のときのみ更新。実績（actual）の新規・編集では当テーブルは触らない。 | **予定の新規・編集**: 当該 TRAN_PLAN_ID に紐づく既存行をすべて削除し、フォームで選択した実績 ID（selectedActualIds）ごとに (TRAN_PLAN_ID, TRAN_ACTUAL_ID) を1行ずつ追加。1実績は1予定にのみ紐づく制約を満たす（同一 TRAN_ACTUAL_ID の重複は登録しない）。予定削除時は当該 TRAN_PLAN_ID の行をすべて削除。 |
 | **ACCOUNT** | 実績の登録・更新・削除時のみ | **PROJECT_TYPE = actual（実績）**のときのみ。対象は出金元（ACCOUNT_ID_OUT）・入金先（ACCOUNT_ID_IN）の勘定。 | 支出: 出金元勘定の BALANCE を減算。収入: 入金先勘定の BALANCE を加算。振替: 出金元を減算・入金先を加算。**削除時**は当該取引による変動を逆方向に反映（巻き戻し）。更新時は旧金額と新金額の差を反映。各勘定の VERSION をインクリメントし、監査項目を更新。 |
 | **ACCOUNT_HISTORY** | 実績の登録・更新・削除時のみ | **PROJECT_TYPE = actual** のときのみ。当該取引で影響を受ける勘定ごとに、その時点の残高を記録。 | **登録時**: 影響する勘定ごとに1行追加。TRANSACTION_STATUS = `regist`。BALANCE は変動後の残高。**更新時**: 影響する勘定ごとに1行追加。TRANSACTION_STATUS = `update`。**削除時**: 影響する勘定ごとに1行追加。TRANSACTION_STATUS = `delete`。BALANCE は巻き戻し後の残高。ACCOUNT.BALANCE と当該勘定の最新履歴の BALANCE が一致するようにする。 |
 
 - **楽観的ロック**: TRANSACTION / ACCOUNT 等を更新・削除する前に、対象行の VERSION を CSV 上の最新値と比較する。不一致の場合は更新せずアラートし、画面を再取得する。
-- **保存順序**: 実装では TRANSACTION → TAG_MANAGEMENT → TRANSACTION_MANAGEMENT の順で保存し、実績の場合は ACCOUNT 残高の計算後に ACCOUNT_HISTORY → ACCOUNT を保存する。
+- **保存順序**: 実装では TRANSACTION → TRANSACTION_TAG → TRANSACTION_MANAGEMENT の順で保存し、実績の場合は ACCOUNT 残高の計算後に ACCOUNT_HISTORY → ACCOUNT を保存する。
 
 ---
 

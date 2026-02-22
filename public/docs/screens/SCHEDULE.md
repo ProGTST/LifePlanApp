@@ -85,13 +85,13 @@
 
 ### 6.1 API仕様
 
-収支履歴画面と同様。GET /api/data/*.csv で TRANSACTION, CATEGORY, ACCOUNT, ACCOUNT_PERMISSION, TAG, TAG_MANAGEMENT 等を取得。本画面では CSV の更新は行わない。
+収支履歴画面と同様。GET /api/data/*.csv で TRANSACTION, CATEGORY, ACCOUNT, ACCOUNT_PERMISSION, TAG, TRANSACTION_TAG 等を取得。本画面では CSV の更新は行わない。
 
 ### 6.2 DB定義（CSV 対応）
 
 | 種別 | テーブル（ファイル） | 備考 |
 |------|----------------------|------|
-| 使用テーブル | TRANSACTION, CATEGORY, ACCOUNT, ACCOUNT_PERMISSION, TAG, TAG_MANAGEMENT 等 | 表示・検索のみ |
+| 使用テーブル | TRANSACTION, CATEGORY, ACCOUNT, ACCOUNT_PERMISSION, TAG, TRANSACTION_TAG 等 | 表示・検索のみ |
 | 参照テーブル | 同上 | 更新対象なし |
 | 更新対象 | なし | 収支記録画面で更新 |
 

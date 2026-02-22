@@ -7,7 +7,7 @@ import type {
   AccountRow,
   AccountPermissionRow,
   TagRow,
-  TagManagementRow,
+  TransactionTagRow,
   TransactionManagementRow,
 } from "../types";
 import { currentUserId, setTransactionList, setTagManagementList, transactionList } from "../state";
@@ -148,17 +148,17 @@ async function fetchTagList(noCache = false): Promise<TagRow[]> {
 }
 
 /**
- * TAG_MANAGEMENT.csv を取得してタグ紐付け行の配列で返す。
+ * TRANSACTION_TAG.csv を取得してタグ紐付け行の配列で返す。
  * @param noCache - true のときキャッシュを使わず再取得する
  * @returns タグ紐付け行の配列
  */
-async function fetchTagManagementList(noCache = false): Promise<TagManagementRow[]> {
+async function fetchTransactionTagList(noCache = false): Promise<TransactionTagRow[]> {
   const init = noCache ? CSV_NO_CACHE : undefined;
-  const { header, rows } = await fetchCsv("/data/TAG_MANAGEMENT.csv", init);
+  const { header, rows } = await fetchCsv("/data/TRANSACTION_TAG.csv", init);
   if (header.length === 0) return [];
-  const list: TagManagementRow[] = [];
+  const list: TransactionTagRow[] = [];
   for (const cells of rows) {
-    list.push(rowToObject(header, cells) as unknown as TagManagementRow);
+    list.push(rowToObject(header, cells) as unknown as TransactionTagRow);
   }
   return list;
 }
@@ -192,7 +192,7 @@ export function loadTransactionData(noCache = false): Promise<void> {
     fetchTagList(noCache),
     fetchAccountList(noCache),
     fetchAccountPermissionList(noCache),
-    fetchTagManagementList(noCache),
+    fetchTransactionTagList(noCache),
     fetchTransactionManagementList(noCache),
   ]).then(([txList, catList, tagList, accList, permList, tagMgmt, txMgmt]) => {
     // 参照可能な勘定 ID を算出し、削除フラグ未設定かつ参照可能な取引のみ state に設定
@@ -279,16 +279,16 @@ export function getActualTransactionsForPlan(planId: string): TransactionRow[] {
 }
 
 /**
- * 取引に紐づくタグの一覧を返す（TAG_MANAGEMENT と TAG から取得）。
+ * 取引に紐づくタグの一覧を返す（TRANSACTION_TAG と TAG から取得）。
  * @param transactionId - 取引 ID
  * @param tagManagementList - タグ紐付け一覧
  * @returns タグ行の配列
  */
 export function getTagsForTransaction(
   transactionId: string,
-  tagManagementList: TagManagementRow[]
+  transactionTagList: TransactionTagRow[]
 ): TagRow[] {
-  const tagIds = tagManagementList
+  const tagIds = transactionTagList
     .filter((t) => t.TRANSACTION_ID === transactionId)
     .map((t) => t.TAG_ID);
   return tagIds

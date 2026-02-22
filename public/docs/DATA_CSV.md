@@ -48,8 +48,8 @@ LifePlanGant で扱う収支・タグ・勘定項目のデータは、`data/` �
 | `data/ACCOUNT_HISTORY.csv` | ACCOUNT_HISTORY | 勘定項目履歴 |
 | `data/CATEGORY.csv` | CATEGORY | カテゴリマスタ（収入・支出の分類） |
 | `data/TAG.csv` | TAG | タグマスタ |
-| `data/TAG_MANAGEMENT.csv` | TAG_MANAGEMENT | 収支とタグの対応 |
 | `data/TRANSACTION.csv` | TRANSACTION | 収支（計画・実績） |
+| `data/TRANSACTION_TAG.csv` | TRANSACTION_TAG | 収支とタグの対応 |
 | `data/TRANSACTION_MANAGEMENT.csv` | TRANSACTION_MANAGEMENT | 取引予定と取引実績の紐付け |
 | `data/TRANSACTION_MONTHLY.csv` | TRANSACTION_MONTHLY | 取引データの月別集計 |
 
@@ -245,30 +245,7 @@ LifePlanGant で扱う収支・タグ・勘定項目のデータは、`data/` �
 
 ---
 
-## 7. タグ管理テーブル（TAG_MANAGEMENT）
-
-**ファイル**: `data/TAG_MANAGEMENT.csv`
-
-「どの収支（TRANSACTION）にどのタグ（TAG）が付いているか」を表す中間テーブルです。  
-1件の収支に複数タグを付けられます。
-
-| 列名 | 説明 | 備考 |
-|------|------|------|
-| ID | 一意識別子 | 数値 |
-| VERSION | 楽観的ロック用 | 初期値 0。更新時に 1 増やす |
-| REGIST_DATETIME | 登録日時 | 共通 |
-| REGIST_USER | 登録ユーザーID | USER.ID への参照 |
-| UPDATE_DATETIME | 更新日時 | 共通 |
-| UPDATE_USER | 更新ユーザーID | USER.ID への参照 |
-| TRANSACTION_ID | 収支ID | TRANSACTION.ID への参照 |
-| TAG_ID | タグID | TAG.ID への参照 |
-
-**一意制約**
-- **(TRANSACTION_ID, TAG_ID)** は一意。同一の「取引・タグ」の組み合わせは1行のみ登録する。アプリ側で重複登録しないようにする。
-
----
-
-## 8. 収支テーブル（TRANSACTION）
+## 7. 収支テーブル（TRANSACTION）
 
 **ファイル**: `data/TRANSACTION.csv`
 
@@ -307,6 +284,29 @@ LifePlanGant で扱う収支・タグ・勘定項目のデータは、`data/` �
 
 **将来拡張のメモ**
 - TRANSACTION は「予定・実績・繰り返しルール・単発・振替・残高影響」を一テーブルで持つ。現状は問題ないが、将来パフォーマンスや保守性の観点で次の分離を検討し得る：繰り返し設定（FREQUENCY / INTERVAL / CYCLE_UNIT）を別テーブルに分離、実績生成済フラグの追加など。SQLite 移行時に正規化の余地として記載する。
+
+---
+
+## 8. タグ管理テーブル（TRANSACTION_TAG）
+
+**ファイル**: `data/TRANSACTION_TAG.csv`
+
+「どの収支（TRANSACTION）にどのタグ（TAG）が付いているか」を表す中間テーブルです。  
+1件の収支に複数タグを付けられます。
+
+| 列名 | 説明 | 備考 |
+|------|------|------|
+| ID | 一意識別子 | 数値 |
+| VERSION | 楽観的ロック用 | 初期値 0。更新時に 1 増やす |
+| REGIST_DATETIME | 登録日時 | 共通 |
+| REGIST_USER | 登録ユーザーID | USER.ID への参照 |
+| UPDATE_DATETIME | 更新日時 | 共通 |
+| UPDATE_USER | 更新ユーザーID | USER.ID への参照 |
+| TRANSACTION_ID | 収支ID | TRANSACTION.ID への参照 |
+| TAG_ID | タグID | TAG.ID への参照 |
+
+**一意制約**
+- **(TRANSACTION_ID, TAG_ID)** は一意。同一の「取引・タグ」の組み合わせは1行のみ登録する。アプリ側で重複登録しないようにする。
 
 ---
 
@@ -362,7 +362,7 @@ LifePlanGant で扱う収支・タグ・勘定項目のデータは、`data/` �
 ## テーブル間の関係
 
 ```
-TAG (1) ----< TAG_MANAGEMENT >---- (N) TRANSACTION
+TAG (1) ----< TRANSACTION_TAG >---- (N) TRANSACTION
                                         |
                     +-------------------+-------------------+
                     | CATEGORY_ID       | ACCOUNT_ID_IN / ACCOUNT_ID_OUT |
@@ -376,7 +376,7 @@ TAG (1) ----< TAG_MANAGEMENT >---- (N) TRANSACTION
 - **USER** は、全テーブルの REGIST_USER / UPDATE_USER から参照される（監査用）。
 - **TRANSACTION** は **CATEGORY** に属する（多対一）。
 - **TRANSACTION** は **ACCOUNT** を最大2つ参照する（ACCOUNT_ID_IN：収益側、ACCOUNT_ID_OUT：費用側。振替時は両方設定してフローを表す）。
-- **TRANSACTION** と **TAG** は **TAG_MANAGEMENT** を通じて多対多。
+- **TRANSACTION** と **TAG** は **TRANSACTION_TAG** を通じて多対多。
 - **TRANSACTION**（予定）と **TRANSACTION**（実績）は **TRANSACTION_MANAGEMENT** を通じて、1件の予定に複数の実績を紐づけられる。
 - **CATEGORY** は PARENT_ID で親子関係を持てる（階層構造）。
 
@@ -385,7 +385,7 @@ TAG (1) ----< TAG_MANAGEMENT >---- (N) TRANSACTION
 ## データ整合性ポリシー
 
 - **参照整合性はアプリ側で保証する**。存在しない ID を他テーブルから参照しない。REGIST_USER / UPDATE_USER には存在する USER.ID を設定する。CATEGORY_ID, ACCOUNT_ID_IN, ACCOUNT_ID_OUT, TRANSACTION_ID, TAG_ID 等も、参照先テーブルに存在する ID のみを設定する。
-- **削除時は参照の有無をチェックする**。勘定を削除する場合は、当該勘定を参照する TRANSACTION や ACCOUNT_PERMISSION の扱いを決める（禁止するか、参照をクリアするか）。タグ・カテゴリ削除時も、参照している取引や TAG_MANAGEMENT の扱いをアプリ側で一貫して行う。
+- **削除時は参照の有無をチェックする**。勘定を削除する場合は、当該勘定を参照する TRANSACTION や ACCOUNT_PERMISSION の扱いを決める（禁止するか、参照をクリアするか）。タグ・カテゴリ削除時も、参照している取引や TRANSACTION_TAG の扱いをアプリ側で一貫して行う。
 - **残高は履歴から再構築可能であること**。ACCOUNT.BALANCE と ACCOUNT_HISTORY の整合性を保ち、不整合が生じた場合は当該勘定の ACCOUNT_HISTORY を先頭から適用して BALANCE を再計算できるようにする。
 
 ---

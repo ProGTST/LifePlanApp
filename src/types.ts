@@ -123,8 +123,8 @@ export interface TransactionRow {
   DLT_FLG?: string;
 }
 
-/** タグ管理（TAG_MANAGEMENT）の1行 */
-export interface TagManagementRow {
+/** タグ管理（TRANSACTION_TAG）の1行 */
+export interface TransactionTagRow {
   ID: string;
   VERSION: string;
   REGIST_DATETIME: string;

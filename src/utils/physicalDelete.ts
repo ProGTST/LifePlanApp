@@ -5,7 +5,7 @@ import { fetchCsv, rowToObject } from "./csv";
 import { saveCsvViaApi } from "./dataApi";
 import {
   transactionListToCsv,
-  tagManagementListToCsv,
+  transactionTagListToCsv,
   transactionManagementListToCsv,
 } from "./csvExport";
 
@@ -18,12 +18,12 @@ export interface PhysicalDeleteResult {
 
 /**
  * 削除済み（DLT_FLG=1）の取引を TRANSACTION.csv から除去し、
- * 当該取引に紐づく TAG_MANAGEMENT / TRANSACTION_MANAGEMENT の行も削除して保存する。
+ * 当該取引に紐づく TRANSACTION_TAG / TRANSACTION_MANAGEMENT の行も削除して保存する。
  */
 export async function runPhysicalDelete(): Promise<PhysicalDeleteResult> {
-  const [txRes, tagMgmtRes, txMgmtRes] = await Promise.all([
+  const [txRes, txTagRes, txMgmtRes] = await Promise.all([
     fetchCsv("/data/TRANSACTION.csv", CSV_NO_CACHE),
-    fetchCsv("/data/TAG_MANAGEMENT.csv", CSV_NO_CACHE),
+    fetchCsv("/data/TRANSACTION_TAG.csv", CSV_NO_CACHE),
     fetchCsv("/data/TRANSACTION_MANAGEMENT.csv", CSV_NO_CACHE),
   ]);
 
@@ -43,15 +43,15 @@ export async function runPhysicalDelete(): Promise<PhysicalDeleteResult> {
   const txCsv = transactionListToCsv(txRows);
   await saveCsvViaApi("TRANSACTION.csv", txCsv);
 
-  if (tagMgmtRes.header.length > 0 && tagMgmtRes.rows.length > 0) {
-    const tagMgmtRows: Record<string, string>[] = [];
-    for (const cells of tagMgmtRes.rows) {
-      const row = rowToObject(tagMgmtRes.header, cells);
+  if (txTagRes.header.length > 0 && txTagRes.rows.length > 0) {
+    const txTagRows: Record<string, string>[] = [];
+    for (const cells of txTagRes.rows) {
+      const row = rowToObject(txTagRes.header, cells);
       if (deletedIds.has((row.TRANSACTION_ID ?? "").trim())) continue;
-      tagMgmtRows.push(row);
+      txTagRows.push(row);
     }
-    const tagMgmtCsv = tagManagementListToCsv(tagMgmtRows);
-    await saveCsvViaApi("TAG_MANAGEMENT.csv", tagMgmtCsv);
+    const txTagCsv = transactionTagListToCsv(txTagRows);
+    await saveCsvViaApi("TRANSACTION_TAG.csv", txTagCsv);
   }
 
   if (txMgmtRes.header.length > 0 && txMgmtRes.rows.length > 0) {

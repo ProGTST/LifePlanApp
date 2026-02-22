@@ -1,10 +1,10 @@
-import type { TransactionRow, CategoryRow, AccountRow, AccountPermissionRow, TagRow, TagManagementRow, TransactionManagementRow, AccountHistoryRow } from "../types";
+import type { TransactionRow, CategoryRow, AccountRow, AccountPermissionRow, TagRow, TransactionTagRow, TransactionManagementRow, AccountHistoryRow } from "../types";
 import { currentUserId, transactionEntryEditId, setTransactionEntryEditId, transactionEntryViewOnly, transactionEntryReturnView, setTransactionEntryReturnView, pushNavigation } from "../state";
 import { createIconWrap } from "../utils/iconWrap";
 import { openOverlay, closeOverlay } from "../utils/overlay";
 import { ICON_DEFAULT_COLOR } from "../constants/colorPresets";
 import { fetchCsv, rowToObject } from "../utils/csv";
-import { transactionListToCsv, tagManagementListToCsv, transactionManagementListToCsv, accountListToCsv, accountHistoryListToCsv } from "../utils/csvExport";
+import { transactionListToCsv, transactionTagListToCsv, transactionManagementListToCsv, accountListToCsv, accountHistoryListToCsv } from "../utils/csvExport";
 import { saveCsvViaApi } from "../utils/dataApi";
 import { registerViewHandler, showMainView } from "../app/screen";
 import { updateCurrentMenuItem } from "../app/sidebar";
@@ -230,18 +230,18 @@ async function fetchTagList(noCache = false): Promise<TagRow[]> {
 }
 
 /**
- * TAG_MANAGEMENT.csv を取得し、タグ管理行の配列と次に使う ID を返す。
+ * TRANSACTION_TAG.csv を取得し、タグ管理行の配列と次に使う ID を返す。
  * @param noCache - true のときキャッシュを使わない
  * @returns Promise。nextId とタグ管理行の配列
  */
-async function fetchTagManagementRows(noCache = false): Promise<{ nextId: number; rows: TagManagementRow[] }> {
+async function fetchTransactionTagRows(noCache = false): Promise<{ nextId: number; rows: TransactionTagRow[] }> {
   const init = noCache ? CSV_NO_CACHE : undefined;
-  const { header, rows } = await fetchCsv("/data/TAG_MANAGEMENT.csv", init);
-  const list: TagManagementRow[] = [];
+  const { header, rows } = await fetchCsv("/data/TRANSACTION_TAG.csv", init);
+  const list: TransactionTagRow[] = [];
   let maxId = 0;
   for (const cells of rows) {
     if (cells.length === 0 || cells.every((c) => !c.trim())) continue;
-    const row = rowToObject(header, cells) as unknown as TagManagementRow;
+    const row = rowToObject(header, cells) as unknown as TransactionTagRow;
     const n = parseInt(row.ID ?? "0", 10);
     if (!Number.isNaN(n) && n > maxId) maxId = n;
     list.push(row);
@@ -1441,7 +1441,7 @@ function setTransactionEntryReadonly(readonly: boolean): void {
 
 async function loadFormForEdit(transactionId: string): Promise<void> {
   const [tagMgmtResult, txMgmtResult, txResult] = await Promise.all([
-    fetchTagManagementRows(true),
+    fetchTransactionTagRows(true),
     fetchTransactionManagementRows(true),
     fetchTransactionRows(true),
   ]);
@@ -1644,8 +1644,8 @@ async function saveTransactionCsv(csv: string): Promise<void> {
   await saveCsvViaApi("TRANSACTION.csv", csv);
 }
 
-async function saveTagManagementCsv(csv: string): Promise<void> {
-  await saveCsvViaApi("TAG_MANAGEMENT.csv", csv);
+async function saveTransactionTagCsv(csv: string): Promise<void> {
+  await saveCsvViaApi("TRANSACTION_TAG.csv", csv);
 }
 
 async function saveTransactionManagementCsv(csv: string): Promise<void> {
@@ -1932,7 +1932,7 @@ export function initTransactionEntryView(): void {
           "update",
           existing
         );
-        const { nextId: nextMgmtId, rows: mgmtRows } = await fetchTagManagementRows(true);
+        const { nextId: nextMgmtId, rows: mgmtRows } = await fetchTransactionTagRows(true);
         const userId = currentUserId ?? "";
         const others = mgmtRows.filter((r) => r.TRANSACTION_ID !== editingTransactionId);
         const newMgmtRows = others.map((r) => ({ ...r } as Record<string, string>));
@@ -1946,8 +1946,8 @@ export function initTransactionEntryView(): void {
           newMgmtRows.push(row);
           id += 1;
         }
-        const mgmtCsv = tagManagementListToCsv(newMgmtRows);
-        await saveTagManagementCsv(mgmtCsv);
+        const mgmtCsv = transactionTagListToCsv(newMgmtRows);
+        await saveTransactionTagCsv(mgmtCsv);
         const { nextId: nextTxMgmtId, rows: txMgmtRows } = await fetchTransactionManagementRows(true);
         const othersTxMgmt = txMgmtRows.filter(
           (r) => r.TRAN_PLAN_ID !== editingTransactionId && (r.ID ?? "").trim() !== ""
@@ -1991,7 +1991,7 @@ export function initTransactionEntryView(): void {
         }
         await updateTransactionMonthlyForTransaction(newRow as unknown as TransactionRow, "register");
         if (selectedTagIds.size > 0) {
-          const { nextId: nextMgmtId, rows: mgmtRows } = await fetchTagManagementRows(true);
+          const { nextId: nextMgmtId, rows: mgmtRows } = await fetchTransactionTagRows(true);
           const userId = currentUserId ?? "";
           const newMgmtRows = [...mgmtRows.map((r) => ({ ...r } as Record<string, string>))];
           let id = nextMgmtId;
@@ -2004,8 +2004,8 @@ export function initTransactionEntryView(): void {
             newMgmtRows.push(row);
             id += 1;
           }
-          const mgmtCsv = tagManagementListToCsv(newMgmtRows);
-          await saveTagManagementCsv(mgmtCsv);
+          const mgmtCsv = transactionTagListToCsv(newMgmtRows);
+          await saveTransactionTagCsv(mgmtCsv);
         }
         if (getStatusInput()?.value === "plan" && selectedActualIds.size > 0) {
           const { nextId: nextTxMgmtId, rows: txMgmtRows } = await fetchTransactionManagementRows(true);
@@ -2101,12 +2101,12 @@ export function initTransactionEntryView(): void {
         await updateAccountBalancesForActual(editingTransactionId!, "delete", typeDel, outIdDel, inIdDel, amtDel);
       }
       await updateTransactionMonthlyForTransaction(row, "delete");
-      const { rows: mgmtRows } = await fetchTagManagementRows(true);
+      const { rows: mgmtRows } = await fetchTransactionTagRows(true);
       const newMgmtRows = mgmtRows
         .filter((r) => r.TRANSACTION_ID !== editingTransactionId)
         .map((r) => ({ ...r } as Record<string, string>));
-      const mgmtCsv = tagManagementListToCsv(newMgmtRows);
-      await saveTagManagementCsv(mgmtCsv);
+      const mgmtCsv = transactionTagListToCsv(newMgmtRows);
+      await saveTransactionTagCsv(mgmtCsv);
       const { rows: txMgmtRows } = await fetchTransactionManagementRows(true);
       const newTxMgmtRows = txMgmtRows
         .filter((r) => r.TRAN_PLAN_ID !== editingTransactionId && r.TRAN_ACTUAL_ID !== editingTransactionId)
@@ -2148,7 +2148,7 @@ export function initTransactionEntryView(): void {
       }
       await updateTransactionMonthlyForTransaction(newRow as unknown as TransactionRow, "register");
       if (selectedTagIds.size > 0) {
-        const { nextId: nextMgmtId, rows: mgmtRows } = await fetchTagManagementRows(true);
+        const { nextId: nextMgmtId, rows: mgmtRows } = await fetchTransactionTagRows(true);
         const userId = currentUserId ?? "";
         const newMgmtRows = [...mgmtRows.map((r) => ({ ...r } as Record<string, string>))];
         let id = nextMgmtId;
@@ -2161,8 +2161,8 @@ export function initTransactionEntryView(): void {
           newMgmtRows.push(row);
           id += 1;
         }
-        const mgmtCsv = tagManagementListToCsv(newMgmtRows);
-        await saveTagManagementCsv(mgmtCsv);
+        const mgmtCsv = transactionTagListToCsv(newMgmtRows);
+        await saveTransactionTagCsv(mgmtCsv);
       }
       if (selectedActualIds.size > 0) {
         const { nextId: nextTxMgmtId, rows: txMgmtRows } = await fetchTransactionManagementRows(true);

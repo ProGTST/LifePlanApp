@@ -168,7 +168,7 @@ export function transactionListToCsv(rows: Record<string, string>[]): string {
   return toCsvString([...TRANSACTION_HEADER], rows);
 }
 
-const TAG_MANAGEMENT_HEADER = [
+const TRANSACTION_TAG_HEADER = [
   "ID",
   "VERSION",
   "REGIST_DATETIME",
@@ -180,12 +180,12 @@ const TAG_MANAGEMENT_HEADER = [
 ] as const;
 
 /**
- * 取引-タグ紐付け一覧を TAG_MANAGEMENT.csv 形式の CSV 文字列に変換する。
+ * 取引-タグ紐付け一覧を TRANSACTION_TAG.csv 形式の CSV 文字列に変換する。
  * @param rows - 紐付け行のオブジェクト配列
  * @returns CSV 文字列
  */
-export function tagManagementListToCsv(rows: Record<string, string>[]): string {
-  return toCsvString([...TAG_MANAGEMENT_HEADER], rows);
+export function transactionTagListToCsv(rows: Record<string, string>[]): string {
+  return toCsvString([...TRANSACTION_TAG_HEADER], rows);
 }
 
 const TRANSACTION_MANAGEMENT_HEADER = [

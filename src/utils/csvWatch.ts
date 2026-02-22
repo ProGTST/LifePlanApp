@@ -24,8 +24,9 @@ const WATCHED_FILES = [
   "CATEGORY.csv",
   "TAG.csv",
   "TRANSACTION.csv",
-  "TAG_MANAGEMENT.csv",
+  "TRANSACTION_TAG.csv",
   "TRANSACTION_MANAGEMENT.csv",
+  "TRANSACTION_MONTHLY.csv",
 ] as const;
 
 /** ファイル → 画面ID */
@@ -38,8 +39,9 @@ const FILE_TO_VIEW: Record<string, string> = {
   "CATEGORY.csv": "category",
   "TAG.csv": "tag",
   "TRANSACTION.csv": "transaction-history",
-  "TAG_MANAGEMENT.csv": "transaction-history",
+  "TRANSACTION_TAG.csv": "transaction-history",
   "TRANSACTION_MANAGEMENT.csv": "transaction-history",
+  "TRANSACTION_MONTHLY.csv": "transaction-history",
 };
 
 /**
@@ -158,7 +160,8 @@ function getDisplayKeyForUpdate(
       return fileName === "TAG.csv" ? id(row.ID) : "";
     case "transaction-history":
       if (fileName === "TRANSACTION.csv") return id(row.ID);
-      if (fileName === "TAG_MANAGEMENT.csv") return id(row.TRANSACTION_ID);
+      if (fileName === "TRANSACTION_TAG.csv") return id(row.ID);
+      if (fileName === "TRANSACTION_MONTHLY.csv") return id(row.ID);
       return "";
     default:
       return "";

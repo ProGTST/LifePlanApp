@@ -209,9 +209,9 @@ fn save_transaction_csv(app: tauri::AppHandle, transaction: String) -> Result<()
 }
 
 #[tauri::command]
-fn save_tag_management_csv(app: tauri::AppHandle, tag_management: String) -> Result<(), String> {
-    save_csv_to_public_always("TAG_MANAGEMENT.csv", &tag_management);
-    save_csv_to_app_data(&app, "TAG_MANAGEMENT.csv", &tag_management)
+fn save_transaction_tag_csv(app: tauri::AppHandle, transaction_tag: String) -> Result<(), String> {
+    save_csv_to_public_always("TRANSACTION_TAG.csv", &transaction_tag);
+    save_csv_to_app_data(&app, "TRANSACTION_TAG.csv", &transaction_tag)
 }
 
 #[tauri::command]

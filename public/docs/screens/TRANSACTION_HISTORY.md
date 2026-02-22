@@ -85,7 +85,7 @@
 | GET | /api/data/ACCOUNT.csv | 勘定名表示用 |
 | GET | /api/data/ACCOUNT_PERMISSION.csv | 参照可能勘定の判定 |
 | GET | /api/data/TAG.csv | タグ名表示用 |
-| GET | /api/data/TAG_MANAGEMENT.csv | 取引-タグ対応 |
+| GET | /api/data/TRANSACTION_TAG.csv | 取引-タグ対応 |
 | GET | /api/data/TRANSACTION_MANAGEMENT.csv | 予定-実績紐付け表示用 |
 
 ※ 本画面では CSV の更新は行わない（参照のみ）。
@@ -94,7 +94,7 @@
 
 | 種別 | テーブル（ファイル） | 備考 |
 |------|----------------------|------|
-| 使用テーブル | TRANSACTION, CATEGORY, ACCOUNT, ACCOUNT_PERMISSION, TAG, TAG_MANAGEMENT, TRANSACTION_MANAGEMENT | 表示・検索・集計に使用 |
+| 使用テーブル | TRANSACTION, CATEGORY, ACCOUNT, ACCOUNT_PERMISSION, TAG, TRANSACTION_TAG, TRANSACTION_MANAGEMENT | 表示・検索・集計に使用 |
 | 参照テーブル | 同上 | 更新対象なし |
 | 更新対象 | なし | 収支記録画面で TRANSACTION 等を更新 |
 
