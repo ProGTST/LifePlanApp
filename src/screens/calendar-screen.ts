@@ -643,11 +643,20 @@ async function renderCharts(ym: string): Promise<void> {
         planBalance.push(planCur);
         actualBalance.push(actualCur);
       }
+      const balanceDiff = actualBalance.map((a, i) => a - planBalance[i]);
       const balanceChart = new Chart(balanceCanvas, {
         type: "line",
         data: {
           labels: accData.labels,
           datasets: [
+            {
+              label: "実績推移",
+              data: actualBalance,
+              borderColor: "rgb(46, 125, 50)",
+              backgroundColor: "rgba(46, 125, 50, 0.1)",
+              fill: false,
+              tension: 0.2,
+            },
             {
               label: "予定推移",
               data: planBalance,
@@ -658,12 +667,11 @@ async function renderCharts(ym: string): Promise<void> {
               tension: 0.2,
             },
             {
-              label: "実績推移",
-              data: actualBalance,
-              borderColor: "rgb(46, 125, 50)",
-              backgroundColor: "rgba(46, 125, 50, 0.1)",
-              fill: false,
-              tension: 0.2,
+              type: "bar",
+              label: "差分(実績−予定)",
+              data: balanceDiff,
+              backgroundColor: "rgba(100, 100, 100, 0.6)",
+              order: 2,
             },
           ],
         },
@@ -672,8 +680,13 @@ async function renderCharts(ym: string): Promise<void> {
           plugins: {
             datalabels: {
               display: (ctx) => {
-                const data = ctx.chart.data.datasets[ctx.datasetIndex].data as number[];
+                const datasets = ctx.chart.data.datasets;
+                const data = datasets[ctx.datasetIndex].data as number[];
                 const i = ctx.dataIndex;
+                if (ctx.datasetIndex === 2) {
+                  const v = data[i];
+                  return v !== null && v !== undefined && v !== 0;
+                }
                 if (i === 0) return false;
                 const prev = data[i - 1];
                 const curr = data[i];

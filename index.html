@@ -354,10 +354,12 @@
                     <h2 class="transaction-history-charts-title">収支グラフ</h2>
                     <div class="transaction-history-charts-grid">
                       <figure class="transaction-history-chart-figure transaction-history-chart-figure--balance">
-                        <figcaption class="transaction-history-chart-caption">残高推移</figcaption>
-                        <div class="transaction-history-chart-balance-header">
-                          <label for="transaction-history-chart-balance-account" class="transaction-history-chart-balance-label">勘定</label>
-                          <select id="transaction-history-chart-balance-account" class="transaction-history-chart-balance-select" aria-label="勘定項目を選択"></select>
+                        <div class="transaction-history-chart-balance-head">
+                          <figcaption class="transaction-history-chart-caption">残高推移</figcaption>
+                          <div class="transaction-history-chart-balance-header">
+                            <label for="transaction-history-chart-balance-account" class="transaction-history-chart-balance-label">勘定</label>
+                            <select id="transaction-history-chart-balance-account" class="transaction-history-chart-balance-select" aria-label="勘定項目を選択"></select>
+                          </div>
                         </div>
                         <div class="transaction-history-chart-wrap transaction-history-chart-wrap--diff"><canvas id="transaction-history-chart-balance" aria-label="残高推移の折れ線グラフ"></canvas></div>
                       </figure>

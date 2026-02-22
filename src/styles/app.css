@@ -4485,6 +4485,36 @@
   color: var(--color-view-fg, #1a1a1a);
 }
 
+.transaction-history-chart-balance-head {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+.transaction-history-chart-balance-head .transaction-history-chart-caption {
+  margin-bottom: 0;
+}
+.transaction-history-chart-balance-header {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.transaction-history-chart-balance-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-view-fg, #1a1a1a);
+}
+.transaction-history-chart-balance-select {
+  font-size: 0.875rem;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--gray-500);
+  border-radius: var(--radius-sm);
+  min-width: 8rem;
+}
+
 .transaction-history-chart-wrap {
   position: relative;
   min-height: 180px;
