@@ -46,10 +46,10 @@ function getCalendarFilterState() {
 /** カレンダー内で参照する勘定 ID の Set（自分が持つ勘定のみ。残高グラフの勘定プルダウン・前月繰越・集計に使用） */
 function getVisibleAccountIdsForCharts(): Set<string> {
   const ids = new Set<string>();
-  const me = currentUserId;
+  const me = (currentUserId || "").trim();
   if (!me) return ids;
   const accountRows = getAccountRows();
-  accountRows.filter((a) => a.USER_ID === me).forEach((a) => ids.add(a.ID));
+  accountRows.filter((a) => (a.USER_ID || "").trim() === me).forEach((a) => ids.add(a.ID));
   return ids;
 }
 
@@ -379,6 +379,49 @@ function getCalendarMonthTotals(
 }
 
 /**
+ * 指定週範囲（from〜to）の予定・実績の収入・支出を集計する。週カレンダーのフッター用。
+ * 自分の勘定のみ対象。権限付与勘定の取引は含めない。getCalendarMonthTotals と同様の集計ロジックで週範囲に限定。
+ */
+function getCalendarWeekTotals(
+  weekFrom: string,
+  weekTo: string,
+  ym: string
+): { planIncome: number; planExpense: number; actualIncome: number; actualExpense: number } {
+  const from10 = weekFrom.slice(0, 10);
+  const to10 = weekTo.slice(0, 10);
+  const ownAccountIds = getOwnAccountIdsForFooter();
+  const filtered = getFilteredTransactionListForCalendarIncludingPermission(ym).filter((row) =>
+    isRowOnlyOwnAccounts(row, ownAccountIds)
+  );
+  const totals = { planIncome: 0, planExpense: 0, actualIncome: 0, actualExpense: 0 };
+
+  for (const row of filtered) {
+    const from = row.TRANDATE_FROM || "";
+    const to = row.TRANDATE_TO || "";
+
+    if (row.PROJECT_TYPE === "actual") {
+      const actualDate = getActualTargetDate(row);
+      if (!actualDate || actualDate < from10 || actualDate > to10) continue;
+      const { type, amount } = getTransactionTypeAndAmount(row);
+      if (type === "income") totals.actualIncome += amount;
+      else if (type === "expense") totals.actualExpense += amount;
+      continue;
+    }
+
+    if (!from || !to) continue;
+    const excludeCompleted = !calendarPlanStatuses.includes("complete");
+    const occurrences = getPlanOccurrenceDatesForDisplay(row, excludeCompleted);
+    const { type, amount } = getTransactionTypeAndAmount(row);
+    for (const d of occurrences) {
+      if (d < from10 || d > to10) continue;
+      if (type === "income") totals.planIncome += amount;
+      else if (type === "expense") totals.planExpense += amount;
+    }
+  }
+  return totals;
+}
+
+/**
  * 指定日付範囲に発生日が含まれる取引のみ返す。週カレンダーの週ブロック用。
  * 権限付与された勘定の取引も含めるため、勘定フィルタをかけないリストを参照する。
  */
@@ -671,27 +714,26 @@ async function renderCharts(ym: string): Promise<void> {
 
     const selectedAccountId = balanceSelect.value || "";
     if (selectedAccountId) {
-      // 集計開始金額 = 表示月の前月の BALANCE_TOTAL（TRANSACTION_MONTHLY）
+      // 集計開始金額 = 表示月の前月の実績 BALANCE_TOTAL（TRANSACTION_MONTHLY）。実績・予定ともこの値から開始
       const [y, m] = ym.split("-").map((s) => parseInt(s, 10));
       const prevMonth = m === 1 ? 12 : m - 1;
       const prevYear = m === 1 ? y - 1 : y;
       const prevYm = `${prevYear}-${String(prevMonth).padStart(2, "0")}`;
-      let carryoverPlan = 0;
-      let carryoverActual = 0;
+      let carryoverFromActual = 0;
       for (const row of monthlyRows) {
         const aid = (row.ACCOUNT_ID || "").trim();
         const py = (row.YEAR || "").trim();
         const pm = (row.MONTH || "").trim().padStart(2, "0");
         if (aid !== selectedAccountId || `${py}-${pm}` !== prevYm) continue;
-        const bal = parseFloat(String(row.BALANCE_TOTAL ?? "0")) || 0;
-        if ((row.PROJECT_TYPE || "").toLowerCase() === "plan") carryoverPlan = bal;
-        else if ((row.PROJECT_TYPE || "").toLowerCase() === "actual") carryoverActual = bal;
+        if ((row.PROJECT_TYPE || "").toLowerCase() !== "actual") continue;
+        carryoverFromActual = parseFloat(String(row.BALANCE_TOTAL ?? "0")) || 0;
+        break;
       }
       const accData = getChartDataForMonthByAccount(ym, selectedAccountId);
       const planBalance: number[] = [];
       const actualBalance: number[] = [];
-      let planCur = carryoverPlan;
-      let actualCur = carryoverActual;
+      let planCur = carryoverFromActual;
+      let actualCur = carryoverFromActual;
       for (let i = 0; i < accData.labels.length; i++) {
         planCur += (accData.planIncomeByDay[i] || 0) - (accData.planExpenseByDay[i] || 0);
         actualCur += (accData.actualIncomeByDay[i] || 0) - (accData.actualExpenseByDay[i] || 0);
@@ -960,27 +1002,12 @@ function renderWeeklyPanel(): void {
       }
     }
 
-    // 表示した取引から週の予定・実績の収入・支出合計を算出（フッターには自分の勘定のみ。権限付与勘定の取引は集計に含めない）
-    const ownAccountIds = getOwnAccountIdsForFooter();
-    let planIncome = 0;
-    let planExpense = 0;
-    let actualIncome = 0;
-    let actualExpense = 0;
-    for (const items of byDate.values()) {
-      for (const { row, showAmount } of items) {
-        if (!showAmount) continue;
-        if (!isRowOnlyOwnAccounts(row, ownAccountIds)) continue;
-        const { type, amount } = getTransactionTypeAndAmount(row);
-        const isPlan = row.PROJECT_TYPE === "plan";
-        if (type === "income") {
-          if (isPlan) planIncome += amount;
-          else actualIncome += amount;
-        } else if (type === "expense") {
-          if (isPlan) planExpense += amount;
-          else actualExpense += amount;
-        }
-      }
-    }
+    // 週の予定・実績の収入・支出合計を算出（自分の勘定のみ。getCalendarWeekTotals で集計）
+    const weekTotals = getCalendarWeekTotals(week.from, week.to, selectedCalendarYM);
+    const planIncome = weekTotals.planIncome;
+    const planExpense = weekTotals.planExpense;
+    const actualIncome = weekTotals.actualIncome;
+    const actualExpense = weekTotals.actualExpense;
     const planBalance = planIncome - planExpense;
     const actualBalance = actualIncome - actualExpense;
 
@@ -1277,7 +1304,7 @@ function renderCalendarPanel(): void {
 /**
  * 月カレンダー・週カレンダー右上ブロック（transaction-history-tabs-row-right）に前月繰越・残高差・実績率を表示する。
  * いずれも自分の勘定の取引のみ対象。権限付与勘定は含めない。
- * 前月繰越 = 前月の TRANSACTION_MONTHLY の BALANCE_TOTAL の合計（自分の勘定のみ）
+ * 前月繰越 = 前月の TRANSACTION_MONTHLY の BALANCE_TOTAL の合計（自分の勘定のみ。PROJECT_TYPE=plan は集計対象外で actual のみ）
  * 残高差 = 実績の総合計 - 予定の総合計（自分の勘定のみ）
  * 実績率 = 実績の総合計 / 予定の総合計 * 100（予定の総合計が0のときは「—」）
  */
@@ -1306,6 +1333,7 @@ async function renderCalendarSummaryRight(): Promise<void> {
   const visibleIds = getVisibleAccountIdsForCharts();
   const monthlyRows = await getTransactionMonthlyRows();
   for (const row of monthlyRows) {
+    if ((row.PROJECT_TYPE || "").toLowerCase() !== "actual") continue;
     const aid = (row.ACCOUNT_ID || "").trim();
     const py = (row.YEAR || "").trim();
     const pm = (row.MONTH || "").trim().padStart(2, "0");

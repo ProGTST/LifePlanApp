@@ -1,9 +1,10 @@
 /**
- * システム画面の初期化。物理削除・月別集計ボタンのイベント登録を行う。
+ * システム画面の初期化。物理削除・勘定集計・月別集計ボタンのイベント登録を行う。
  */
 import { registerViewHandler } from "../app/screen";
 import { runMonthlyAggregation } from "../utils/transactionMonthlyAggregate";
 import { runPhysicalDelete } from "../utils/physicalDelete";
+import { runAccountBalanceRecalculate } from "../utils/accountBalanceRecalculate";
 
 export function initSystemView(): void {
   registerViewHandler("system", () => {});
@@ -15,6 +16,19 @@ export function initSystemView(): void {
     try {
       const result = await runPhysicalDelete();
       alert(`物理削除しました。削除件数：${result.deletedCount}`);
+    } catch (e) {
+      alert(`エラー: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  });
+
+  document.getElementById("system-account-aggregate-btn")?.addEventListener("click", async () => {
+    const btn = document.getElementById("system-account-aggregate-btn") as HTMLButtonElement;
+    if (btn) btn.disabled = true;
+    try {
+      const result = await runAccountBalanceRecalculate();
+      alert(`勘定集計しました。実績取引：${result.transactionCount}件、更新勘定：${result.accountCount}件`);
     } catch (e) {
       alert(`エラー: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
