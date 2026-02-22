@@ -140,3 +140,34 @@ export function getPlanOccurrenceDates(row: TransactionRow): string[] {
 
   return [to];
 }
+
+/**
+ * COMPLETED_PLANDATE をパースし、YYYY-MM-DD 形式の日付の Set を返す。
+ */
+function parseCompletedPlanDates(completedPlanDate: string | undefined): Set<string> {
+  const set = new Set<string>();
+  if (!completedPlanDate || !completedPlanDate.trim()) return set;
+  const parts = completedPlanDate.split(",").map((s) => s.trim().slice(0, 10));
+  for (const p of parts) {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(p)) set.add(p);
+  }
+  return set;
+}
+
+/**
+ * 画面表示用の予定発生日一覧を返す。
+ * excludeCompletedDates が true のときは、COMPLETED_PLANDATE に含まれる日付を除く。
+ * @param row - 予定の取引行
+ * @param excludeCompletedDates - true のとき完了予定日を発生日から除く（検索条件で「完了」がOFFのとき）
+ * @returns 発生日の YYYY-MM-DD 文字列の配列
+ */
+export function getPlanOccurrenceDatesForDisplay(
+  row: TransactionRow,
+  excludeCompletedDates: boolean
+): string[] {
+  const all = getPlanOccurrenceDates(row);
+  if (!excludeCompletedDates) return all;
+  const completedSet = parseCompletedPlanDates(row.COMPLETED_PLANDATE);
+  if (completedSet.size === 0) return all;
+  return all.filter((d) => !completedSet.has(d));
+}

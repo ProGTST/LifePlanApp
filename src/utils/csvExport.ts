@@ -155,6 +155,7 @@ const TRANSACTION_HEADER = [
   "MEMO",
   "ACCOUNT_ID_IN",
   "ACCOUNT_ID_OUT",
+  "COMPLETED_PLANDATE",
   "PLAN_STATUS",
   "DLT_FLG",
 ] as const;

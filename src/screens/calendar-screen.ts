@@ -33,7 +33,7 @@ import {
   registerFilterChangeCallback,
 } from "../utils/transactionDataLayout";
 import { getCalendarFilteredList } from "../utils/transactionDataFilter";
-import { getPlanOccurrenceDates } from "../utils/planOccurrence";
+import { getPlanOccurrenceDates, getPlanOccurrenceDatesForDisplay } from "../utils/planOccurrence";
 import { getTransactionMonthlyRows } from "../utils/transactionMonthlyAggregate";
 
 /**
@@ -289,8 +289,9 @@ function getCalendarDaySummary(
       continue;
     }
 
-    // 予定・その他頻度: 発生日一覧にこの日が含まれるとき件数・金額を加算
-    const occurrences = getPlanOccurrenceDates(row);
+    // 予定・その他頻度: 発生日一覧にこの日が含まれるとき件数・金額を加算（表示用に完了予定日を除く）
+    const excludeCompleted = !calendarPlanStatuses.includes("complete");
+    const occurrences = getPlanOccurrenceDatesForDisplay(row, excludeCompleted);
     if (occurrences.includes(dateStr)) {
       summary.planCount += 1;
       const { type, amount } = getTransactionTypeAndAmount(row);
@@ -331,7 +332,8 @@ function getCalendarMonthTotals(
     }
 
     if (!from || !to) continue;
-    const occurrences = getPlanOccurrenceDates(row);
+    const excludeCompleted = !calendarPlanStatuses.includes("complete");
+    const occurrences = getPlanOccurrenceDatesForDisplay(row, excludeCompleted);
     const { type, amount } = getTransactionTypeAndAmount(row);
     // 予定: 発生日が月範囲内のときのみ金額を加算
     for (const d of occurrences) {
@@ -358,7 +360,8 @@ function getTransactionsInRange(from: string, to: string, ym?: string): Transact
     const trFrom = (row.TRANDATE_FROM || "").slice(0, 10);
     const trTo = (row.TRANDATE_TO || "").slice(0, 10);
     if (!trFrom || !trTo) return false;
-    const occurrences = getPlanOccurrenceDates(row);
+    const excludeCompleted = !calendarPlanStatuses.includes("complete");
+    const occurrences = getPlanOccurrenceDatesForDisplay(row, excludeCompleted);
     return occurrences.some((d) => d >= from10 && d <= to10);
   });
 }
@@ -445,9 +448,10 @@ function getChartDataForMonth(ym: string): {
       continue;
     }
 
-    // 予定: 発生日が月内なら該当日の日別・カテゴリに加算
+    // 予定: 発生日が月内なら該当日の日別・カテゴリに加算（表示用に完了予定日を除く）
     if (!from || !to) continue;
-    const occurrences = getPlanOccurrenceDates(row);
+    const excludeCompleted = !calendarPlanStatuses.includes("complete");
+    const occurrences = getPlanOccurrenceDatesForDisplay(row, excludeCompleted);
     for (const d of occurrences) {
       if (d < firstDay || d > lastDay) continue;
       const dayIdx = parseInt(d.slice(8, 10), 10) - 1;
@@ -520,7 +524,8 @@ function getChartDataForMonthByAccount(
       continue;
     }
     if (!from || !to) continue;
-    const occurrences = getPlanOccurrenceDates(row);
+    const excludeCompleted = !calendarPlanStatuses.includes("complete");
+    const occurrences = getPlanOccurrenceDatesForDisplay(row, excludeCompleted);
     for (const d of occurrences) {
       if (d < firstDay || d > lastDay) continue;
       const dayIdx = parseInt(d.slice(8, 10), 10) - 1;

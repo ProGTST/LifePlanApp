@@ -19,7 +19,7 @@ import {
 } from "../utils/transactionDataSync";
 import { registerFilterChangeCallback } from "../utils/transactionDataLayout";
 import { getFilteredTransactionListForSchedule } from "../utils/transactionDataFilter";
-import { getPlanOccurrenceDates } from "../utils/planOccurrence";
+import { getPlanOccurrenceDatesForDisplay } from "../utils/planOccurrence";
 import { openOverlay, closeOverlay } from "../utils/overlay";
 import { registerViewHandler, registerRefreshHandler, showMainView } from "../app/screen";
 import { updateCurrentMenuItem } from "../app/sidebar";
@@ -374,7 +374,8 @@ function isCellActiveForPlan(
   if (frequency === "day") {
     return overlaps(from, to, col.dateFrom, col.dateTo);
   }
-  const occurrenceDates = getPlanOccurrenceDates(row);
+  const excludeCompleted = !schedulePlanStatuses.includes("complete");
+  const occurrenceDates = getPlanOccurrenceDatesForDisplay(row, excludeCompleted);
   if (unit === "day") {
     return col.dateFrom === col.dateTo && occurrenceDates.includes(col.dateFrom);
   }
@@ -624,7 +625,8 @@ function openScheduleOccurrencePopup(row: TransactionRow): void {
   if (intervalEl) intervalEl.textContent = String(interval);
   if (cycleEl) cycleEl.textContent = formatCycleUnitForDisplay(row);
 
-  const dates = getPlanOccurrenceDates(row);
+  const excludeCompleted = !schedulePlanStatuses.includes("complete");
+  const dates = getPlanOccurrenceDatesForDisplay(row, excludeCompleted);
   const amount = parseFloat(String(row.AMOUNT ?? "0")) || 0;
   const amountFmt =
     amount === 0 ? "0" : amount.toLocaleString(undefined, { maximumFractionDigits: 0 });
@@ -866,7 +868,8 @@ function renderScheduleGrid(): void {
     amountTd.setAttribute("role", "button");
     amountTd.tabIndex = 0;
     const amount = parseFloat(String(row.AMOUNT ?? "0")) || 0;
-    const occurrenceDates = getPlanOccurrenceDates(row);
+    const excludeCompleted = !schedulePlanStatuses.includes("complete");
+    const occurrenceDates = getPlanOccurrenceDatesForDisplay(row, excludeCompleted);
     const amountTotal = amount * occurrenceDates.length;
     amountTd.textContent =
       amountTotal === 0 ? "0" : amountTotal.toLocaleString(undefined, { maximumFractionDigits: 0 });
@@ -988,10 +991,11 @@ function renderScheduleGrid(): void {
 function renderScheduleSummary(rows: TransactionRow[]): void {
   let planIncome = 0;
   let planExpense = 0;
+  const excludeCompleted = !schedulePlanStatuses.includes("complete");
   for (const r of rows) {
     const type = (r.TRANSACTION_TYPE || "").toLowerCase();
     const amount = parseFloat(String(r.AMOUNT ?? "0")) || 0;
-    const occurrenceDates = getPlanOccurrenceDates(r);
+    const occurrenceDates = getPlanOccurrenceDatesForDisplay(r, excludeCompleted);
     const count = occurrenceDates.length;
     if (type === "income") planIncome += amount * count;
     else if (type === "expense") planExpense += amount * count;

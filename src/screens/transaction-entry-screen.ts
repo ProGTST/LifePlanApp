@@ -1587,6 +1587,7 @@ function buildNewRow(form: HTMLFormElement, nextId: number): Record<string, stri
     MEMO: memo,
     ACCOUNT_ID_IN: type === "income" || type === "transfer" ? accountIn : "",
     ACCOUNT_ID_OUT: type === "expense" || type === "transfer" ? accountOut : "",
+    COMPLETED_PLANDATE: "",
     PLAN_STATUS: planStatus,
     DLT_FLG: "0",
   };
@@ -1633,6 +1634,7 @@ function buildUpdatedRow(form: HTMLFormElement, existing: TransactionRow): Recor
     MEMO: memo,
     ACCOUNT_ID_IN: type === "income" || type === "transfer" ? accountIn : "",
     ACCOUNT_ID_OUT: type === "expense" || type === "transfer" ? accountOut : "",
+    COMPLETED_PLANDATE: (existing as Record<string, string>).COMPLETED_PLANDATE ?? "",
     PLAN_STATUS: planStatus,
     DLT_FLG: existing.DLT_FLG ?? "0",
   };
