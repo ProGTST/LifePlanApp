@@ -314,7 +314,7 @@ pub fn run() {
             save_category_csv,
             save_tag_csv,
             save_transaction_csv,
-            save_tag_management_csv,
+            save_transaction_tag_csv,
             save_user_csv,
             save_color_palette_csv,
             save_profile_icon,
