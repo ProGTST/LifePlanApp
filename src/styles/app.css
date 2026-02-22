@@ -566,22 +566,28 @@
 }
 
 /* システム画面（仮） */
-.system-view-placeholder {
-  padding: 1.5rem 0;
-}
-.system-view-actions {
+.system-view-actions-block {
   display: flex;
   flex-direction: column;
+  gap: 1.5rem;
+}
+.system-view-action-item {
+  display: flex;
+  flex-direction: row;
   align-items: flex-start;
   gap: 1rem;
-  margin-top: 0;
 }
-.system-view-actions .btn-secondary + .btn-primary {
-  margin-top: 0;
-}
-.system-view-message {
-  color: var(--gray-600);
+.system-view-action-desc {
+  margin: 0;
+  max-width: 24rem;
+  min-width: 0;
   font-size: 0.9375rem;
+  color: var(--color-view-fg, #1a1a1a);
+  line-height: 1.5;
+}
+.system-view-action-item .btn-secondary,
+.system-view-action-item .btn-primary {
+  flex-shrink: 0;
 }
 
 .calendar-view-message {

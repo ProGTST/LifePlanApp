@@ -642,11 +642,14 @@
             <!-- ビュー: システム（仮画面） -->
             <div id="view-system" class="main-view main-view--hidden" data-view="system">
               <div class="view-body view-body--form">
-                <div class="system-view-placeholder">
-                  <div class="system-view-actions">
+                <div class="system-view-actions-block">
+                  <div class="system-view-action-item">
+                    <p class="system-view-action-desc">現在論理削除済みの取引データを物理削除し、データ整理を行います。</p>
                     <button type="button" class="btn-secondary" id="system-physical-delete-btn">物理削除</button>
+                  </div>
+                  <div class="system-view-action-item">
+                    <p class="system-view-action-desc">ログインユーザーが参照する勘定項目の取引データから月別に収入、支出、残高の再計算をします。</p>
                     <button type="button" class="btn-primary" id="system-monthly-aggregate-btn">月別集計</button>
-                    <span id="system-view-message" class="system-view-message" aria-live="polite"></span>
                   </div>
                 </div>
               </div>
