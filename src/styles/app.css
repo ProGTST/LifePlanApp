@@ -4823,10 +4823,9 @@ button.pagination-btn--disabled {
 .schedule-view-table tbody tr.transaction-history-row--permission-edit:hover td:nth-child(6) {
   background: #e8f5e9;
 }
-/* フォーカス行の固定列を手前に描画し、日付列が透けて見えないようにする */
+/* フォーカス行の固定列だけ実績線(z-index:1)より手前に。tr に z-index を付けないことで日付列では実績線が表示される */
 .schedule-view-table tbody tr:focus-within {
   position: relative;
-  z-index: 0;
 }
 .schedule-view-table tbody tr:focus-within td:nth-child(1),
 .schedule-view-table tbody tr:focus-within td:nth-child(2),
@@ -4834,7 +4833,7 @@ button.pagination-btn--disabled {
 .schedule-view-table tbody tr:focus-within td:nth-child(4),
 .schedule-view-table tbody tr:focus-within td:nth-child(5),
 .schedule-view-table tbody tr:focus-within td:nth-child(6) {
-  z-index: 10;
+  z-index: 2;
   isolation: isolate;
 }
 /* フォーカス行の固定列：疑似要素で背景を前面に描画し日付列が透けないようにする */
@@ -5186,7 +5185,36 @@ button.pagination-btn--disabled {
   display: inline-block;
   width: max-content;
 }
-/* 実績ライン用ラッパー：overflow で固定列にかからないようクリップ。JS で left/width を日付列に合わせる */
+/* 実績ライン行：tbody 内の先頭行。absolute で全行を覆い、z-index: 1 で日付列の上・固定列(z-index: 2)の下に描画 */
+.schedule-view-table tbody {
+  position: relative;
+}
+.schedule-connector-overlays-row {
+  display: block;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+  z-index: 1;
+  pointer-events: none;
+  background: none !important;
+}
+.schedule-connector-overlays-row td {
+  display: block;
+  position: relative;
+  height: 100%;
+  padding: 0;
+  border: none;
+  background: none !important;
+}
+.schedule-connector-overlays-td {
+  overflow: visible;
+}
+/* 実績ライン用ラッパー：overflow で固定列にかからないようクリップ。JS で left/width/height を日付列・tbody に合わせる */
 .schedule-connector-overlays-wrapper {
   position: absolute;
   top: 0;
@@ -5194,9 +5222,9 @@ button.pagination-btn--disabled {
   height: 100%;
   overflow: hidden;
   pointer-events: none;
-  z-index: 1;
+  background: none !important;
 }
-/* 実績ライン：日付列上にのみ表示。ラッパー内で left:0 width:100% にしてラッパーでクリップ */
+/* 実績ライン：日付列上にのみ表示。ラッパー内で left:0 width:100% height:100% にしてラッパーでクリップ */
 .schedule-connector-overlays {
   position: absolute;
   top: 0;
@@ -5204,10 +5232,36 @@ button.pagination-btn--disabled {
   width: 100%;
   height: 100%;
   pointer-events: none;
+  background: none !important;
 }
 .schedule-connector-line {
   position: absolute;
   background: var(--color-button-bg, #646cff);
+}
+/* データ行の固定列を実績線オーバーレイ(z-index:1)より常に前面に描画（実績線が固定列にかからないようにする）。sticky は既存の nth-child で指定済み */
+.schedule-view-table tbody tr:not(.schedule-connector-overlays-row) td:nth-child(1),
+.schedule-view-table tbody tr:not(.schedule-connector-overlays-row) td:nth-child(2),
+.schedule-view-table tbody tr:not(.schedule-connector-overlays-row) td:nth-child(3),
+.schedule-view-table tbody tr:not(.schedule-connector-overlays-row) td:nth-child(4),
+.schedule-view-table tbody tr:not(.schedule-connector-overlays-row) td:nth-child(5),
+.schedule-view-table tbody tr:not(.schedule-connector-overlays-row) td:nth-child(6) {
+  z-index: 2;
+  isolation: isolate;
+}
+/* 対象日一覧モーダル表示中、開いた行全体を実績線(z-index:1)より前面に描画（tr でスタッキングを上げる） */
+.schedule-view-table tbody tr.schedule-occurrence-row-open {
+  position: relative;
+  z-index: 10;
+  isolation: isolate;
+}
+.schedule-view-table tbody tr.schedule-occurrence-row-open td:nth-child(1),
+.schedule-view-table tbody tr.schedule-occurrence-row-open td:nth-child(2),
+.schedule-view-table tbody tr.schedule-occurrence-row-open td:nth-child(3),
+.schedule-view-table tbody tr.schedule-occurrence-row-open td:nth-child(4),
+.schedule-view-table tbody tr.schedule-occurrence-row-open td:nth-child(5),
+.schedule-view-table tbody tr.schedule-occurrence-row-open td:nth-child(6) {
+  z-index: 10;
+  isolation: isolate;
 }
 .schedule-view-table tbody tr:hover .schedule-view-date-cell--active {
   background: color-mix(in srgb, var(--color-button-bg, #646cff) 75%, transparent);

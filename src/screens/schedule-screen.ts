@@ -76,6 +76,16 @@ let lastScheduleUnit: ScheduleUnit | null = null;
 /** 取引予定日ポップアップで編集中の予定行（設定ボタンで COMPLETED_PLANDATE を保存するときに使用） */
 let occurrencePopupPlanRow: TransactionRow | null = null;
 
+/** 対象日一覧モーダルを開いた行に付与するクラス（モーダル表示中、その行の固定列を実績線より前面にする） */
+const SCHEDULE_OCCURRENCE_ROW_OPEN_CLASS = "schedule-occurrence-row-open";
+
+/** 対象日一覧モーダルを閉じたときに、開いていた行からクラスを外す */
+function clearScheduleOccurrenceRowOpen(): void {
+  document
+    .querySelectorAll(`#schedule-tbody tr.${SCHEDULE_OCCURRENCE_ROW_OPEN_CLASS}`)
+    .forEach((tr) => tr.classList.remove(SCHEDULE_OCCURRENCE_ROW_OPEN_CLASS));
+}
+
 interface DateColumn {
   key: string;
   /** 日付の上に表示（週単位は yyyy年、日単位は yyyy年m月、月単位は yyyy年m月） */
@@ -405,11 +415,13 @@ function isCellActiveForPlan(
   const from = (row.TRANDATE_FROM || "").slice(0, 10);
   const to = (row.TRANDATE_TO || "").slice(0, 10);
   const frequency = (row.FREQUENCY ?? "day").toLowerCase();
+  // 予定完了日に含まれる日は背景を付けない（常に完了日を除外してアクティブ判定）
+  const occurrenceDates = getPlanOccurrenceDatesForDisplay(row, true);
   if (frequency === "day") {
+    if (unit === "day") return col.dateFrom === col.dateTo && occurrenceDates.includes(col.dateFrom);
+    if (unit === "week" || unit === "month") return occurrenceDates.some((d) => d >= col.dateFrom && d <= col.dateTo);
     return overlaps(from, to, col.dateFrom, col.dateTo);
   }
-  const excludeCompleted = !schedulePlanStatuses.includes("complete");
-  const occurrenceDates = getPlanOccurrenceDatesForDisplay(row, excludeCompleted);
   if (unit === "day") {
     return col.dateFrom === col.dateTo && occurrenceDates.includes(col.dateFrom);
   }
@@ -494,63 +506,91 @@ const SCHEDULE_FIXED_COL_COUNT = 6;
 function renderScheduleConnectorOverlays(): void {
   const container = document.getElementById("schedule-connector-overlays");
   const tbody = document.getElementById("schedule-tbody");
-  const tableInner = container?.parentElement;
-  if (!container || !tbody || !tableInner) return;
+  const wrapper = document.getElementById("schedule-connector-overlays-wrapper");
+  const tableInner = container?.closest(".schedule-view-table-inner") ?? undefined;
+  if (!container || !tbody || !tableInner || !wrapper) return;
 
   container.innerHTML = "";
 
-  // オーバーレイを日付列部分だけに限定（固定列の上に線が重ならないようにラッパーでクリップ）
-  const wrapper = document.getElementById("schedule-connector-overlays-wrapper");
-  const firstDataRow = tbody.querySelector("tr");
-  const firstDateCell = firstDataRow?.children[SCHEDULE_FIXED_COL_COUNT] as HTMLElement | undefined;
-  if (wrapper) {
-    if (firstDateCell) {
-      const innerRect = tableInner.getBoundingClientRect();
-      const dateCellRect = firstDateCell.getBoundingClientRect();
-      const offsetLeft = dateCellRect.left - innerRect.left;
-      wrapper.style.left = `${offsetLeft}px`;
-      wrapper.style.width = `${innerRect.width - offsetLeft}px`;
-    } else {
-      wrapper.style.left = "0";
-      wrapper.style.width = "0";
-    }
+  // オーバーレイを日付列部分だけに限定（固定列の上に線が重ならないようにラッパーでクリップ）。データ行のうち先頭行でオフセット取得
+  const firstDataRowForOffset = tbody.querySelector("tr:not(.schedule-connector-overlays-row)");
+  const firstDateCellForOffset = firstDataRowForOffset?.children[SCHEDULE_FIXED_COL_COUNT] as
+    | HTMLElement
+    | undefined;
+  if (firstDateCellForOffset) {
+    const innerRect = tableInner.getBoundingClientRect();
+    const dateCellRect = firstDateCellForOffset.getBoundingClientRect();
+    const offsetLeft = dateCellRect.left - innerRect.left;
+    wrapper.style.left = `${offsetLeft}px`;
+    wrapper.style.width = `${innerRect.width - offsetLeft}px`;
+    wrapper.dataset.scheduleFixedWidth = String(Math.round(offsetLeft));
+  } else {
+    wrapper.style.left = "0";
+    wrapper.style.width = "0";
   }
   container.style.left = "0";
   container.style.width = "100%";
 
-  const containerRect = container.getBoundingClientRect();
-  if (containerRect.width === 0 || containerRect.height === 0) return;
+  requestAnimationFrame(() => {
+    const tbodyHeight = tbody.getBoundingClientRect().height;
+    const heightPx = `${Math.max(0, tbodyHeight)}px`;
+    const connectorRowEl = tbody.querySelector(".schedule-connector-overlays-row");
+    if (connectorRowEl instanceof HTMLElement) {
+      connectorRowEl.style.height = heightPx;
+    }
+    const connectorTd = connectorRowEl?.querySelector(".schedule-connector-overlays-td");
+    if (connectorTd instanceof HTMLElement) {
+      connectorTd.style.height = heightPx;
+    }
+    if (wrapper) {
+      wrapper.style.height = heightPx;
+    }
+    if (container) {
+      container.style.height = heightPx;
+    }
+    // 高さ適用後のレイアウトで線位置を計算するため、1フレーム遅らせて描画
+    requestAnimationFrame(() => {
+      const containerRect = container.getBoundingClientRect();
+      if (containerRect.width === 0 || containerRect.height === 0) return;
 
-  const rows = tbody.querySelectorAll("tr[data-actual-icon-cols]");
-  rows.forEach((tr) => {
-    const attr = tr.getAttribute("data-actual-icon-cols");
-    if (!attr) return;
-    const indices = attr.split(",").map((s) => parseInt(s.trim(), 10)).filter((n) => !Number.isNaN(n));
-    if (indices.length < 2) return;
+      const dataRows = tbody.querySelectorAll("tr[data-actual-icon-cols]");
+      dataRows.forEach((tr) => {
+        const attr = tr.getAttribute("data-actual-icon-cols");
+        if (!attr) return;
+        const indices = attr.split(",").map((s) => parseInt(s.trim(), 10)).filter((n) => !Number.isNaN(n));
+        if (indices.length < 2) return;
 
-    const firstCol = indices[0];
-    const lastCol = indices[indices.length - 1];
-    const firstCell = tr.children[SCHEDULE_FIXED_COL_COUNT + firstCol] as HTMLElement | undefined;
-    const lastCell = tr.children[SCHEDULE_FIXED_COL_COUNT + lastCol] as HTMLElement | undefined;
-    if (!firstCell || !lastCell) return;
+        const firstCol = indices[0];
+        const lastCol = indices[indices.length - 1];
+        const firstCell = tr.children[SCHEDULE_FIXED_COL_COUNT + firstCol] as HTMLElement | undefined;
+        const lastCell = tr.children[SCHEDULE_FIXED_COL_COUNT + lastCol] as HTMLElement | undefined;
+        if (!firstCell || !lastCell) return;
 
-    const firstIcon = firstCell.querySelector(".schedule-view-date-cell-actual-icon") as HTMLElement | null;
-    const lastIcon = lastCell.querySelector(".schedule-view-date-cell-actual-icon") as HTMLElement | null;
-    const firstRect = (firstIcon ?? firstCell).getBoundingClientRect();
-    const lastRect = (lastIcon ?? lastCell).getBoundingClientRect();
+        const firstIcon = firstCell.querySelector(".schedule-view-date-cell-actual-icon") as HTMLElement | null;
+        const lastIcon = lastCell.querySelector(".schedule-view-date-cell-actual-icon") as HTMLElement | null;
+        const firstRect = (firstIcon ?? firstCell).getBoundingClientRect();
+        const lastRect = (lastIcon ?? lastCell).getBoundingClientRect();
 
-    // 線は最初の実績アイコンの右端〜最後の実績アイコンの左端で描画（アイコンに重ならない）
-    const left = firstRect.right - containerRect.left;
-    const width = Math.max(0, lastRect.left - firstRect.right);
-    const top = firstRect.top - containerRect.top + firstRect.height / 2 - 1;
-    const height = 2;
+        // 線は最初の実績アイコンの右端〜最後の実績アイコンの左端で描画。固定列にかからないようオーバーレイ左端より左には出さない
+        let lineLeft = firstRect.right - containerRect.left;
+        let lineWidth = Math.max(0, lastRect.left - firstRect.right);
+        if (lineLeft < 0) {
+          lineWidth = lineWidth + lineLeft;
+          lineLeft = 0;
+        }
+        lineWidth = Math.max(0, Math.min(lineWidth, containerRect.width - lineLeft));
+        const top = firstRect.top - containerRect.top + firstRect.height / 2 - 1;
+        const height = 2;
 
-    const line = document.createElement("div");
-    line.className = "schedule-connector-line";
-    line.setAttribute("aria-hidden", "true");
-    line.style.cssText = `left:${left}px;top:${top}px;width:${width}px;height:${height}px;`;
-    container.appendChild(line);
+        const line = document.createElement("div");
+        line.className = "schedule-connector-line";
+        line.setAttribute("aria-hidden", "true");
+        line.style.cssText = `left:${lineLeft}px;top:${top}px;width:${lineWidth}px;height:${height}px;`;
+        container.appendChild(line);
+      });
+    });
   });
+
 }
 
 /**
@@ -819,6 +859,17 @@ function openScheduleOccurrencePopup(row: TransactionRow): void {
       const handleToggle = (): void => {
         const pressed = checkBtn.getAttribute("aria-pressed") === "true";
         const next = !pressed;
+        if (pressed && !next) {
+          const actuals = getActualTransactionsForPlan(row.ID ?? "");
+          const actualDates = new Set(
+            actuals.map((a) => getActualTargetDate(a).trim().slice(0, 10)).filter((x) => /^\d{4}-\d{2}-\d{2}$/.test(x))
+          );
+          if (actualDates.has(d)) {
+            const dateLabel = d.replace(/-/g, "/");
+            alert(`${dateLabel}に実績取引が存在するため\n未完了の場合、紐づく実績取引を解除してください。`);
+            return;
+          }
+        }
         checkBtn.setAttribute("aria-pressed", String(next));
         checkBtn.classList.toggle("is-selected", next);
       };
@@ -1067,10 +1118,29 @@ function renderScheduleGrid(): void {
     const fromFmt = from ? from.replace(/-/g, "/") : "";
     const toFmt = to ? to.replace(/-/g, "/") : "";
     dateRangeTd.textContent = from && to ? (from === to ? fromFmt : `${fromFmt}～${toFmt}`) : "—";
-    dateRangeTd.addEventListener("click", () => openScheduleOccurrencePopup(row));
+    dateRangeTd.addEventListener("click", (e) => {
+      const tr = (e.currentTarget as HTMLElement).closest?.("tr");
+      if (tr && tr.closest?.("#schedule-tbody")) {
+        clearScheduleOccurrenceRowOpen();
+        tr.classList.add(SCHEDULE_OCCURRENCE_ROW_OPEN_CLASS);
+        // クラス適用をレイアウトに反映させてからモーダルを開く（一瞬の重なり防止）
+        void tr.offsetHeight;
+        openScheduleOccurrencePopup(row);
+        return;
+      }
+      openScheduleOccurrencePopup(row);
+    });
     dateRangeTd.addEventListener("keydown", (e) => {
       if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
+        const tr = (e.currentTarget as HTMLElement).closest?.("tr");
+        if (tr && tr.closest?.("#schedule-tbody")) {
+          clearScheduleOccurrenceRowOpen();
+          tr.classList.add(SCHEDULE_OCCURRENCE_ROW_OPEN_CLASS);
+          void tr.offsetHeight;
+          openScheduleOccurrencePopup(row);
+          return;
+        }
         openScheduleOccurrencePopup(row);
       }
     });
@@ -1114,7 +1184,9 @@ function renderScheduleGrid(): void {
       hasActualOrCompletedPlanDate ? "取引実績を確認" : isDelayed ? "遅れ" : statusLabel
     );
     if (hasActualOrCompletedPlanDate) {
-      statusBtn.addEventListener("click", () => openScheduleActualListPopup(row.ID, row.NAME || ""));
+      statusBtn.addEventListener("click", () => {
+        openScheduleActualListPopup(row.ID, row.NAME || "");
+      });
     }
     statusTd.appendChild(statusBtn);
     tr.appendChild(typeTd);
@@ -1185,6 +1257,26 @@ function renderScheduleGrid(): void {
     });
     tbody.appendChild(tr);
   });
+
+  // 実績ライン用の行を先頭に挿入（テーブル内で z-index: 1 にし、固定列 z-index: 2 の下・日付列の上に描画して固定列に線が浮かないようにする）
+  const connectorRow = document.createElement("tr");
+  connectorRow.className = "schedule-connector-overlays-row";
+  connectorRow.setAttribute("aria-hidden", "true");
+  const connectorTd = document.createElement("td");
+  connectorTd.colSpan = SCHEDULE_FIXED_COL_COUNT + columns.length;
+  connectorTd.className = "schedule-connector-overlays-td";
+  const wrapper = document.createElement("div");
+  wrapper.className = "schedule-connector-overlays-wrapper";
+  wrapper.id = "schedule-connector-overlays-wrapper";
+  const container = document.createElement("div");
+  container.className = "schedule-connector-overlays";
+  container.id = "schedule-connector-overlays";
+  container.style.left = "0";
+  container.style.width = "100%";
+  wrapper.appendChild(container);
+  connectorTd.appendChild(wrapper);
+  connectorRow.appendChild(connectorTd);
+  tbody.insertBefore(connectorRow, tbody.firstChild);
 
   // 実績アイコンが複数列ある行について、オーバーレイで1本の線を描画（レイアウト後に位置計算）
   requestAnimationFrame(() => {
@@ -1418,7 +1510,7 @@ export function initScheduleView(): void {
   document.getElementById("schedule-occurrence-apply")?.addEventListener("click", async () => {
     const row = occurrencePopupPlanRow;
     if (!row?.ID) {
-      closeOverlay("schedule-occurrence-overlay");
+      clearScheduleOccurrenceRowOpen(); closeOverlay("schedule-occurrence-overlay");
       return;
     }
     const wrap = document.getElementById("schedule-occurrence-dates-wrap");
@@ -1440,13 +1532,13 @@ export function initScheduleView(): void {
     try {
       const { header, rows } = await fetchCsv("/data/TRANSACTION.csv", { cache: "reload" });
       if (header.length === 0 || !rows.length) {
-        closeOverlay("schedule-occurrence-overlay");
+        clearScheduleOccurrenceRowOpen(); closeOverlay("schedule-occurrence-overlay");
         return;
       }
       const allRows = rows.map((cells) => rowToObject(header, cells));
       const target = allRows.find((r) => (r.ID ?? "").trim() === String(row.ID).trim());
       if (!target) {
-        closeOverlay("schedule-occurrence-overlay");
+        clearScheduleOccurrenceRowOpen(); closeOverlay("schedule-occurrence-overlay");
         return;
       }
       target.COMPLETED_PLANDATE = newCompletedPlanDate;
@@ -1459,17 +1551,17 @@ export function initScheduleView(): void {
       const csv = transactionListToCsv(allRows);
       await saveCsvViaApi("TRANSACTION.csv", csv);
       occurrencePopupPlanRow = null;
-      closeOverlay("schedule-occurrence-overlay");
+      clearScheduleOccurrenceRowOpen(); closeOverlay("schedule-occurrence-overlay");
       await loadTransactionData(true);
       renderScheduleGrid();
     } catch {
       occurrencePopupPlanRow = null;
-      closeOverlay("schedule-occurrence-overlay");
+      clearScheduleOccurrenceRowOpen(); closeOverlay("schedule-occurrence-overlay");
     }
   });
   document.getElementById("schedule-occurrence-overlay")?.addEventListener("click", (e) => {
     if (e.target instanceof HTMLElement && e.target.id === "schedule-occurrence-overlay") {
-      closeOverlay("schedule-occurrence-overlay");
+      clearScheduleOccurrenceRowOpen(); closeOverlay("schedule-occurrence-overlay");
     }
   });
 }
