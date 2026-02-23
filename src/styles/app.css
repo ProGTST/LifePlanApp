@@ -4657,28 +4657,64 @@ button.pagination-btn--disabled {
   background: var(--color-view-bg, #fff);
 }
 
-/* スケジュール集計ビュー（表示データの予定・実績合計と進捗率） */
-#schedule-summary-wrap.schedule-view-summary {
+/* スケジュール集計：左・右を横並びにするだけのラッパー（枠・背景は付けない） */
+#schedule-summary-wrap {
   flex: 0 0 auto;
   display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 1rem;
   margin-top: 0.75rem;
+  width: 100%;
+}
+/* 左・右はそれぞれ独立した1ブロック（枠・背景を個別に持つ） */
+.schedule-view-summary--left,
+.schedule-view-summary--right {
   padding: 0.75rem 1rem;
   border: 1px solid var(--gray-300);
   border-radius: var(--radius-md);
   background: var(--gray-50);
 }
+.schedule-view-summary--left {
+  flex: 1 1 0;
+  min-width: 8rem;
+}
+.schedule-view-summary--right {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.schedule-view-summary__title {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--gray-800);
+}
+.schedule-view-summary__body {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 0 1.5rem;
+  align-items: flex-start;
+}
+/* 各ブロック（予定・実績・進捗率）を1行で横並びに表示。区切りは線のみ（左余白なし） */
 .schedule-view-summary-list.schedule-view-summary-row {
   display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 1rem 2rem;
+  flex-wrap: nowrap;
+  flex: 0 0 auto;
+  gap: 0 1rem;
   margin: 0;
+  border-left: 1px solid var(--gray-200);
+  padding-left: 0;
+}
+.schedule-view-summary__body .schedule-view-summary-list.schedule-view-summary-row:first-child {
+  border-left: none;
 }
 .schedule-view-summary-list.schedule-view-summary-row + .schedule-view-summary-list.schedule-view-summary-row {
-  padding-top: 0.25rem;
-  border-top: 1px solid var(--gray-200);
+  padding-top: 0;
+  border-top: none;
 }
 .schedule-view-summary-item {
   display: flex;
@@ -4698,10 +4734,10 @@ button.pagination-btn--disabled {
   font-weight: 600;
   text-align: right;
 }
-#schedule-summary-wrap .schedule-summary-value--red {
+.schedule-view-summary--right .schedule-summary-value--red {
   color: #b91c1c;
 }
-#schedule-summary-wrap .schedule-summary-value--blue {
+.schedule-view-summary--right .schedule-summary-value--blue {
   color: #1d4ed8;
 }
 
