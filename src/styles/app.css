@@ -5186,7 +5186,17 @@ button.pagination-btn--disabled {
   display: inline-block;
   width: max-content;
 }
-/* 実績ライン：日付列上にのみ表示（JS で left/width を日付列に合わせる）。z-index は実績ラインのみ必要 */
+/* 実績ライン用ラッパー：overflow で固定列にかからないようクリップ。JS で left/width を日付列に合わせる */
+.schedule-connector-overlays-wrapper {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 1;
+}
+/* 実績ライン：日付列上にのみ表示。ラッパー内で left:0 width:100% にしてラッパーでクリップ */
 .schedule-connector-overlays {
   position: absolute;
   top: 0;
@@ -5194,7 +5204,6 @@ button.pagination-btn--disabled {
   width: 100%;
   height: 100%;
   pointer-events: none;
-  z-index: 1;
 }
 .schedule-connector-line {
   position: absolute;

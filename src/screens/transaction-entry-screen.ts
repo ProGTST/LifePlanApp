@@ -15,6 +15,7 @@ import {
 } from "../utils/csvVersionCheck.ts";
 import { updateTransactionMonthlyForTransaction } from "../utils/transactionMonthlyAggregate";
 import { getPlanOccurrenceDates } from "../utils/planOccurrence";
+import { getActualTransactionsForPlan } from "../utils/transactionDataSync";
 
 const CSV_NO_CACHE: RequestInit = { cache: "reload" };
 
@@ -602,6 +603,32 @@ function buildPlanRowFromForm(): TransactionRow {
 }
 
 /**
+ * 予定完了日の選択に応じてステータスを同期する。
+ * ・計画中で予定完了日にすべての予定発生日を設定している場合のみ → ステータスを完了に変更（中止のままは変更しない）
+ * ・完了で予定完了日にすべての予定発生日を設定していない場合 → ステータスを計画中に変更
+ */
+function syncPlanStatusFromCompletedDates(): void {
+  if (getStatusInput()?.value !== "plan") return;
+  const planRow = buildPlanRowFromForm();
+  const occurrenceDates = getPlanOccurrenceDates(planRow);
+  const input = document.getElementById("transaction-entry-completed-plandate") as HTMLInputElement | null;
+  if (!input || occurrenceDates.length === 0) return;
+  const raw = (input.value ?? "").trim();
+  const completedList = raw
+    .split(",")
+    .map((s) => s.trim().slice(0, 10))
+    .filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d));
+  const completedSet = new Set(completedList);
+  const allSelected = occurrenceDates.every((d) => completedSet.has(d));
+  const currentStatus = getPlanStatus();
+  if (allSelected && currentStatus === "planning") {
+    setPlanStatus("complete");
+  } else if (!allSelected && currentStatus === "complete") {
+    setPlanStatus("planning");
+  }
+}
+
+/**
  * 完了日選択エリアに COMPLETED_PLANDATE の日付をチップ表示する（月の対象日チップと同様のレイアウト）。×で選択解除可能。
  */
 function renderCompletedDatesChosenDisplay(): void {
@@ -637,6 +664,7 @@ function renderCompletedDatesChosenDisplay(): void {
       const remaining = dates.filter((x) => x !== d);
       if (input) input.value = remaining.join(",");
       renderCompletedDatesChosenDisplay();
+      syncPlanStatusFromCompletedDates();
     });
     chip.appendChild(rm);
     container.appendChild(chip);
@@ -1785,6 +1813,46 @@ function filterCompletedPlanDateToOccurrenceDates(
   return filtered.sort().join(",");
 }
 
+/**
+ * 予定完了日とステータスを整合させる。
+ * ・実績取引の取引日が予定発生日なら予定完了日に追加
+ * ・ステータスが完了で予定完了日に全発生日が無い場合は計画中に
+ * ・ステータスが完了のときは予定完了日に全発生日を設定
+ * ・ステータスが計画中で予定完了日に全発生日を選択している場合は完了に
+ */
+function resolveCompletedPlanDateAndStatus(
+  occurrenceDates: string[],
+  completedPlanDate: string,
+  planStatus: string,
+  planId: string | null
+): { completedPlanDate: string; planStatus: string } {
+  const occurrenceSet = new Set(occurrenceDates);
+  const completedList = completedPlanDate
+    .split(",")
+    .map((s) => s.trim().slice(0, 10))
+    .filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d) && occurrenceSet.has(d));
+  const completedSet = new Set(completedList);
+
+  if (planId) {
+    for (const actual of getActualTransactionsForPlan(planId)) {
+      const d = getActualTargetDate(actual).slice(0, 10);
+      if (d && occurrenceSet.has(d)) completedSet.add(d);
+    }
+  }
+  let completed = [...completedSet].sort().join(",");
+  let status = (planStatus || "planning").toLowerCase();
+
+  if (occurrenceDates.length === 0) return { completedPlanDate: completed, planStatus: status };
+
+  const allSelected =
+    occurrenceDates.length > 0 && occurrenceDates.every((d) => completedSet.has(d));
+  if (status === "complete" && !allSelected) status = "planning";
+  if (status === "complete") completed = occurrenceDates.slice().sort().join(",");
+  if (status === "planning" && allSelected) status = "complete";
+
+  return { completedPlanDate: completed, planStatus: status };
+}
+
 function buildNewRow(form: HTMLFormElement, nextId: number): Record<string, string> {
   const type = (form.querySelector("#transaction-entry-type") as HTMLInputElement)?.value ?? "expense";
   const status = (form.querySelector("#transaction-entry-status") as HTMLInputElement)?.value ?? "actual";
@@ -1803,12 +1871,25 @@ function buildNewRow(form: HTMLFormElement, nextId: number): Record<string, stri
   const frequency = status === "plan" ? getFrequency() : "day";
   const interval = status === "plan" ? (frequency === "day" ? "0" : getInterval()) : "1";
   const cycleUnit = status === "plan" ? getCycleUnit() : "";
-  const planStatus = status === "plan" ? getPlanStatus() : "complete";
+  let planStatus = status === "plan" ? getPlanStatus() : "complete";
   const completedPlanDateRaw = status === "plan" ? ((form.querySelector("#transaction-entry-completed-plandate") as HTMLInputElement)?.value ?? "").trim() : "";
-  const completedPlanDate =
+  let completedPlanDate =
     status === "plan"
       ? filterCompletedPlanDateToOccurrenceDates(trFrom, trTo, frequency, interval, cycleUnit, completedPlanDateRaw)
       : "";
+  if (status === "plan") {
+    const planRow = {
+      TRANDATE_FROM: trFrom,
+      TRANDATE_TO: trTo,
+      FREQUENCY: frequency,
+      INTERVAL: interval,
+      CYCLE_UNIT: cycleUnit,
+    } as TransactionRow;
+    const occurrenceDates = getPlanOccurrenceDates(planRow);
+    const resolved = resolveCompletedPlanDateAndStatus(occurrenceDates, completedPlanDate, planStatus, null);
+    completedPlanDate = resolved.completedPlanDate;
+    planStatus = resolved.planStatus;
+  }
   const row: Record<string, string> = {
     ID: String(nextId),
     REGIST_DATETIME: "",
@@ -1854,15 +1935,34 @@ function buildUpdatedRow(form: HTMLFormElement, existing: TransactionRow): Recor
   const frequency = status === "plan" ? getFrequency() : "day";
   const interval = status === "plan" ? (frequency === "day" ? "0" : getInterval()) : "1";
   const cycleUnit = status === "plan" ? getCycleUnit() : "";
-  const planStatus = status === "plan" ? getPlanStatus() : "complete";
+  let planStatus = status === "plan" ? getPlanStatus() : "complete";
   const completedPlanDateRaw =
     status === "plan"
       ? ((form.querySelector("#transaction-entry-completed-plandate") as HTMLInputElement)?.value ?? "").trim()
       : existing.COMPLETED_PLANDATE ?? "";
-  const completedPlanDate =
+  let completedPlanDate =
     status === "plan"
       ? filterCompletedPlanDateToOccurrenceDates(trFrom, trTo, frequency, interval, cycleUnit, completedPlanDateRaw)
       : completedPlanDateRaw;
+  if (status === "plan") {
+    const planRow = {
+      TRANDATE_FROM: trFrom,
+      TRANDATE_TO: trTo,
+      FREQUENCY: frequency,
+      INTERVAL: interval,
+      CYCLE_UNIT: cycleUnit,
+    } as TransactionRow;
+    const occurrenceDates = getPlanOccurrenceDates(planRow);
+    const planId = (existing.PROJECT_TYPE || "").toLowerCase() === "plan" ? (existing.ID ?? null) : null;
+    const resolved = resolveCompletedPlanDateAndStatus(
+      occurrenceDates,
+      completedPlanDate,
+      planStatus,
+      planId
+    );
+    completedPlanDate = resolved.completedPlanDate;
+    planStatus = resolved.planStatus;
+  }
   const row: Record<string, string> = {
     ID: existing.ID,
     VERSION: existing.VERSION ?? "0",
@@ -2100,6 +2200,16 @@ export function initTransactionEntryView(): void {
       const planStatus = (btn as HTMLElement).getAttribute("data-plan-status");
       if (!planStatus) return;
       setPlanStatus(planStatus);
+      // ステータスを完了にしたとき、予定完了日を全発生日で即時反映する
+      if (planStatus === "complete" && getStatusInput()?.value === "plan") {
+        const planRow = buildPlanRowFromForm();
+        const dates = getPlanOccurrenceDates(planRow);
+        const input = document.getElementById("transaction-entry-completed-plandate") as HTMLInputElement | null;
+        if (input && dates.length > 0) {
+          input.value = dates.slice().sort().join(",");
+          renderCompletedDatesChosenDisplay();
+        }
+      }
     });
   });
   document.getElementById("transaction-entry-frequency-buttons")?.querySelectorAll(".transaction-history-filter-btn").forEach((btn) => {
@@ -2536,6 +2646,7 @@ export function initTransactionEntryView(): void {
     const input = document.getElementById("transaction-entry-completed-plandate") as HTMLInputElement | null;
     if (input) input.value = completedDates.sort().join(",");
     renderCompletedDatesChosenDisplay();
+    syncPlanStatusFromCompletedDates();
     closeTransactionEntryCompletedDatesModal();
   });
   document.getElementById("transaction-entry-completed-dates-overlay")?.addEventListener("click", (e) => {

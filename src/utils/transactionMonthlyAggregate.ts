@@ -541,7 +541,7 @@ export async function applyTransactionMonthlyDeltas(deltas: MonthlyDelta[]): Pro
       const BALANCE_TOTAL = state.income - state.expense;
       prevCarryoverByKey.set(k, i === 0 ? 0 : carryoverByKey.get(keysOfGroup[i - 1]) ?? 0);
       if (i === 0) {
-        carryoverByKey.set(k, 0);
+        carryoverByKey.set(k, BALANCE_TOTAL);
         runningSum = BALANCE_TOTAL;
       } else {
         runningSum += BALANCE_TOTAL;

@@ -499,19 +499,24 @@ function renderScheduleConnectorOverlays(): void {
 
   container.innerHTML = "";
 
-  // オーバーレイを日付列部分だけに限定（固定列の上に線が重ならないようにする）
+  // オーバーレイを日付列部分だけに限定（固定列の上に線が重ならないようにラッパーでクリップ）
+  const wrapper = document.getElementById("schedule-connector-overlays-wrapper");
   const firstDataRow = tbody.querySelector("tr");
   const firstDateCell = firstDataRow?.children[SCHEDULE_FIXED_COL_COUNT] as HTMLElement | undefined;
-  if (firstDateCell) {
-    const innerRect = tableInner.getBoundingClientRect();
-    const dateCellRect = firstDateCell.getBoundingClientRect();
-    const offsetLeft = dateCellRect.left - innerRect.left;
-    container.style.left = `${offsetLeft}px`;
-    container.style.width = `${innerRect.width - offsetLeft}px`;
-  } else {
-    container.style.left = "0";
-    container.style.width = "100%";
+  if (wrapper) {
+    if (firstDateCell) {
+      const innerRect = tableInner.getBoundingClientRect();
+      const dateCellRect = firstDateCell.getBoundingClientRect();
+      const offsetLeft = dateCellRect.left - innerRect.left;
+      wrapper.style.left = `${offsetLeft}px`;
+      wrapper.style.width = `${innerRect.width - offsetLeft}px`;
+    } else {
+      wrapper.style.left = "0";
+      wrapper.style.width = "0";
+    }
   }
+  container.style.left = "0";
+  container.style.width = "100%";
 
   const containerRect = container.getBoundingClientRect();
   if (containerRect.width === 0 || containerRect.height === 0) return;
@@ -1424,6 +1429,13 @@ export function initScheduleView(): void {
       if (d && /^\d{4}-\d{2}-\d{2}$/.test(d)) completedDates.push(d);
     });
     const newCompletedPlanDate = completedDates.sort().join(",");
+    const allOccurrenceDates = getPlanOccurrenceDates(row);
+    const completedSet = new Set(completedDates);
+    const allComplete =
+      allOccurrenceDates.length > 0 && allOccurrenceDates.every((d) => completedSet.has(d));
+    const notAllComplete =
+      allOccurrenceDates.length > 0 && !allOccurrenceDates.every((d) => completedSet.has(d));
+    const currentPlanStatus = (row.PLAN_STATUS || "planning").toLowerCase();
 
     try {
       const { header, rows } = await fetchCsv("/data/TRANSACTION.csv", { cache: "reload" });
@@ -1438,6 +1450,11 @@ export function initScheduleView(): void {
         return;
       }
       target.COMPLETED_PLANDATE = newCompletedPlanDate;
+      if (currentPlanStatus === "planning" && allComplete) {
+        target.PLAN_STATUS = "complete";
+      } else if (currentPlanStatus === "complete" && notAllComplete) {
+        target.PLAN_STATUS = "planning";
+      }
       target.VERSION = String((parseInt(target.VERSION ?? "0", 10) || 0) + 1);
       const csv = transactionListToCsv(allRows);
       await saveCsvViaApi("TRANSACTION.csv", csv);
