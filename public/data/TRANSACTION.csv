@@ -51,4 +51,4 @@ ID,VERSION,REGIST_DATETIME,REGIST_USER,UPDATE_DATETIME,UPDATE_USER,TRANSACTION_T
 53,0,2026-02-22 14:40:07,testuser001,2026-02-22 14:40:07,testuser001,expense,actual,1,2月の食費予定,2026-02-28,2026-02-28,day,1,,50000,,,10,,complete,0
 54,0,2026-02-22 14:40:33,testuser001,2026-02-22 14:40:33,testuser001,expense,actual,6,2月の日用品代予定,2026-02-28,2026-02-28,day,1,,5000,,,10,,complete,0
 55,0,2026-02-22 14:40:55,testuser001,2026-02-22 14:40:55,testuser001,transfer,actual,23,2月の引き出し,2026-02-01,2026-02-01,day,1,,85000,,10,11,,complete,0
-56,6,2026-02-22 17:03:03,testuser001,2026-02-23 06:11:41,testuser001,expense,plan,16,遅れ,2026-02-16,2026-02-19,daily,2,,3000,,,10,"2026-02-16,2026-02-18",planning,0
+56,9,2026-02-22 17:03:03,testuser001,2026-02-23 06:45:41,testuser001,expense,plan,16,遅れ,2026-02-16,2026-02-19,daily,2,,3000,,,10,2026-02-16,planning,0

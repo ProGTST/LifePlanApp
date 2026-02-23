@@ -3201,6 +3201,13 @@
   font-size: 0.875rem;
   color: var(--gray-700, #444);
 }
+/* ページングの前へ・次へ：遷移先がないときは無効＋グレー背景で表示 */
+.pagination-btn--disabled,
+button.pagination-btn--disabled {
+  background: var(--gray-200, #e5e7eb) !important;
+  color: var(--gray-500, #6b7280) !important;
+  cursor: not-allowed;
+}
 /* 収支検索の view-body：スケジュール・収支履歴などとの間に余白 */
 #transaction-history-common .view-body {
   margin-bottom: 0.75rem;
@@ -4018,6 +4025,18 @@
 .transaction-history-plan-status-icon--canceled .transaction-history-plan-status-icon-inner {
   -webkit-mask-image: url("/icon/xmark-solid-full.svg");
   mask-image: url("/icon/xmark-solid-full.svg");
+}
+.transaction-history-plan-status-icon--delayed {
+  background: #dc2626 !important;
+  color: #ffffff;
+  border: 0.5px solid #b91c1c;
+}
+.transaction-history-plan-status-icon--delayed .transaction-history-plan-status-icon-delayed-img {
+  width: 16px;
+  height: 16px;
+  display: block;
+  object-fit: contain;
+  filter: brightness(0) invert(1);
 }
 
 /* 収支一覧テーブル：金額列の幅を広めに・表示は折り返す */
@@ -5065,6 +5084,11 @@
   color: #ffffff !important;
   border-color: var(--gray-500, #6b7280) !important;
 }
+#app .schedule-status-btn--delayed {
+  background: #dc2626 !important;
+  color: #ffffff !important;
+  border-color: #b91c1c !important;
+}
 
 .schedule-view-yearmonth-col {
   min-width: 2.25rem;
@@ -5134,6 +5158,27 @@
   background: var(--color-button-bg, #646cff);
   color: var(--color-button-fg, #ffffff);
   border-color: var(--color-button-bg, #646cff);
+}
+.schedule-view-date-cell .schedule-view-date-cell-delayed-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  width: 24px;
+  height: 24px;
+  box-sizing: border-box;
+  background: #dc2626;
+  color: #ffffff;
+  border: 0.5px solid #b91c1c;
+  border-radius: 6px;
+}
+.schedule-view-date-cell .schedule-view-date-cell-delayed-img {
+  width: 15px;
+  height: 15px;
+  display: block;
+  object-fit: contain;
+  filter: brightness(0) invert(1);
+  border-radius: 4px;
 }
 /* テーブル＋オーバーレイを包むラッパー（オーバーレイがテーブルと一緒にスクロールするよう同一幅にする） */
 .schedule-view-table-inner {

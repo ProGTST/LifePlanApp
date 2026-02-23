@@ -176,3 +176,41 @@ export function getPlanOccurrenceDatesForDisplay(
   if (completedSet.size === 0) return all;
   return all.filter((d) => !completedSet.has(d));
 }
+
+/**
+ * 遅れ対象の予定発生日一覧（YYYY-MM-DD）。予定完了日・実績取引日のいずれにも含まれず、かつ現在日より過去の日付。
+ * スケジュールで該当セルに fire アイコンを表示するために使う。
+ * @param row - 予定の取引行
+ * @param todayYMD - 現在日（YYYY-MM-DD）
+ * @param actualTargetDates - 予定に紐づく実績取引の取引日（YYYY-MM-DD）の Set。省略時は実績の取引日は考慮しない
+ */
+export function getDelayedPlanDates(
+  row: TransactionRow,
+  todayYMD: string,
+  actualTargetDates?: Set<string>
+): string[] {
+  const all = getPlanOccurrenceDates(row);
+  if (all.length === 0) return [];
+  const completedSet = parseCompletedPlanDates(row.COMPLETED_PLANDATE);
+  return all.filter(
+    (d) =>
+      d < todayYMD &&
+      !completedSet.has(d) &&
+      !(actualTargetDates && actualTargetDates.has(d))
+  );
+}
+
+/**
+ * 予定完了日にも実績の取引日にも含まれない予定発生日のうち、現在日より過去のものが1件でもあるかどうか。
+ * 該当する場合「遅れ」として表示するために使う。
+ * @param row - 予定の取引行
+ * @param todayYMD - 現在日（YYYY-MM-DD）
+ * @param actualTargetDates - 予定に紐づく実績取引の取引日（YYYY-MM-DD）の Set。省略時は実績の取引日は考慮しない
+ */
+export function hasDelayedPlanDates(
+  row: TransactionRow,
+  todayYMD: string,
+  actualTargetDates?: Set<string>
+): boolean {
+  return getDelayedPlanDates(row, todayYMD, actualTargetDates).length > 0;
+}

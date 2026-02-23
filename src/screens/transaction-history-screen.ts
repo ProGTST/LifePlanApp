@@ -21,6 +21,7 @@ import {
   getRowPermissionType,
   getTagsForTransaction,
   getActualIdsForPlanId,
+  getActualTransactionsForPlan,
 } from "../utils/transactionDataSync";
 import { updateTransactionHistoryTabLayout, registerFilterChangeCallback } from "../utils/transactionDataLayout";
 import { applyFilters, type FilterState } from "../utils/transactionDataFilter";
@@ -31,6 +32,7 @@ import {
   getPageSlice,
   renderPagination,
 } from "../utils/pagination";
+import { hasDelayedPlanDates } from "../utils/planOccurrence";
 
 // ---------------------------------------------------------------------------
 // 定数・状態
@@ -155,28 +157,48 @@ function renderList(): void {
     planCellInner.appendChild(planIcon);
     if (row.PROJECT_TYPE === "plan") {
       const planStatus = (row.PLAN_STATUS || "planning").toLowerCase();
-      let statusClass =
-        planStatus === "complete" ? "complete" : planStatus === "canceled" ? "canceled" : "planning";
-      const hasActual = getActualIdsForPlanId(row.ID).length > 0;
-      const hasCompletedPlanDate = (row.COMPLETED_PLANDATE ?? "").trim() !== "";
-      if (statusClass === "planning" && (hasActual || hasCompletedPlanDate)) {
-        statusClass = "planning-with-actual";
+      const todayYMD = new Date().toISOString().slice(0, 10);
+      const actualTargetDates = new Set(
+        getActualTransactionsForPlan(row.ID).map((a) =>
+          ((a.TRANDATE_TO || a.TRANDATE_FROM) || "").trim().slice(0, 10)
+        ).filter((s) => /^\d{4}-\d{2}-\d{2}$/.test(s))
+      );
+      const isDelayed = hasDelayedPlanDates(row, todayYMD, actualTargetDates);
+      // 遅れ時はステータスアイコン（完了/中止/計画中）のみ非表示、計画アイコン(予)は表示したまま fire を表示
+      if (!isDelayed) {
+        let statusClass =
+          planStatus === "complete" ? "complete" : planStatus === "canceled" ? "canceled" : "planning";
+        const hasActual = getActualIdsForPlanId(row.ID).length > 0;
+        const hasCompletedPlanDate = (row.COMPLETED_PLANDATE ?? "").trim() !== "";
+        if (statusClass === "planning" && (hasActual || hasCompletedPlanDate)) {
+          statusClass = "planning-with-actual";
+        }
+        const statusWrap = document.createElement("span");
+        statusWrap.className = `transaction-history-plan-status-icon transaction-history-plan-status-icon--${statusClass}`;
+        const statusLabel =
+          statusClass === "planning"
+            ? "計画中"
+            : statusClass === "planning-with-actual"
+              ? "計画中(実績あり)"
+              : statusClass === "complete"
+                ? "完了"
+                : "中止";
+        statusWrap.setAttribute("aria-label", statusLabel);
+        const statusInner = document.createElement("span");
+        statusInner.className = "transaction-history-plan-status-icon-inner";
+        statusWrap.appendChild(statusInner);
+        planCellInner.appendChild(statusWrap);
+      } else {
+        const delayedIcon = document.createElement("span");
+        delayedIcon.className = "transaction-history-plan-status-icon transaction-history-plan-status-icon--delayed";
+        delayedIcon.setAttribute("aria-label", "遅れ");
+        const delayedImg = document.createElement("img");
+        delayedImg.src = "/icon/fire-solid-full.svg";
+        delayedImg.alt = "";
+        delayedImg.className = "transaction-history-plan-status-icon-delayed-img";
+        delayedIcon.appendChild(delayedImg);
+        planCellInner.appendChild(delayedIcon);
       }
-      const statusWrap = document.createElement("span");
-      statusWrap.className = `transaction-history-plan-status-icon transaction-history-plan-status-icon--${statusClass}`;
-      const statusLabel =
-        statusClass === "planning"
-          ? "計画中"
-          : statusClass === "planning-with-actual"
-            ? "計画中(実績あり)"
-            : statusClass === "complete"
-              ? "完了"
-              : "中止";
-      statusWrap.setAttribute("aria-label", statusLabel);
-      const statusInner = document.createElement("span");
-      statusInner.className = "transaction-history-plan-status-icon-inner";
-      statusWrap.appendChild(statusInner);
-      planCellInner.appendChild(statusWrap);
     }
     tdPlan.appendChild(planCellInner);
     // 金額・取引名・種別アイコン列

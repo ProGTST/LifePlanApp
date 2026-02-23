@@ -90,7 +90,7 @@ export interface RenderPaginationOptions {
 
 /**
  * ページネーションUI（件数表示・前へ・次へ）を描画する共通処理。
- * 遷移先がない場合は前へ・次へボタンは表示しない。
+ * 遷移先がない場合も前へ・次へボタンは表示し、無効化してグレー背景で表示する。
  */
 export function renderPagination(options: RenderPaginationOptions): void {
   const {
@@ -127,28 +127,31 @@ export function renderPagination(options: RenderPaginationOptions): void {
   if (totalItems === 0) {
     return;
   }
-  if (page > 1) {
-    const prevBtn = document.createElement("button");
-    prevBtn.type = "button";
-    prevBtn.className = prevBtnClass;
-    prevBtn.textContent = "前へ";
-    prevBtn.setAttribute("aria-label", "前のページ");
-    prevBtn.addEventListener("click", onPrevPage);
-    wrap.appendChild(prevBtn);
-  }
+
+  const hasPrev = page > 1;
+  const prevBtn = document.createElement("button");
+  prevBtn.type = "button";
+  prevBtn.className = prevBtnClass + (hasPrev ? "" : " pagination-btn--disabled");
+  prevBtn.textContent = "前へ";
+  prevBtn.setAttribute("aria-label", "前のページ");
+  prevBtn.disabled = !hasPrev;
+  if (hasPrev) prevBtn.addEventListener("click", onPrevPage);
+  wrap.appendChild(prevBtn);
+
   if (totalPages > 1) {
     const pageInfo = document.createElement("span");
     pageInfo.className = pageInfoClass;
     pageInfo.textContent = `${page} / ${totalPages}ページ`;
     wrap.appendChild(pageInfo);
   }
-  if (page < totalPages) {
-    const nextBtn = document.createElement("button");
-    nextBtn.type = "button";
-    nextBtn.className = nextBtnClass;
-    nextBtn.textContent = "次へ";
-    nextBtn.setAttribute("aria-label", "次のページ");
-    nextBtn.addEventListener("click", onNextPage);
-    wrap.appendChild(nextBtn);
-  }
+
+  const hasNext = page < totalPages;
+  const nextBtn = document.createElement("button");
+  nextBtn.type = "button";
+  nextBtn.className = nextBtnClass + (hasNext ? "" : " pagination-btn--disabled");
+  nextBtn.textContent = "次へ";
+  nextBtn.setAttribute("aria-label", "次のページ");
+  nextBtn.disabled = !hasNext;
+  if (hasNext) nextBtn.addEventListener("click", onNextPage);
+  wrap.appendChild(nextBtn);
 }

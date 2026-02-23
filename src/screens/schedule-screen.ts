@@ -21,7 +21,7 @@ import {
 } from "../utils/transactionDataSync";
 import { registerFilterChangeCallback } from "../utils/transactionDataLayout";
 import { getFilteredTransactionListForSchedule } from "../utils/transactionDataFilter";
-import { getPlanOccurrenceDates, getPlanOccurrenceDatesForDisplay } from "../utils/planOccurrence";
+import { getPlanOccurrenceDates, getPlanOccurrenceDatesForDisplay, getDelayedPlanDates, hasDelayedPlanDates } from "../utils/planOccurrence";
 import { openOverlay, closeOverlay } from "../utils/overlay";
 import { fetchCsv, rowToObject } from "../utils/csv";
 import { transactionListToCsv } from "../utils/csvExport";
@@ -1075,29 +1075,38 @@ function renderScheduleGrid(): void {
     const hasActual = getActualIdsForPlanId(row.ID).length > 0;
     const hasCompletedPlanDate = (row.COMPLETED_PLANDATE ?? "").trim() !== "";
     const hasActualOrCompletedPlanDate = hasActual || hasCompletedPlanDate;
+    const actualTargetDates = new Set(
+      getActualTransactionsForPlan(row.ID).map((a) => getActualTargetDate(a)).filter(Boolean)
+    );
+    const isDelayed =
+      planStatus !== "complete" && planStatus !== "canceled" && hasDelayedPlanDates(row, todayYMD, actualTargetDates);
     const statusLabel =
       planStatus === "complete"
         ? "完了"
         : planStatus === "canceled"
           ? "中止"
-          : hasActualOrCompletedPlanDate
-            ? "進行中"
-            : "未着";
+          : isDelayed
+            ? "遅れ"
+            : hasActualOrCompletedPlanDate
+              ? "進行中"
+              : "未着";
     const statusModifier =
       planStatus === "complete"
         ? "complete"
         : planStatus === "canceled"
           ? "canceled"
-          : hasActualOrCompletedPlanDate
-            ? "in-progress"
-            : "not-started";
+          : isDelayed
+            ? "delayed"
+            : hasActualOrCompletedPlanDate
+              ? "in-progress"
+              : "not-started";
     const statusBtn = document.createElement("button");
     statusBtn.type = "button";
     statusBtn.className = `schedule-status-btn schedule-status-btn--${statusModifier}`;
     statusBtn.textContent = statusLabel;
     statusBtn.setAttribute(
       "aria-label",
-      hasActualOrCompletedPlanDate ? "取引実績を確認" : statusLabel
+      hasActualOrCompletedPlanDate ? "取引実績を確認" : isDelayed ? "遅れ" : statusLabel
     );
     if (hasActualOrCompletedPlanDate) {
       statusBtn.addEventListener("click", () => openScheduleActualListPopup(row.ID, row.NAME || ""));
@@ -1114,7 +1123,12 @@ function renderScheduleGrid(): void {
     if (actualIconColIndices.length >= 2) {
       tr.setAttribute("data-actual-icon-cols", actualIconColIndices.join(","));
     }
-    // 各日付列にセルを追加。対象日計算に基づき対象セルのみアクティブクラス・クリック可能。今日なら current クラス。実績の対象日には「実」アイコンを表示
+    const delayedDatesSet = new Set(
+      planStatus !== "complete" && planStatus !== "canceled"
+        ? getDelayedPlanDates(row, todayYMD, actualTargetDates)
+        : []
+    );
+    // 各日付列にセルを追加。対象日計算に基づき対象セルのみアクティブクラス・クリック可能。今日なら current クラス。実績の対象日には「実」アイコン、遅れ対象日には fire アイコンを表示
     columns.forEach((col, colIndex) => {
       const td = document.createElement("td");
       const isTargetCell = isCellActiveForPlan(row, col, unit);
@@ -1146,6 +1160,21 @@ function renderScheduleGrid(): void {
         actualIcon.setAttribute("aria-label", "実績");
         actualIcon.textContent = "実";
         td.appendChild(actualIcon);
+      }
+      const hasDelayedInCell =
+        unit === "day"
+          ? delayedDatesSet.has(col.dateFrom)
+          : [...delayedDatesSet].some((d) => d >= col.dateFrom && d <= col.dateTo);
+      if (hasDelayedInCell) {
+        const delayedIcon = document.createElement("span");
+        delayedIcon.className = "schedule-view-date-cell-delayed-icon";
+        delayedIcon.setAttribute("aria-label", "遅れ");
+        const delayedImg = document.createElement("img");
+        delayedImg.src = "/icon/fire-solid-full.svg";
+        delayedImg.alt = "";
+        delayedImg.className = "schedule-view-date-cell-delayed-img";
+        delayedIcon.appendChild(delayedImg);
+        td.appendChild(delayedIcon);
       }
       tr.appendChild(td);
     });
