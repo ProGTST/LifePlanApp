@@ -618,19 +618,32 @@ function getPlanRows(): TransactionRow[] {
           schedulePlanStatuses.includes(statusNormalized(r.PLAN_STATUS || "planning"))
         );
   // 開始日・終了日・登録日時の順でソート
-  return byStatus.slice().sort((a, b) => {
-    const af = a.TRANDATE_FROM || "";
-    const bf = b.TRANDATE_FROM || "";
-    const cmpFrom = af.localeCompare(bf);
-    if (cmpFrom !== 0) return cmpFrom;
-    const at = a.TRANDATE_TO || "";
-    const bt = b.TRANDATE_TO || "";
-    const cmpTo = at.localeCompare(bt);
-    if (cmpTo !== 0) return cmpTo;
-    const ar = a.REGIST_DATETIME || "";
-    const br = b.REGIST_DATETIME || "";
-    return ar.localeCompare(br);
-  });
+  return byStatus.slice().sort(comparePlanRowsByDate);
+}
+
+/**
+ * 「今月の評価」用に、ステータスで絞り込まない予定取引一覧を返す。
+ * 検索条件のその他（勘定・タグ・日付範囲など）は getPlanRows と同様に適用する。
+ * @returns 予定の取引行の配列（全ステータス）
+ */
+function getPlanRowsForMonthSummary(): TransactionRow[] {
+  const list = getFilteredTransactionListForSchedule(transactionList, getScheduleFilterState(), transactionTagList);
+  const planOnly = list.filter((r) => (r.PROJECT_TYPE || "").toLowerCase() === "plan");
+  return planOnly.slice().sort(comparePlanRowsByDate);
+}
+
+function comparePlanRowsByDate(a: TransactionRow, b: TransactionRow): number {
+  const af = a.TRANDATE_FROM || "";
+  const bf = b.TRANDATE_FROM || "";
+  const cmpFrom = af.localeCompare(bf);
+  if (cmpFrom !== 0) return cmpFrom;
+  const at = a.TRANDATE_TO || "";
+  const bt = b.TRANDATE_TO || "";
+  const cmpTo = at.localeCompare(bt);
+  if (cmpTo !== 0) return cmpTo;
+  const ar = a.REGIST_DATETIME || "";
+  const br = b.REGIST_DATETIME || "";
+  return ar.localeCompare(br);
 }
 
 /**
@@ -1288,7 +1301,7 @@ function renderScheduleGrid(): void {
     renderScheduleConnectorOverlays();
   });
 
-  renderScheduleSummary(rows);
+  renderScheduleSummary(rows, getPlanRowsForMonthSummary());
 
   // 開始日列が固定列の右に来るよう横スクロール位置を調整
   if (unit === "day" || unit === "week" || unit === "month") {
@@ -1302,9 +1315,11 @@ function renderScheduleGrid(): void {
  * 表示中の予定行から集計（予定収入/支出/残高、実績収入/支出/残高、進捗率）を算出し、集計ビューに反映する。
  * 予定収入・予定支出は SUM(予定金額 × 対象日の日数) で計算する。対象日の日数は planOccurrence の計算による。
  * 権限付与された勘定項目の取引データは集計対象に含めない（自分の勘定に紐づく取引のみ集計）。
+ * 「今月の評価」のみ、ステータス絞りにかかわらず全ステータスの取引予定で集計する。
  * @param rows - 表示中の予定取引の配列（getPlanRows() の戻り値）
+ * @param rowsForMonthSummary - 今月の評価用の予定取引（全ステータス）。省略時は rows を使用
  */
-function renderScheduleSummary(rows: TransactionRow[]): void {
+function renderScheduleSummary(rows: TransactionRow[], rowsForMonthSummary?: TransactionRow[]): void {
   const ownAccountIds = getOwnAccountIdsForSchedule();
   let planIncome = 0;
   let planExpense = 0;
@@ -1338,24 +1353,35 @@ function renderScheduleSummary(rows: TransactionRow[]): void {
   }
   const actualBalance = actualIncome - actualExpense;
 
-  // 今月の評価：今月に含まれる予定発生日・取引日のみで集計
+  // 今月の評価：全ステータスの取引予定で集計（検索条件のステータス選択に依存しない）
+  const monthRows = rowsForMonthSummary ?? rows;
   const { first: monthFirst, last: monthLast } = getCurrentMonthFirstAndLast();
   let monthPlanIncome = 0;
   let monthPlanExpense = 0;
-  for (const r of rows) {
+  const excludeCompletedForMonth = false; // 今月の評価は全ステータス対象のため完了予定の日も含める
+  for (const r of monthRows) {
     if (!isRowOnlyOwnAccounts(r, ownAccountIds)) continue;
     const type = (r.TRANSACTION_TYPE || "").toLowerCase();
     const amount = parseFloat(String(r.AMOUNT ?? "0")) || 0;
-    const occurrenceDates = getPlanOccurrenceDatesForDisplay(r, excludeCompleted);
+    const occurrenceDates = getPlanOccurrenceDatesForDisplay(r, excludeCompletedForMonth);
     const count = occurrenceDates.filter((d) => d >= monthFirst && d <= monthLast).length;
     if (type === "income") monthPlanIncome += amount * count;
     else if (type === "expense") monthPlanExpense += amount * count;
   }
   const monthPlanBalance = monthPlanIncome - monthPlanExpense;
 
+  // 今月の実績は「今月の評価」対象の予定に紐づく実績のみ（全ステータス分）
+  const actualRowsByIdForMonth = new Map<string, TransactionRow>();
+  for (const row of monthRows) {
+    const actuals = getActualTransactionsForPlan(row.ID);
+    for (const a of actuals) {
+      if (!isRowOnlyOwnAccounts(a, ownAccountIds)) continue;
+      if (!actualRowsByIdForMonth.has(a.ID)) actualRowsByIdForMonth.set(a.ID, a);
+    }
+  }
   let monthActualIncome = 0;
   let monthActualExpense = 0;
-  for (const a of actualRowsById.values()) {
+  for (const a of actualRowsByIdForMonth.values()) {
     const target = getActualTargetDate(a).trim().slice(0, 10);
     if (!target || target < monthFirst || target > monthLast) continue;
     const type = (a.TRANSACTION_TYPE || "").toLowerCase();
