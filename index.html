@@ -76,7 +76,12 @@
               <div class="view-body">
                 <section class="transaction-history-search" aria-label="検索条件">
                   <details class="transaction-history-search-accordion">
-                    <summary class="transaction-history-search-summary">検索条件</summary>
+                    <summary class="transaction-history-search-summary">
+                      <span class="transaction-history-search-summary-text">検索条件</span>
+                      <button type="button" class="transaction-history-search-summary-close-btn" aria-label="閉じる">
+                        <img src="/icon/xmark-solid-full.svg" alt="" width="20" height="20" />
+                      </button>
+                    </summary>
                     <div class="transaction-history-search-body">
                       <div class="transaction-history-search-row-group">
                         <div id="transaction-history-date-row" class="transaction-history-search-row">
@@ -201,7 +206,26 @@
                   </div>
                 </div>
                 <div id="schedule-summary-wrap" aria-label="表示データの集計">
-                  <div class="schedule-view-summary schedule-view-summary--left"></div>
+                  <div class="schedule-view-summary schedule-view-summary--left">
+                    <h2 class="schedule-view-summary__title">今月の評価</h2>
+                    <div class="schedule-view-summary__body">
+                    <dl class="schedule-view-summary-list schedule-view-summary-row">
+                      <div class="schedule-view-summary-item"><dt>予定収入</dt><dd id="schedule-summary-month-plan-income">0</dd></div>
+                      <div class="schedule-view-summary-item"><dt>予定支出</dt><dd id="schedule-summary-month-plan-expense">0</dd></div>
+                      <div class="schedule-view-summary-item"><dt>予定残高</dt><dd id="schedule-summary-month-plan-balance">0</dd></div>
+                    </dl>
+                    <dl class="schedule-view-summary-list schedule-view-summary-row">
+                      <div class="schedule-view-summary-item"><dt>実績収入</dt><dd id="schedule-summary-month-actual-income">0</dd></div>
+                      <div class="schedule-view-summary-item"><dt>実績支出</dt><dd id="schedule-summary-month-actual-expense">0</dd></div>
+                      <div class="schedule-view-summary-item"><dt>実績残高</dt><dd id="schedule-summary-month-actual-balance">0</dd></div>
+                    </dl>
+                    <dl class="schedule-view-summary-list schedule-view-summary-row">
+                      <div class="schedule-view-summary-item"><dt>進捗率(収入)</dt><dd id="schedule-summary-month-progress-rate-income">—</dd></div>
+                      <div class="schedule-view-summary-item"><dt>進捗率(支出)</dt><dd id="schedule-summary-month-progress-rate-expense">—</dd></div>
+                      <div class="schedule-view-summary-item"><dt>進捗率(残高)</dt><dd id="schedule-summary-month-progress-rate-balance">—</dd></div>
+                    </dl>
+                    </div>
+                  </div>
                   <div class="schedule-view-summary schedule-view-summary--right">
                     <h2 class="schedule-view-summary__title">全体の評価</h2>
                     <div class="schedule-view-summary__body">

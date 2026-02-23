@@ -3267,13 +3267,26 @@ button.pagination-btn--disabled {
   margin-bottom: 0;
 }
 
+/* 検索条件セクション：アコーディオンが親幅をはみ出さないようにする */
+#transaction-history-common .transaction-history-search {
+  min-width: 0;
+}
+
 .transaction-history-search-accordion {
   border: 1px solid var(--gray-400);
   border-radius: var(--radius-md);
   overflow: hidden;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .transaction-history-search-summary {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
   padding: 0.5rem 0.75rem;
   font-weight: 600;
   font-size: 0.9rem;
@@ -3283,6 +3296,56 @@ button.pagination-btn--disabled {
   list-style: none;
   -webkit-user-select: none;
   user-select: none;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+/* 表示順: ▼ → 検索条件（左端） → 閉じるボタン（右寄せ） */
+.transaction-history-search-summary-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  order: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* #app button の margin / padding / border-radius を上書きして丸ボタンに */
+#app .transaction-history-search-summary-close-btn {
+  order: 1;
+  flex: 0 0 auto;
+  margin: 0 0 0 auto;
+  -webkit-appearance: none;
+  appearance: none;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  min-height: 24px;
+  padding: 0;
+  border: none;
+  background: var(--color-button-bg, #646cff);
+  color: var(--color-button-fg, #ffffff);
+  cursor: pointer;
+  border-radius: 50%;
+  line-height: 0;
+  overflow: hidden;
+}
+#app .transaction-history-search-summary-close-btn:hover {
+  filter: brightness(1.08);
+}
+#app .transaction-history-search-summary-close-btn:focus-visible {
+  outline: 2px solid var(--color-focus, #0066cc);
+  outline-offset: 2px;
+}
+#app .transaction-history-search-summary-close-btn img {
+  display: block;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  filter: brightness(0) invert(1);
 }
 
 .transaction-history-search-summary::-webkit-details-marker {
@@ -3290,6 +3353,7 @@ button.pagination-btn--disabled {
 }
 
 .transaction-history-search-summary::before {
+  order: -1;
   display: inline-block;
   width: 1.2em;
   transition: transform 0.2s ease;
@@ -4678,6 +4742,9 @@ button.pagination-btn--disabled {
 .schedule-view-summary--left {
   flex: 1 1 0;
   min-width: 8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 .schedule-view-summary--right {
   flex: 1 1 0;
@@ -4734,9 +4801,11 @@ button.pagination-btn--disabled {
   font-weight: 600;
   text-align: right;
 }
+.schedule-view-summary--left .schedule-summary-value--red,
 .schedule-view-summary--right .schedule-summary-value--red {
   color: #b91c1c;
 }
+.schedule-view-summary--left .schedule-summary-value--blue,
 .schedule-view-summary--right .schedule-summary-value--blue {
   color: #1d4ed8;
 }

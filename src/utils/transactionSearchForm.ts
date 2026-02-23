@@ -620,22 +620,37 @@ export function initTransactionSearchForm(): void {
     setHistoryFilterState({ filterDateFrom: from, filterDateTo: to });
   });
 
+  const conditionsPanel = document.getElementById("transaction-history-common");
+
+  // 検索条件サマリー内の閉じるボタン: パネルを閉じる（detailsのトグルは発生させない）
+  const closeConditionsPanel = (): void => {
+    if (!conditionsPanel?.classList.contains("search-conditions-panel")) return;
+    if (!conditionsPanel.classList.contains("search-conditions-panel--open")) return;
+    conditionsPanel.classList.add("search-conditions-panel--closed");
+    conditionsPanel.classList.remove("search-conditions-panel--open");
+    conditionsPanel.setAttribute("aria-hidden", "true");
+    conditionsPanel.removeAttribute("role");
+    conditionsPanel.removeAttribute("aria-modal");
+    conditionsPanel.style.left = "";
+    conditionsPanel.style.top = "";
+    conditionsPanel.style.width = "";
+    conditionsPanel.style.bottom = "";
+    conditionsPanel.style.right = "";
+  };
+
+  conditionsPanel?.querySelector(".transaction-history-search-summary-close-btn")?.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    closeConditionsPanel();
+  });
+
   // 条件表示ボタン: 検索条件パネルを開閉トグル
   document.getElementById("transaction-history-show-conditions-btn")?.addEventListener("click", () => {
-    const panel = document.getElementById("transaction-history-common");
+    const panel = conditionsPanel;
     if (!panel?.classList.contains("search-conditions-panel")) return;
     const isOpen = panel.classList.contains("search-conditions-panel--open");
     if (isOpen) {
-      panel.classList.add("search-conditions-panel--closed");
-      panel.classList.remove("search-conditions-panel--open");
-      panel.setAttribute("aria-hidden", "true");
-      panel.removeAttribute("role");
-      panel.removeAttribute("aria-modal");
-      panel.style.left = "";
-      panel.style.top = "";
-      panel.style.width = "";
-      panel.style.bottom = "";
-      panel.style.right = "";
+      closeConditionsPanel();
     } else {
       panel.classList.remove("search-conditions-panel--closed");
       panel.classList.add("search-conditions-panel--open");

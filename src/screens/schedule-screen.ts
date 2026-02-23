@@ -127,6 +127,20 @@ function getTodayYMD(): string {
 }
 
 /**
+ * 今月の初日と末日を YYYY-MM-DD で返す。
+ * @returns { first: "YYYY-MM-01", last: "YYYY-MM-DD" }
+ */
+function getCurrentMonthFirstAndLast(): { first: string; last: string } {
+  const today = getTodayYMD();
+  const [y, m] = today.split("-").map(Number);
+  const mm = String(m).padStart(2, "0");
+  const first = `${y}-${mm}-01`;
+  const lastDay = new Date(y, m, 0).getDate();
+  const last = `${y}-${mm}-${String(lastDay).padStart(2, "0")}`;
+  return { first, last };
+}
+
+/**
  * 指定日付に日数を加算した日付を YYYY-MM-DD で返す。
  * @param ymd - 基準日（YYYY-MM-DD）
  * @param delta - 加算する日数（負の値で過去）
@@ -1324,6 +1338,40 @@ function renderScheduleSummary(rows: TransactionRow[]): void {
   }
   const actualBalance = actualIncome - actualExpense;
 
+  // 今月の評価：今月に含まれる予定発生日・取引日のみで集計
+  const { first: monthFirst, last: monthLast } = getCurrentMonthFirstAndLast();
+  let monthPlanIncome = 0;
+  let monthPlanExpense = 0;
+  for (const r of rows) {
+    if (!isRowOnlyOwnAccounts(r, ownAccountIds)) continue;
+    const type = (r.TRANSACTION_TYPE || "").toLowerCase();
+    const amount = parseFloat(String(r.AMOUNT ?? "0")) || 0;
+    const occurrenceDates = getPlanOccurrenceDatesForDisplay(r, excludeCompleted);
+    const count = occurrenceDates.filter((d) => d >= monthFirst && d <= monthLast).length;
+    if (type === "income") monthPlanIncome += amount * count;
+    else if (type === "expense") monthPlanExpense += amount * count;
+  }
+  const monthPlanBalance = monthPlanIncome - monthPlanExpense;
+
+  let monthActualIncome = 0;
+  let monthActualExpense = 0;
+  for (const a of actualRowsById.values()) {
+    const target = getActualTargetDate(a).trim().slice(0, 10);
+    if (!target || target < monthFirst || target > monthLast) continue;
+    const type = (a.TRANSACTION_TYPE || "").toLowerCase();
+    const amount = parseFloat(String(a.AMOUNT ?? "0")) || 0;
+    if (type === "income") monthActualIncome += amount;
+    else if (type === "expense") monthActualExpense += amount;
+  }
+  const monthActualBalance = monthActualIncome - monthActualExpense;
+
+  const monthProgressRateIncome =
+    monthPlanIncome !== 0 ? (monthActualIncome / monthPlanIncome) * 100 : null;
+  const monthProgressRateExpense =
+    monthPlanExpense !== 0 ? ((monthPlanExpense - monthActualExpense) / monthPlanExpense) * 100 : null;
+  const monthProgressRateBalance =
+    monthPlanBalance !== 0 ? (monthActualBalance / monthPlanBalance) * 100 : null;
+
   // 進捗率（％）。予定が0の場合は null
   const progressRateIncome =
     planIncome !== 0 ? (actualIncome / planIncome) * 100 : null;
@@ -1399,6 +1447,61 @@ function renderScheduleSummary(rows: TransactionRow[]): void {
   setSummaryClass("schedule-summary-progress-rate-income", incomeColor);
   setSummaryClass("schedule-summary-progress-rate-expense", expenseColor);
   setSummaryClass("schedule-summary-progress-rate-balance", balanceColor);
+
+  // 左ブロック「今月の評価」
+  setSummary("schedule-summary-month-plan-income", monthPlanIncome.toLocaleString());
+  setSummary("schedule-summary-month-plan-expense", monthPlanExpense.toLocaleString());
+  setSummary("schedule-summary-month-plan-balance", monthPlanBalance.toLocaleString());
+  setSummaryClass("schedule-summary-month-plan-balance", monthPlanBalance < 0 ? "red" : null);
+
+  setSummary("schedule-summary-month-actual-income", monthActualIncome.toLocaleString());
+  setSummary("schedule-summary-month-actual-expense", monthActualExpense.toLocaleString());
+  setSummary("schedule-summary-month-actual-balance", monthActualBalance.toLocaleString());
+
+  const monthIncomeColor =
+    monthProgressRateIncome !== null
+      ? monthProgressRateIncome <= 50
+        ? "red"
+        : monthProgressRateIncome >= 101
+          ? "blue"
+          : null
+      : null;
+  const monthExpenseColor =
+    monthProgressRateExpense !== null
+      ? monthProgressRateExpense <= 50
+        ? "red"
+        : monthProgressRateExpense >= 101
+          ? "blue"
+          : null
+      : null;
+  const monthBalanceColor =
+    monthProgressRateBalance !== null
+      ? monthProgressRateBalance <= 50
+        ? "red"
+        : monthProgressRateBalance >= 101
+          ? "blue"
+          : null
+      : null;
+
+  setSummaryClass("schedule-summary-month-actual-income", monthIncomeColor);
+  setSummaryClass("schedule-summary-month-actual-expense", monthExpenseColor);
+  setSummaryClass("schedule-summary-month-actual-balance", monthBalanceColor);
+
+  setSummary(
+    "schedule-summary-month-progress-rate-income",
+    monthProgressRateIncome !== null ? `${Math.round(monthProgressRateIncome)}%` : "—"
+  );
+  setSummary(
+    "schedule-summary-month-progress-rate-expense",
+    monthProgressRateExpense !== null ? `${Math.round(monthProgressRateExpense)}%` : "—"
+  );
+  setSummary(
+    "schedule-summary-month-progress-rate-balance",
+    monthProgressRateBalance !== null ? `${Math.round(monthProgressRateBalance)}%` : "—"
+  );
+  setSummaryClass("schedule-summary-month-progress-rate-income", monthIncomeColor);
+  setSummaryClass("schedule-summary-month-progress-rate-expense", monthExpenseColor);
+  setSummaryClass("schedule-summary-month-progress-rate-balance", monthBalanceColor);
 }
 
 /**
