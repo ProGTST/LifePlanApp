@@ -1815,7 +1815,7 @@ function filterCompletedPlanDateToOccurrenceDates(
 
 /**
  * 予定完了日とステータスを整合させる。
- * ・実績取引の取引日が予定発生日なら予定完了日に追加
+ * ・実績取引の取引日が予定発生日なら予定完了日に追加（既存紐づけ＋フォームで選択中の実績）
  * ・ステータスが完了で予定完了日に全発生日が無い場合は計画中に
  * ・ステータスが完了のときは予定完了日に全発生日を設定
  * ・ステータスが計画中で予定完了日に全発生日を選択している場合は完了に
@@ -1824,7 +1824,8 @@ function resolveCompletedPlanDateAndStatus(
   occurrenceDates: string[],
   completedPlanDate: string,
   planStatus: string,
-  planId: string | null
+  planId: string | null,
+  selectedActualDates?: string[]
 ): { completedPlanDate: string; planStatus: string } {
   const occurrenceSet = new Set(occurrenceDates);
   const completedList = completedPlanDate
@@ -1837,6 +1838,12 @@ function resolveCompletedPlanDateAndStatus(
     for (const actual of getActualTransactionsForPlan(planId)) {
       const d = getActualTargetDate(actual).slice(0, 10);
       if (d && occurrenceSet.has(d)) completedSet.add(d);
+    }
+  }
+  if (selectedActualDates?.length) {
+    for (const d of selectedActualDates) {
+      const ymd = d.trim().slice(0, 10);
+      if (ymd && /^\d{4}-\d{2}-\d{2}$/.test(ymd) && occurrenceSet.has(ymd)) completedSet.add(ymd);
     }
   }
   let completed = [...completedSet].sort().join(",");
@@ -1853,7 +1860,11 @@ function resolveCompletedPlanDateAndStatus(
   return { completedPlanDate: completed, planStatus: status };
 }
 
-function buildNewRow(form: HTMLFormElement, nextId: number): Record<string, string> {
+function buildNewRow(
+  form: HTMLFormElement,
+  nextId: number,
+  allTransactionRows?: TransactionRow[]
+): Record<string, string> {
   const type = (form.querySelector("#transaction-entry-type") as HTMLInputElement)?.value ?? "expense";
   const status = (form.querySelector("#transaction-entry-status") as HTMLInputElement)?.value ?? "actual";
   const categoryId = (form.querySelector("#transaction-entry-category") as HTMLInputElement)?.value ?? "";
@@ -1886,7 +1897,21 @@ function buildNewRow(form: HTMLFormElement, nextId: number): Record<string, stri
       CYCLE_UNIT: cycleUnit,
     } as TransactionRow;
     const occurrenceDates = getPlanOccurrenceDates(planRow);
-    const resolved = resolveCompletedPlanDateAndStatus(occurrenceDates, completedPlanDate, planStatus, null);
+    const selectedActualDates = allTransactionRows
+      ? Array.from(selectedActualIds)
+          .map((id) => {
+            const r = allTransactionRows.find((row) => row.ID === id);
+            return r ? getActualTargetDate(r).trim().slice(0, 10) : "";
+          })
+          .filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d))
+      : undefined;
+    const resolved = resolveCompletedPlanDateAndStatus(
+      occurrenceDates,
+      completedPlanDate,
+      planStatus,
+      null,
+      selectedActualDates
+    );
     completedPlanDate = resolved.completedPlanDate;
     planStatus = resolved.planStatus;
   }
@@ -1917,7 +1942,11 @@ function buildNewRow(form: HTMLFormElement, nextId: number): Record<string, stri
   return row;
 }
 
-function buildUpdatedRow(form: HTMLFormElement, existing: TransactionRow): Record<string, string> {
+function buildUpdatedRow(
+  form: HTMLFormElement,
+  existing: TransactionRow,
+  allTransactionRows?: TransactionRow[]
+): Record<string, string> {
   const type = (form.querySelector("#transaction-entry-type") as HTMLInputElement)?.value ?? "expense";
   const status = (form.querySelector("#transaction-entry-status") as HTMLInputElement)?.value ?? "actual";
   const categoryId = (form.querySelector("#transaction-entry-category") as HTMLInputElement)?.value ?? "";
@@ -1954,11 +1983,20 @@ function buildUpdatedRow(form: HTMLFormElement, existing: TransactionRow): Recor
     } as TransactionRow;
     const occurrenceDates = getPlanOccurrenceDates(planRow);
     const planId = (existing.PROJECT_TYPE || "").toLowerCase() === "plan" ? (existing.ID ?? null) : null;
+    const selectedActualDates = allTransactionRows
+      ? Array.from(selectedActualIds)
+          .map((id) => {
+            const r = allTransactionRows.find((row) => row.ID === id);
+            return r ? getActualTargetDate(r).trim().slice(0, 10) : "";
+          })
+          .filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d))
+      : undefined;
     const resolved = resolveCompletedPlanDateAndStatus(
       occurrenceDates,
       completedPlanDate,
       planStatus,
-      planId
+      planId,
+      selectedActualDates
     );
     completedPlanDate = resolved.completedPlanDate;
     planStatus = resolved.planStatus;
@@ -2293,7 +2331,7 @@ export function initTransactionEntryView(): void {
           await loadFormForEdit(editingTransactionId);
           return;
         }
-        const updatedRow = buildUpdatedRow(form, existing);
+        const updatedRow = buildUpdatedRow(form, existing, rows);
         const allRows = rows.map((r) =>
           r.ID === editingTransactionId ? (updatedRow as Record<string, string>) : ({ ...r } as Record<string, string>)
         );
@@ -2358,7 +2396,7 @@ export function initTransactionEntryView(): void {
         updateCurrentMenuItem();
       } else {
         const { nextId, rows } = await fetchTransactionRows(true);
-        const newRow = buildNewRow(form, nextId);
+        const newRow = buildNewRow(form, nextId, rows);
         const allRows = [...rows.map((r) => ({ ...r } as Record<string, string>)), newRow];
         const csv = transactionListToCsv(allRows);
         await saveTransactionCsv(csv);
@@ -2515,7 +2553,7 @@ export function initTransactionEntryView(): void {
     if (!(form instanceof HTMLFormElement)) return;
     try {
       const { nextId, rows } = await fetchTransactionRows(true);
-      const newRow = buildNewRow(form, nextId);
+      const newRow = buildNewRow(form, nextId, rows);
       const allRows = [...rows.map((r) => ({ ...r } as Record<string, string>)), newRow];
       const csv = transactionListToCsv(allRows);
       await saveTransactionCsv(csv);
