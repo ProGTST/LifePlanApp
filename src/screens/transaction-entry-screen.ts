@@ -1754,7 +1754,7 @@ async function loadOptions(): Promise<void> {
 }
 
 /**
- * 完了予定日（COMPLETED_PLANDATE）の文字列を、予定発生日に含まれる日付のみに絞り込む。
+ * 予定完了日（COMPLETED_PLANDATE）の文字列を、予定発生日に含まれる日付のみに絞り込む。
  * 期間・頻度・繰り返しを変更した結果、発生日に含まれなくなった日付は登録されないようにする。
  */
 function filterCompletedPlanDateToOccurrenceDates(

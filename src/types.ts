@@ -117,7 +117,7 @@ export interface TransactionRow {
   MEMO: string;
   ACCOUNT_ID_IN: string;
   ACCOUNT_ID_OUT: string;
-  /** 完了予定日（予定取引のみ）。カンマ区切りで複数日付を保持。例: "2026-01-01,2026-02-05" */
+  /** 予定完了日（予定取引のみ）。カンマ区切りで複数日付を保持。例: "2026-01-01,2026-02-05" */
   COMPLETED_PLANDATE?: string;
   /** 予定状況: planning（計画中） / complete（完了） / canceled（中止） */
   PLAN_STATUS?: string;

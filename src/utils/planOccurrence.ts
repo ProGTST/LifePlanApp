@@ -163,7 +163,7 @@ function parseCompletedPlanDates(completedPlanDate: string | undefined): Set<str
  * 画面表示用の予定発生日一覧を返す。
  * excludeCompletedDates が true のときは、COMPLETED_PLANDATE に含まれる日付を除く。
  * @param row - 予定の取引行
- * @param excludeCompletedDates - true のとき完了予定日を発生日から除く（検索条件で「完了」がOFFのとき）
+ * @param excludeCompletedDates - true のとき予定完了日を発生日から除く（検索条件で「完了」がOFFのとき）
  * @returns 発生日の YYYY-MM-DD 文字列の配列
  */
 export function getPlanOccurrenceDatesForDisplay(

@@ -321,7 +321,7 @@ function getCalendarDaySummary(
       continue;
     }
 
-    // 予定・その他頻度: 発生日一覧にこの日が含まれるとき件数・金額を加算（表示用に完了予定日を除く）
+    // 予定・その他頻度: 発生日一覧にこの日が含まれるとき件数・金額を加算（表示用に予定完了日を除く）
     const excludeCompleted = !calendarPlanStatuses.includes("complete");
     const occurrences = getPlanOccurrenceDatesForDisplay(row, excludeCompleted);
     if (occurrences.includes(dateStr)) {
@@ -526,7 +526,7 @@ function getChartDataForMonth(ym: string): {
       continue;
     }
 
-    // 予定: 発生日が月内なら該当日の日別・カテゴリに加算（表示用に完了予定日を除く）
+    // 予定: 発生日が月内なら該当日の日別・カテゴリに加算（表示用に予定完了日を除く）
     if (!from || !to) continue;
     const excludeCompleted = !calendarPlanStatuses.includes("complete");
     const occurrences = getPlanOccurrenceDatesForDisplay(row, excludeCompleted);
