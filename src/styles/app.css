@@ -4686,7 +4686,8 @@
   color: #1d4ed8;
 }
 
-/* ヘッダー2行を縦スクロールで固定 */
+/* スケジュール表の z-index：ヘッダー2行(2)・固定列6列(2/3)・実績ライン(1) のみ定義。データ行・現在日列・予定発生セル・実績アイコンは指定なし */
+/* ヘッダー2行：縦スクロールで固定 */
 .schedule-view-table thead tr:first-child th {
   position: sticky;
   top: 0;
@@ -4699,20 +4700,20 @@
   z-index: 2;
   background: var(--gray-100);
 }
-/* 種類（種別+カテゴリー）・取引名・状況の固定列を横スクロールで固定 */
+/* 固定列6列：横スクロールで固定。ヘッダーと交差する角は z-index: 3 */
 .schedule-view-table thead tr:first-child th:nth-child(1),
 .schedule-view-table thead tr:nth-child(2) th:nth-child(1),
 .schedule-view-table tbody td:nth-child(1) {
   position: sticky;
   left: 0;
-  z-index: 1;
+  z-index: 2;
 }
 .schedule-view-table thead tr:first-child th:nth-child(1) { background: var(--gray-100); z-index: 3; }
 .schedule-view-table thead tr:nth-child(2) th:nth-child(1) { background: var(--gray-100); z-index: 3; }
 .schedule-view-table tbody td:nth-child(2) {
   position: sticky;
   left: 2.5rem;
-  z-index: 1;
+  z-index: 2;
   background: var(--color-view-bg, #fff);
 }
 .schedule-view-table thead tr:first-child th:nth-child(2),
@@ -4720,7 +4721,7 @@
 .schedule-view-table tbody td:nth-child(3) {
   position: sticky;
   left: 5rem;
-  z-index: 1;
+  z-index: 2;
   background: var(--color-view-bg, #fff);
 }
 .schedule-view-table thead tr:first-child th:nth-child(2) { background: var(--gray-100); z-index: 3; }
@@ -4730,7 +4731,7 @@
 .schedule-view-table tbody td:nth-child(4) {
   position: sticky;
   left: 16rem;
-  z-index: 1;
+  z-index: 2;
   background: var(--color-view-bg, #fff);
 }
 .schedule-view-table thead tr:first-child th:nth-child(3) { background: var(--gray-100); z-index: 3; }
@@ -4740,7 +4741,7 @@
 .schedule-view-table tbody td:nth-child(5) {
   position: sticky;
   left: 22rem;
-  z-index: 1;
+  z-index: 2;
   background: var(--color-view-bg, #fff);
 }
 .schedule-view-table thead tr:first-child th:nth-child(4) { background: var(--gray-100); z-index: 3; }
@@ -4750,7 +4751,7 @@
 .schedule-view-table tbody td:nth-child(6) {
   position: sticky;
   left: 32rem;
-  z-index: 1;
+  z-index: 2;
   background: var(--color-view-bg, #fff);
 }
 .schedule-view-table thead tr:first-child th:nth-child(5) { background: var(--gray-100); z-index: 3; }
@@ -5140,7 +5141,7 @@
   display: inline-block;
   width: max-content;
 }
-/* 実績アイコン同士を1本の線でつなぐオーバーレイ層（レイアウト後に JS で線を描画） */
+/* 実績ライン：日付列上にのみ表示（JS で left/width を日付列に合わせる）。z-index は実績ラインのみ必要 */
 .schedule-connector-overlays {
   position: absolute;
   top: 0;
@@ -5148,6 +5149,7 @@
   width: 100%;
   height: 100%;
   pointer-events: none;
+  z-index: 1;
 }
 .schedule-connector-line {
   position: absolute;

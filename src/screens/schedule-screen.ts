@@ -494,9 +494,24 @@ const SCHEDULE_FIXED_COL_COUNT = 6;
 function renderScheduleConnectorOverlays(): void {
   const container = document.getElementById("schedule-connector-overlays");
   const tbody = document.getElementById("schedule-tbody");
-  if (!container || !tbody) return;
+  const tableInner = container?.parentElement;
+  if (!container || !tbody || !tableInner) return;
 
   container.innerHTML = "";
+
+  // オーバーレイを日付列部分だけに限定（固定列の上に線が重ならないようにする）
+  const firstDataRow = tbody.querySelector("tr");
+  const firstDateCell = firstDataRow?.children[SCHEDULE_FIXED_COL_COUNT] as HTMLElement | undefined;
+  if (firstDateCell) {
+    const innerRect = tableInner.getBoundingClientRect();
+    const dateCellRect = firstDateCell.getBoundingClientRect();
+    const offsetLeft = dateCellRect.left - innerRect.left;
+    container.style.left = `${offsetLeft}px`;
+    container.style.width = `${innerRect.width - offsetLeft}px`;
+  } else {
+    container.style.left = "0";
+    container.style.width = "100%";
+  }
 
   const containerRect = container.getBoundingClientRect();
   if (containerRect.width === 0 || containerRect.height === 0) return;
