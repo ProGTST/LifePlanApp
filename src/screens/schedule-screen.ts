@@ -979,13 +979,11 @@ function renderScheduleGrid(): void {
 
     const excludeCompleted = !schedulePlanStatuses.includes("complete");
     const occurrenceDates = getPlanOccurrenceDatesForDisplay(row, excludeCompleted);
-    const hasPastPlanDate = occurrenceDates.some((d) => d < todayYMD);
 
     const tr = document.createElement("tr");
     const permType = getRowPermissionType(row);
     if (permType === "view") tr.classList.add("transaction-history-row--permission-view");
     else if (permType === "edit") tr.classList.add("transaction-history-row--permission-edit");
-    if (hasPastPlanDate) tr.classList.add("schedule-view-row--past-plan");
     const typeTd = document.createElement("td");
     typeTd.className = "schedule-col-type schedule-cell--clickable";
     typeTd.setAttribute("role", "button");
@@ -1133,17 +1131,6 @@ function renderScheduleGrid(): void {
         actualIcon.setAttribute("aria-label", "実績");
         actualIcon.textContent = "実";
         td.appendChild(actualIcon);
-      }
-      const hasPastOccurrenceInCell =
-        isTargetCell &&
-        occurrenceDates.some((d) => d >= col.dateFrom && d <= col.dateTo && d < todayYMD);
-      if (hasPastOccurrenceInCell) {
-        const pastIcon = document.createElement("img");
-        pastIcon.src = "/icon/bolt-solid-full.svg";
-        pastIcon.alt = "";
-        pastIcon.className = "schedule-view-date-cell-past-icon";
-        pastIcon.setAttribute("aria-label", "過去の予定発生日");
-        td.appendChild(pastIcon);
       }
       tr.appendChild(td);
     });

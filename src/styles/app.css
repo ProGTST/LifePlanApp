@@ -4773,23 +4773,6 @@
 .schedule-view-table tbody tr.transaction-history-row--permission-edit td:nth-child(6) {
   background: #e8f5e9;
 }
-/* 予定発生日が現在日より前に存在する行：固定列の背景を黄色で表示（権限背景より優先） */
-.schedule-view-table tbody tr.schedule-view-row--past-plan td.schedule-col-type,
-.schedule-view-table tbody tr.schedule-view-row--past-plan td.schedule-col-category,
-.schedule-view-table tbody tr.schedule-view-row--past-plan td.schedule-col-name,
-.schedule-view-table tbody tr.schedule-view-row--past-plan td.schedule-col-amount,
-.schedule-view-table tbody tr.schedule-view-row--past-plan td.schedule-col-date-range,
-.schedule-view-table tbody tr.schedule-view-row--past-plan td.schedule-col-status {
-  background: #fef08a;
-}
-.schedule-view-table tbody tr.schedule-view-row--past-plan:hover td.schedule-col-type,
-.schedule-view-table tbody tr.schedule-view-row--past-plan:hover td.schedule-col-category,
-.schedule-view-table tbody tr.schedule-view-row--past-plan:hover td.schedule-col-name,
-.schedule-view-table tbody tr.schedule-view-row--past-plan:hover td.schedule-col-amount,
-.schedule-view-table tbody tr.schedule-view-row--past-plan:hover td.schedule-col-date-range,
-.schedule-view-table tbody tr.schedule-view-row--past-plan:hover td.schedule-col-status {
-  background: #fde047;
-}
 .schedule-view-table tbody tr:hover td:nth-child(1),
 .schedule-view-table tbody tr:hover td:nth-child(2),
 .schedule-view-table tbody tr:hover td:nth-child(3),
@@ -5150,18 +5133,6 @@
   background: var(--color-button-bg, #646cff);
   color: var(--color-button-fg, #ffffff);
   border-color: var(--color-button-bg, #646cff);
-}
-/* 現在日より前の予定発生日のセルに表示する bolt アイコン（外枠24px、画像は padding で小さく表示） */
-.schedule-view-date-cell .schedule-view-date-cell-past-icon {
-  display: inline-block;
-  vertical-align: middle;
-  width: 24px;
-  height: 24px;
-  padding: 4px;
-  box-sizing: border-box;
-  object-fit: contain;
-  background: #fef08a;
-  border-radius: 4px;
 }
 /* テーブル＋オーバーレイを包むラッパー（オーバーレイがテーブルと一緒にスクロールするよう同一幅にする） */
 .schedule-view-table-inner {
