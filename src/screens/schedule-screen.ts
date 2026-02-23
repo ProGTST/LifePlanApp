@@ -86,6 +86,27 @@ function clearScheduleOccurrenceRowOpen(): void {
     .forEach((tr) => tr.classList.remove(SCHEDULE_OCCURRENCE_ROW_OPEN_CLASS));
 }
 
+/** 対象日一覧モーダルを閉じ、行ハイライト用クラスを外す（設定・閉じる・オーバーレイ外クリックで共通利用） */
+function closeScheduleOccurrenceOverlay(): void {
+  clearScheduleOccurrenceRowOpen();
+  closeOverlay("schedule-occurrence-overlay");
+}
+
+/**
+ * 対象日一覧モーダルを開く。クリックした行の tr を渡すと、その行にハイライト用クラスを付与してからモーダルを表示する（実績線の重なり防止）。
+ * @param row - 予定の取引行
+ * @param clickedTr - クリック／キー操作したセルが属する tr。null の場合はクラス付与なしでモーダルのみ開く
+ */
+function openOccurrencePopupWithRowHighlight(row: TransactionRow, clickedTr: HTMLElement | null): void {
+  clearScheduleOccurrenceRowOpen();
+  if (clickedTr?.closest?.("#schedule-tbody")) {
+    clickedTr.classList.add(SCHEDULE_OCCURRENCE_ROW_OPEN_CLASS);
+    // クラス適用をレイアウトに反映させてからモーダルを開く（一瞬の重なり防止）
+    void clickedTr.offsetHeight;
+  }
+  openScheduleOccurrencePopup(row);
+}
+
 interface DateColumn {
   key: string;
   /** 日付の上に表示（週単位は yyyy年、日単位は yyyy年m月、月単位は yyyy年m月） */
@@ -439,32 +460,6 @@ function getActualTargetDate(actualRow: TransactionRow): string {
 }
 
 /**
- * 予定に紐づく実績の対象日が、指定列の期間に含まれるかどうか。
- * @param planId - 予定の取引 ID
- * @param col - 日付列の定義
- * @param unit - 表示単位
- * @returns 実績の対象日が列に含まれていれば true
- */
-function isActualTargetInColumn(
-  planId: string,
-  col: { dateFrom: string; dateTo: string },
-  unit: ScheduleUnit
-): boolean {
-  const actuals = getActualTransactionsForPlan(planId);
-  if (actuals.length === 0) return false;
-  for (const a of actuals) {
-    const target = getActualTargetDate(a);
-    if (!target) continue;
-    if (unit === "day") {
-      if (col.dateFrom === col.dateTo && target === col.dateFrom) return true;
-    } else {
-      if (target >= col.dateFrom && target <= col.dateTo) return true;
-    }
-  }
-  return false;
-}
-
-/**
  * 予定に紐づく実績の対象日が表示される列インデックスの一覧を返す（重複除去・昇順）。
  * 別日に複数実績がある場合、アイコンが離れた列に表示される。
  */
@@ -512,7 +507,7 @@ function renderScheduleConnectorOverlays(): void {
 
   container.innerHTML = "";
 
-  // オーバーレイを日付列部分だけに限定（固定列の上に線が重ならないようにラッパーでクリップ）。データ行のうち先頭行でオフセット取得
+  // ラッパーの left/width を設定し、実績線を日付列部分だけにクリップする
   const firstDataRowForOffset = tbody.querySelector("tr:not(.schedule-connector-overlays-row)");
   const firstDateCellForOffset = firstDataRowForOffset?.children[SCHEDULE_FIXED_COL_COUNT] as
     | HTMLElement
@@ -531,6 +526,7 @@ function renderScheduleConnectorOverlays(): void {
   container.style.left = "0";
   container.style.width = "100%";
 
+  // 高さ確定後に線位置を計算するため、rAF で高さを適用してから次のフレームで線を描画
   requestAnimationFrame(() => {
     const tbodyHeight = tbody.getBoundingClientRect().height;
     const heightPx = `${Math.max(0, tbodyHeight)}px`;
@@ -548,11 +544,11 @@ function renderScheduleConnectorOverlays(): void {
     if (container) {
       container.style.height = heightPx;
     }
-    // 高さ適用後のレイアウトで線位置を計算するため、1フレーム遅らせて描画
     requestAnimationFrame(() => {
       const containerRect = container.getBoundingClientRect();
       if (containerRect.width === 0 || containerRect.height === 0) return;
 
+      // 実績アイコンが2列以上にある行ごとに、アイコン間を結ぶ線を1本描画
       const dataRows = tbody.querySelectorAll("tr[data-actual-icon-cols]");
       dataRows.forEach((tr) => {
         const attr = tr.getAttribute("data-actual-icon-cols");
@@ -571,7 +567,6 @@ function renderScheduleConnectorOverlays(): void {
         const firstRect = (firstIcon ?? firstCell).getBoundingClientRect();
         const lastRect = (lastIcon ?? lastCell).getBoundingClientRect();
 
-        // 線は最初の実績アイコンの右端〜最後の実績アイコンの左端で描画。固定列にかからないようオーバーレイ左端より左には出さない
         let lineLeft = firstRect.right - containerRect.left;
         let lineWidth = Math.max(0, lastRect.left - firstRect.right);
         if (lineLeft < 0) {
@@ -590,7 +585,6 @@ function renderScheduleConnectorOverlays(): void {
       });
     });
   });
-
 }
 
 /**
@@ -792,6 +786,7 @@ function openScheduleOccurrencePopup(row: TransactionRow): void {
 
   occurrencePopupPlanRow = row;
 
+  // ヘッダー（タイトル・頻度・間隔・繰り返し）を設定
   const planName = (row.NAME || "").trim();
   if (titleEl) titleEl.textContent = planName ? `取引予定日：${planName}` : "取引予定日";
 
@@ -802,6 +797,7 @@ function openScheduleOccurrencePopup(row: TransactionRow): void {
   if (intervalEl) intervalEl.textContent = String(interval);
   if (cycleEl) cycleEl.textContent = formatCycleUnitForDisplay(row);
 
+  // 対象日一覧と完了日セットを取得
   const dates = getPlanOccurrenceDates(row);
   const completedRaw = (row.COMPLETED_PLANDATE ?? "").trim();
   const completedSet = new Set<string>();
@@ -821,6 +817,7 @@ function openScheduleOccurrencePopup(row: TransactionRow): void {
     p.textContent = "対象日がありません。";
     datesWrap.appendChild(p);
   } else {
+    // 対象日ごとに完了チェック・日付・金額の行を追加
     const table = document.createElement("table");
     table.className = "schedule-occurrence-dates-table";
     table.setAttribute("aria-label", "対象日一覧");
@@ -846,6 +843,7 @@ function openScheduleOccurrencePopup(row: TransactionRow): void {
       const tdComplete = document.createElement("td");
       const isSelected = completedSet.has(d);
       const checkBtn = document.createElement("button");
+      // 完了トグル時は実績が紐づく日は未完了にできない旨をチェック
       checkBtn.type = "button";
       checkBtn.className = "schedule-occurrence-complete-check-btn";
       checkBtn.setAttribute("data-date", d);
@@ -903,6 +901,7 @@ function openScheduleOccurrencePopup(row: TransactionRow): void {
  * @returns なし
  */
 function renderScheduleGrid(): void {
+  // --- 必須 DOM 要素の取得と開始日・表示単位の確定 ---
   const startInput = document.getElementById("schedule-start-date") as HTMLInputElement | null;
   const headRow = document.getElementById("schedule-head-row");
   const tbody = document.getElementById("schedule-tbody");
@@ -924,6 +923,7 @@ function renderScheduleGrid(): void {
   if (dayRangeWrap) {
     dayRangeWrap.classList.toggle("is-hidden", false);
   }
+  // 過去・未来の範囲選択用オプション（月単位は年数、日/週単位は月数）
   const monthUnitOptions = Array.from({ length: 10 }, (_, i) => ({
     value: (i + 1) * 12,
     label: `${i + 1}年`,
@@ -959,18 +959,17 @@ function renderScheduleGrid(): void {
   }
   if (pastSelect) pastSelect.setAttribute("aria-label", "過去の月数");
   if (futureSelect) futureSelect.setAttribute("aria-label", "未来の月数");
-  // 過去・未来の月数（日/週/月単位で select のオプションを切り替え済み）
   const dayRange: DayRangeOptions | undefined =
     pastSelect && futureSelect
       ? { pastMonths: Number(pastSelect.value) || 3, futureMonths: Number(futureSelect.value) || 6 }
       : undefined;
 
-  // 日付列と予定行を取得し、今日の日付でハイライト用に保持
+  // --- 日付列・予定行の取得（描画のデータソース） ---
   const columns = getDateColumns(startYMD, unit, dayRange);
   const rows = getPlanRows();
   const todayYMD = getTodayYMD();
 
-  // 年月結合行: 固定列の th を追加し、単位に応じて getMonthGroups / getYearGroups で結合ヘッダーを描画
+  // --- 年月結合行: 固定列 th ＋ 単位に応じた結合ヘッダー（yyyy年m月 など） ---
   const yearMonthRow = document.getElementById("schedule-yearmonth-row");
   if (yearMonthRow) {
     yearMonthRow.innerHTML = "";
@@ -997,7 +996,7 @@ function renderScheduleGrid(): void {
     });
   }
 
-  // 表ヘッダー行: 種類・取引名・取引日・状況の固定列＋日付列
+  // --- 表ヘッダー行: 固定列（種類・取引名・金額・取引日・状況）＋各日付列の th ---
   headRow.innerHTML = "";
   const kindTh = document.createElement("th");
   kindTh.scope = "col";
@@ -1019,7 +1018,7 @@ function renderScheduleGrid(): void {
     th.setAttribute("aria-label", ariaLabel);
     headRow.appendChild(th);
   });
-  // 各日付列の th を追加（開始日・今日に data 属性やクラスを付与）
+  // 各日付列の th を追加（開始日・今日に data 属性／クラスを付与してスクロール・ハイライトに利用）
   columns.forEach((col) => {
     const th = document.createElement("th");
     th.className = "schedule-view-date-col";
@@ -1042,7 +1041,7 @@ function renderScheduleGrid(): void {
   });
 
   tbody.innerHTML = "";
-  // 予定ごとに1行ずつ描画し、各日付列に重なりがあればアクティブクラスを付与
+  // 予定行の描画: 1予定1行。固定列（種類・カテゴリ・取引名・金額・取引日・状況）＋日付列セル
   rows.forEach((row) => {
     const cat = getCategoryById(row.CATEGORY_ID);
     const from = (row.TRANDATE_FROM || "").slice(0, 10);
@@ -1055,6 +1054,7 @@ function renderScheduleGrid(): void {
     const permType = getRowPermissionType(row);
     if (permType === "view") tr.classList.add("transaction-history-row--permission-view");
     else if (permType === "edit") tr.classList.add("transaction-history-row--permission-edit");
+    // 固定列セル（種類・カテゴリ・取引名・金額・取引日・状況）を生成し、クリックで収支記録またはモーダルを開く
     const typeTd = document.createElement("td");
     typeTd.className = "schedule-col-type schedule-cell--clickable";
     typeTd.setAttribute("role", "button");
@@ -1119,29 +1119,14 @@ function renderScheduleGrid(): void {
     const toFmt = to ? to.replace(/-/g, "/") : "";
     dateRangeTd.textContent = from && to ? (from === to ? fromFmt : `${fromFmt}～${toFmt}`) : "—";
     dateRangeTd.addEventListener("click", (e) => {
-      const tr = (e.currentTarget as HTMLElement).closest?.("tr");
-      if (tr && tr.closest?.("#schedule-tbody")) {
-        clearScheduleOccurrenceRowOpen();
-        tr.classList.add(SCHEDULE_OCCURRENCE_ROW_OPEN_CLASS);
-        // クラス適用をレイアウトに反映させてからモーダルを開く（一瞬の重なり防止）
-        void tr.offsetHeight;
-        openScheduleOccurrencePopup(row);
-        return;
-      }
-      openScheduleOccurrencePopup(row);
+      const tr = (e.currentTarget as HTMLElement).closest?.("tr") ?? null;
+      openOccurrencePopupWithRowHighlight(row, tr);
     });
     dateRangeTd.addEventListener("keydown", (e) => {
       if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
-        const tr = (e.currentTarget as HTMLElement).closest?.("tr");
-        if (tr && tr.closest?.("#schedule-tbody")) {
-          clearScheduleOccurrenceRowOpen();
-          tr.classList.add(SCHEDULE_OCCURRENCE_ROW_OPEN_CLASS);
-          void tr.offsetHeight;
-          openScheduleOccurrencePopup(row);
-          return;
-        }
-        openScheduleOccurrencePopup(row);
+        const tr = (e.currentTarget as HTMLElement).closest?.("tr") ?? null;
+        openOccurrencePopupWithRowHighlight(row, tr);
       }
     });
     const statusTd = document.createElement("td");
@@ -1162,6 +1147,7 @@ function renderScheduleGrid(): void {
           ? "中止"
           : isDelayed
             ? "遅れ"
+
             : hasActualOrCompletedPlanDate
               ? "進行中"
               : "未着";
@@ -1183,6 +1169,7 @@ function renderScheduleGrid(): void {
       "aria-label",
       hasActualOrCompletedPlanDate ? "取引実績を確認" : isDelayed ? "遅れ" : statusLabel
     );
+    // 実績または完了日がある場合のみクリックで実績一覧モーダルを開く
     if (hasActualOrCompletedPlanDate) {
       statusBtn.addEventListener("click", () => {
         openScheduleActualListPopup(row.ID, row.NAME || "");
@@ -1205,11 +1192,12 @@ function renderScheduleGrid(): void {
         ? getDelayedPlanDates(row, todayYMD, actualTargetDates)
         : []
     );
-    // 各日付列にセルを追加。対象日計算に基づき対象セルのみアクティブクラス・クリック可能。今日なら current クラス。実績の対象日には「実」アイコン、遅れ対象日には fire アイコンを表示
+    // 各日付列にセルを追加: 対象セルはアクティブ・クリック可、今日列は current、実績／遅れはアイコン表示
     columns.forEach((col, colIndex) => {
       const td = document.createElement("td");
       const isTargetCell = isCellActiveForPlan(row, col, unit);
       td.className = "schedule-view-date-cell";
+      // 対象期間のセルのみクリックで収支記録を開く
       if (isTargetCell) {
         td.classList.add("schedule-view-date-cell--active", "schedule-cell--clickable");
         td.setAttribute("role", "button");
@@ -1225,12 +1213,14 @@ function renderScheduleGrid(): void {
       } else {
         td.setAttribute("aria-label", "対象外");
       }
+      // 今日を含む列には current クラスを付与（スタイル用）
       const isCurrentDay = unit === "day" && col.dateFrom === todayYMD;
       const isCurrentWeek = unit === "week" && todayYMD >= col.dateFrom && todayYMD <= col.dateTo;
       const isCurrentMonth = unit === "month" && todayYMD >= col.dateFrom && todayYMD <= col.dateTo;
       if (isCurrentDay || isCurrentWeek || isCurrentMonth) {
         td.classList.add("schedule-view-date-cell--current");
       }
+      // 実績の対象日列には「実」アイコンを表示
       if (actualIconColIndices.includes(colIndex)) {
         const actualIcon = document.createElement("span");
         actualIcon.className = "transaction-history-plan-icon schedule-view-date-cell-actual-icon";
@@ -1238,6 +1228,7 @@ function renderScheduleGrid(): void {
         actualIcon.textContent = "実";
         td.appendChild(actualIcon);
       }
+      // 遅れ対象日がこの列に含まれる場合は fire アイコンを表示
       const hasDelayedInCell =
         unit === "day"
           ? delayedDatesSet.has(col.dateFrom)
@@ -1258,7 +1249,7 @@ function renderScheduleGrid(): void {
     tbody.appendChild(tr);
   });
 
-  // 実績ライン用の行を先頭に挿入（テーブル内で z-index: 1 にし、固定列 z-index: 2 の下・日付列の上に描画して固定列に線が浮かないようにする）
+  // --- 実績つなぎ線用の行を tbody 先頭に挿入（z-index: 1 で日付列の上・固定列の下に描画） ---
   const connectorRow = document.createElement("tr");
   connectorRow.className = "schedule-connector-overlays-row";
   connectorRow.setAttribute("aria-hidden", "true");
@@ -1278,15 +1269,14 @@ function renderScheduleGrid(): void {
   connectorRow.appendChild(connectorTd);
   tbody.insertBefore(connectorRow, tbody.firstChild);
 
-  // 実績アイコンが複数列ある行について、オーバーレイで1本の線を描画（レイアウト後に位置計算）
+  // 実績つなぎ線の位置はレイアウト確定後に計算するため rAF で遅延実行
   requestAnimationFrame(() => {
     renderScheduleConnectorOverlays();
   });
 
-  // 集計ビューを更新（表示データの予定・実績の合計と進捗率）
   renderScheduleSummary(rows);
 
-  // 日単位・週単位・月単位のときは開始日（または開始日を含む週・月）が固定列の横に来るようスクロール
+  // 開始日列が固定列の右に来るよう横スクロール位置を調整
   if (unit === "day" || unit === "week" || unit === "month") {
     requestAnimationFrame(() => {
       requestAnimationFrame(() => scrollScheduleGridToStartDate());
@@ -1334,6 +1324,7 @@ function renderScheduleSummary(rows: TransactionRow[]): void {
   }
   const actualBalance = actualIncome - actualExpense;
 
+  // 進捗率（％）。予定が0の場合は null
   const progressRateIncome =
     planIncome !== 0 ? (actualIncome / planIncome) * 100 : null;
   const progressRateExpense =
@@ -1341,6 +1332,7 @@ function renderScheduleSummary(rows: TransactionRow[]): void {
   const progressRateBalance =
     planBalance !== 0 ? (actualBalance / planBalance) * 100 : null;
 
+  // DOM 更新用ヘルパー（集計値テキストと色クラスを一括設定）
   const setSummary = (id: string, text: string): void => {
     const el = document.getElementById(id);
     if (el) el.textContent = text;
@@ -1362,6 +1354,7 @@ function renderScheduleSummary(rows: TransactionRow[]): void {
   setSummary("schedule-summary-actual-expense", actualExpense.toLocaleString());
   setSummary("schedule-summary-actual-balance", actualBalance.toLocaleString());
 
+  // 進捗率に応じて表示色（赤/青/null）を決定
   const incomeColor =
     progressRateIncome !== null
       ? progressRateIncome <= 50
@@ -1431,7 +1424,7 @@ function scrollScheduleGridToStartDate(): void {
  * @returns なし
  */
 export function initScheduleView(): void {
-  // スケジュール表示時に取引データを読み込み、開始日未設定なら今日を入れてグリッド描画
+  // ビュー表示時: 取引データ読み込み後、開始日未設定なら今日をセットしてグリッド描画
   registerViewHandler("schedule", () => {
     loadTransactionData().then(() => {
       const startInput = document.getElementById("schedule-start-date") as HTMLInputElement | null;
@@ -1447,17 +1440,18 @@ export function initScheduleView(): void {
     loadTransactionData(true).then(() => renderScheduleGrid());
   });
 
-  // 検索条件変更時に表示中ならグリッドを再描画
+  // フィルター変更時: スケジュール表示中ならグリッドを再描画
   registerFilterChangeCallback(() => {
     if (document.getElementById("view-schedule")?.classList.contains("main-view--hidden") === false) {
       renderScheduleGrid();
     }
   });
 
-  // 開始日・表示単位・過去/未来の月数変更でグリッド再描画
+  // 開始日変更でグリッド再描画
   const startInput = document.getElementById("schedule-start-date") as HTMLInputElement | null;
   startInput?.addEventListener("change", () => renderScheduleGrid());
 
+  // 表示単位ボタン（日/週/月）: 選択中を切り替え、次フレームでグリッド再描画
   document.querySelectorAll(".schedule-view-unit-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
       const value = (btn as HTMLElement).getAttribute("data-schedule-unit");
@@ -1475,6 +1469,7 @@ export function initScheduleView(): void {
     });
   });
 
+  // 過去・未来の範囲変更でグリッド再描画
   const pastSelect = document.getElementById("schedule-past-months") as HTMLSelectElement | null;
   const futureSelect = document.getElementById("schedule-future-months") as HTMLSelectElement | null;
   pastSelect?.addEventListener("change", () => renderScheduleGrid());
@@ -1506,11 +1501,11 @@ export function initScheduleView(): void {
     }
   });
 
-  // 対象日一覧オーバーレイの設定ボタン：チェックされた日付を COMPLETED_PLANDATE に保存
+  // 対象日一覧の「設定」: チェックされた日付を COMPLETED_PLANDATE に保存し、CSV 更新後にモーダルを閉じる
   document.getElementById("schedule-occurrence-apply")?.addEventListener("click", async () => {
     const row = occurrencePopupPlanRow;
     if (!row?.ID) {
-      clearScheduleOccurrenceRowOpen(); closeOverlay("schedule-occurrence-overlay");
+      closeScheduleOccurrenceOverlay();
       return;
     }
     const wrap = document.getElementById("schedule-occurrence-dates-wrap");
@@ -1532,13 +1527,13 @@ export function initScheduleView(): void {
     try {
       const { header, rows } = await fetchCsv("/data/TRANSACTION.csv", { cache: "reload" });
       if (header.length === 0 || !rows.length) {
-        clearScheduleOccurrenceRowOpen(); closeOverlay("schedule-occurrence-overlay");
+        closeScheduleOccurrenceOverlay();
         return;
       }
       const allRows = rows.map((cells) => rowToObject(header, cells));
       const target = allRows.find((r) => (r.ID ?? "").trim() === String(row.ID).trim());
       if (!target) {
-        clearScheduleOccurrenceRowOpen(); closeOverlay("schedule-occurrence-overlay");
+        closeScheduleOccurrenceOverlay();
         return;
       }
       target.COMPLETED_PLANDATE = newCompletedPlanDate;
@@ -1551,17 +1546,17 @@ export function initScheduleView(): void {
       const csv = transactionListToCsv(allRows);
       await saveCsvViaApi("TRANSACTION.csv", csv);
       occurrencePopupPlanRow = null;
-      clearScheduleOccurrenceRowOpen(); closeOverlay("schedule-occurrence-overlay");
+      closeScheduleOccurrenceOverlay();
       await loadTransactionData(true);
       renderScheduleGrid();
     } catch {
       occurrencePopupPlanRow = null;
-      clearScheduleOccurrenceRowOpen(); closeOverlay("schedule-occurrence-overlay");
+      closeScheduleOccurrenceOverlay();
     }
   });
   document.getElementById("schedule-occurrence-overlay")?.addEventListener("click", (e) => {
     if (e.target instanceof HTMLElement && e.target.id === "schedule-occurrence-overlay") {
-      clearScheduleOccurrenceRowOpen(); closeOverlay("schedule-occurrence-overlay");
+      closeScheduleOccurrenceOverlay();
     }
   });
 }
