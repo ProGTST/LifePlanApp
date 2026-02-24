@@ -434,6 +434,9 @@ function renderFundsOverflowTable(
     const fundsTd = document.createElement("td");
     fundsTd.textContent = fundsAfterExpense.toLocaleString();
     fundsTd.style.textAlign = "right";
+    const monthsLeftTd = document.createElement("td");
+    monthsLeftTd.textContent = String(monthsFromNow);
+    monthsLeftTd.style.textAlign = "right";
     const monthlyTd = document.createElement("td");
     monthlyTd.textContent = monthlyRequired.toLocaleString();
     monthlyTd.style.textAlign = "right";
@@ -442,18 +445,15 @@ function renderFundsOverflowTable(
     tr.appendChild(nameTd);
     tr.appendChild(amountTd);
     tr.appendChild(fundsTd);
+    tr.appendChild(monthsLeftTd);
     tr.appendChild(monthlyTd);
     tbody.appendChild(tr);
   });
   const total = overflow.reduce((s, { amount }) => s + amount, 0);
-  const now = new Date();
-  const currY = now.getFullYear();
-  const currM = now.getMonth() + 1;
   const lastItem = overflow[overflow.length - 1];
   let months = 1;
   if (lastItem) {
-    const [lastY, lastM] = lastItem.date.slice(0, 7).split("-").map(Number);
-    months = Math.max(1, (lastY - currY) * 12 + (lastM - currM) + 1);
+    months = lastItem.monthsFromNow;
   }
   const monthly = months > 0 ? Math.round(total / months) : 0;
   if (summaryEl) {
