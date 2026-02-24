@@ -8,10 +8,48 @@ import { loadTransactionData, getAccountRows, getCategoryById, getAccountById } 
 import { setDisplayedKeys } from "../utils/csvWatch";
 import { getPlanOccurrenceDates } from "../utils/planOccurrence";
 import { Chart, registerables } from "chart.js";
+import ChartDataLabels from "chartjs-plugin-datalabels";
 import { createIconWrap } from "../utils/iconWrap";
 import { ICON_DEFAULT_COLOR } from "../constants/colorPresets";
 
-Chart.register(...registerables);
+/** ドーナツ中心の白円と合計金額ラベル描画用プラグイン（カレンダーと同様）。 */
+const centerLabelAndHolePlugin = {
+  id: "centerLabelAndHole",
+  afterDraw(chart: Chart) {
+    const centerOpts = (chart.options.plugins as Record<string, { label?: string; total?: number }> | undefined)
+      ?.centerLabel;
+    if (centerOpts?.total === undefined && !centerOpts?.label) return;
+    const meta = chart.getDatasetMeta(0);
+    if (!meta?.data?.length) return;
+    const arc = meta.data[0] as unknown as { x: number; y: number; innerRadius: number };
+    const ctx = chart.ctx;
+    const x = arc.x;
+    const y = arc.y;
+    const r = arc.innerRadius;
+    if (r > 0) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fillStyle = "#ffffff";
+      ctx.fill();
+      ctx.restore();
+    }
+    const label = centerOpts?.label ?? "";
+    const total = centerOpts?.total ?? 0;
+    const totalStr = total.toLocaleString();
+    ctx.save();
+    ctx.fillStyle = "#333333";
+    ctx.font = "bold 12px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    if (label) ctx.fillText(label, x, y - 10);
+    ctx.font = "11px sans-serif";
+    ctx.fillText(totalStr, x, y + (label ? 8 : 0));
+    ctx.restore();
+  },
+};
+
+Chart.register(...registerables, ChartDataLabels, centerLabelAndHolePlugin);
 
 /** 自分の勘定 ID の Set（権限付与勘定は含めず、集計は自分の勘定のみ）。 */
 function getOwnAccountIds(): Set<string> {
@@ -110,28 +148,37 @@ function buildCashFlowByMonth(byDate: Map<string, { income: number; expense: num
   return result;
 }
 
-/** 今年の実績取引（未削除・個人勘定）。 */
-function getThisYearActuals(list: TransactionRow[], ownAccountIds: Set<string>): TransactionRow[] {
-  const y = new Date().getFullYear();
-  const prefix = String(y) + "-";
+/** 指定年の実績取引（未削除・個人勘定）。 */
+function getActualsForYear(list: TransactionRow[], ownAccountIds: Set<string>, year: number): TransactionRow[] {
+  const yStr = String(year);
   return list.filter((row) => {
     if ((row.PROJECT_TYPE || "").toLowerCase() !== "actual") return false;
     if ((row.DLT_FLG || "0") === "1") return false;
     if (!isRowOnlyOwnAccounts(row, ownAccountIds)) return false;
     const d = getActualTargetDate(row);
-    return d.slice(0, 4) === String(y) && d.length >= 7;
+    return d.slice(0, 4) === yStr && d.length >= 7;
   });
 }
-/** 参照可能な勘定の今年の実績（未削除・transactionList は既に参照可能のみなのでそのまま年月で絞る）。 */
-function getThisYearActualsVisible(list: TransactionRow[]): TransactionRow[] {
-  const y = new Date().getFullYear();
+/** 参照可能な勘定の指定年の実績（未削除）。 */
+function getActualsVisibleForYear(list: TransactionRow[], year: number): TransactionRow[] {
+  const yStr = String(year);
   return list.filter((row) => {
     if ((row.PROJECT_TYPE || "").toLowerCase() !== "actual") return false;
     if ((row.DLT_FLG || "0") === "1") return false;
     const d = getActualTargetDate(row);
-    return d.slice(0, 4) === String(y) && d.length >= 7;
+    return d.slice(0, 4) === yStr && d.length >= 7;
   });
 }
+
+/** YYYY-MM を「yyyy年M月」に変換（資金繰りグラフ・表の表示用）。 */
+function formatMonthLabel(ym: string): string {
+  const [y, m] = ym.split("-");
+  if (!y || !m) return ym;
+  return `${y}年${parseInt(m, 10)}月`;
+}
+
+/** 収支分析で表示する年（グラフ・表の抽出条件）。 */
+let analysisYear = new Date().getFullYear();
 
 let chartInstances: Chart[] = [];
 
@@ -145,7 +192,7 @@ function renderCashFlowChart(cashFlow: { month: string; income: number; expense:
   if (!canvas) return;
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
-  const labels = cashFlow.map((r) => r.month);
+  const labels = cashFlow.map((r) => formatMonthLabel(r.month));
   const fundsData = cashFlow.map((r) => r.funds);
   const expenseData = cashFlow.map((r) => r.expense);
   const chart = new Chart(ctx, {
@@ -161,8 +208,8 @@ function renderCashFlowChart(cashFlow: { month: string; income: number; expense:
       responsive: true,
       maintainAspectRatio: true,
       scales: {
-        y: { beginAtZero: true, title: { display: true, text: "金額" } },
-        x: { title: { display: true, text: "月" } },
+        y: { beginAtZero: true, title: { display: false } },
+        x: { title: { display: false } },
       },
     },
   });
@@ -180,7 +227,7 @@ function renderCashFlowTable(cashFlow: { month: string; income: number; expense:
   headerRow.innerHTML = "<th>項目</th>";
   cashFlow.forEach((r) => {
     const th = document.createElement("th");
-    th.textContent = r.month;
+    th.textContent = formatMonthLabel(r.month);
     headerRow.appendChild(th);
   });
   thead.appendChild(headerRow);
@@ -220,6 +267,42 @@ function renderTypeCharts(
     });
     chartInstances.push(chart);
   });
+}
+
+/** 収支種別集計表の運転資金（折れ線）と残高（棒）を実績取引の資金繰りグラフに表示。 */
+function renderActualCashFlowChart(byMonth: { income: number[]; expense: number[] }): void {
+  const canvas = document.getElementById("transaction-analysis-actual-cashflow-chart") as HTMLCanvasElement | null;
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+  const months = ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"];
+  let funds = 0;
+  const fundsData = months.map((_, i) => {
+    const inc = byMonth.income[i] ?? 0;
+    const exp = byMonth.expense[i] ?? 0;
+    funds += inc - exp;
+    return funds;
+  });
+  const balanceData = months.map((_, i) => (byMonth.income[i] ?? 0) - (byMonth.expense[i] ?? 0));
+  const chart = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: months,
+      datasets: [
+        { label: "運転資金", data: fundsData, type: "line", borderColor: "#1d4ed8", backgroundColor: "rgba(29, 78, 216, 0.1)", fill: true, tension: 0.2, order: 1 },
+        { label: "残高", data: balanceData, type: "bar", backgroundColor: "rgba(34, 197, 94, 0.6)", order: 2 },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      scales: {
+        y: { beginAtZero: true, title: { display: false } },
+        x: { title: { display: false } },
+      },
+    },
+  });
+  chartInstances.push(chart);
 }
 
 function renderTypeTable(byMonth: { income: number[]; expense: number[]; transfer: number[] }): void {
@@ -321,6 +404,53 @@ function renderCategoryTable(
   });
 }
 
+/** カテゴリーごとの割合を円グラフで表示（支出・収入・振替の3つ）。スライド色はカテゴリーのCOLOR、円内に%を表示。中心は白円＋合計金額。 */
+function renderCategoryRatioCharts(
+  totals: { expense: Map<string, number>; income: Map<string, number>; transfer: Map<string, number> },
+  getCategoryName: (id: string) => string
+): void {
+  const ids = ["transaction-analysis-ratio-expense-chart", "transaction-analysis-ratio-income-chart", "transaction-analysis-ratio-transfer-chart"] as const;
+  const keys = ["expense", "income", "transfer"] as const;
+  keys.forEach((key, idx) => {
+    const canvas = document.getElementById(ids[idx]) as HTMLCanvasElement | null;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const map = totals[key];
+    const entries = Array.from(map.entries()).sort((a, b) => b[1] - a[1]);
+    const labels = entries.length > 0 ? entries.map(([catId]) => getCategoryName(catId) || catId) : ["データなし"];
+    const data = entries.length > 0 ? entries.map(([, amount]) => amount) : [1];
+    const total = entries.length > 0 ? entries.reduce((s, [, amount]) => s + amount, 0) : 0;
+    const backgroundColor =
+      entries.length > 0
+        ? entries.map(([catId]) => (getCategoryById(catId)?.COLOR || ICON_DEFAULT_COLOR).trim() || ICON_DEFAULT_COLOR)
+        : ["#e0e0e0"];
+    const chart = new Chart(ctx, {
+      type: "doughnut",
+      data: { labels, datasets: [{ data, backgroundColor }] },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        cutout: "55%",
+        plugins: {
+          legend: { position: "bottom" },
+          centerLabel: { label: "合計", total },
+          datalabels: {
+            formatter: (value: number) => {
+              const sum = data.reduce((a, b) => a + b, 0);
+              const pct = sum ? Math.round((value / sum) * 100) : 0;
+              return `${pct}%`;
+            },
+            color: "#fff",
+            font: { size: 12, weight: "bold" },
+          },
+        },
+      },
+    });
+    chartInstances.push(chart);
+  });
+}
+
 function renderCategoryRatioTables(
   totals: { expense: Map<string, number>; income: Map<string, number>; transfer: Map<string, number> },
   getCategoryName: (id: string) => string,
@@ -412,10 +542,10 @@ function loadAndRender(): void {
   renderCashFlowChart(cashFlow);
   renderCashFlowTable(cashFlow);
 
-  const thisYearOwn = getThisYearActuals(transactionList, ownAccountIds);
-  const thisYearVisible = getThisYearActualsVisible(transactionList);
+  const yearActualsOwn = getActualsForYear(transactionList, ownAccountIds, analysisYear);
+  const yearActualsVisible = getActualsVisibleForYear(transactionList, analysisYear);
   const byMonth = { income: new Array(12).fill(0), expense: new Array(12).fill(0), transfer: new Array(12).fill(0) };
-  thisYearOwn.forEach((row) => {
+  yearActualsOwn.forEach((row) => {
     const d = getActualTargetDate(row);
     const m = parseInt(d.slice(5, 7), 10) - 1;
     if (m < 0 || m > 11) return;
@@ -426,6 +556,7 @@ function loadAndRender(): void {
     else if (type === "transfer") byMonth.transfer[m] += amount;
   });
   renderTypeCharts(byMonth);
+  renderActualCashFlowChart(byMonth);
   renderTypeTable(byMonth);
 
   const byCategoryMonth = {
@@ -435,7 +566,7 @@ function loadAndRender(): void {
   };
   const categoryTotals = { expense: new Map<string, number>(), income: new Map<string, number>(), transfer: new Map<string, number>() };
   ([["expense", "expense"], ["income", "income"], ["transfer", "transfer"]] as const).forEach(([typeKey, typeVal]) => {
-    thisYearOwn.filter((r) => (r.TRANSACTION_TYPE || "").toLowerCase() === typeVal).forEach((row) => {
+    yearActualsOwn.filter((r) => (r.TRANSACTION_TYPE || "").toLowerCase() === typeVal).forEach((row) => {
       const catId = (row.CATEGORY_ID || "").trim() || "—";
       const d = getActualTargetDate(row);
       const m = parseInt(d.slice(5, 7), 10) - 1;
@@ -454,10 +585,11 @@ function loadAndRender(): void {
   renderCategoryCharts(byCategoryMonth, getCategoryName);
   const categoryTab = document.querySelector(".transaction-analysis-tab[data-analysis-category-tab].is-active") as HTMLButtonElement | undefined;
   renderCategoryTable(byCategoryMonth, (categoryTab?.dataset.analysisCategoryTab as "expense" | "income" | "transfer") || "expense", getCategoryName);
+  renderCategoryRatioCharts(categoryTotals, getCategoryName);
   renderCategoryRatioTables(categoryTotals, getCategoryName, getCategoryIcon);
 
   const byAccountMonth = new Map<string, number[]>();
-  thisYearVisible.forEach((row) => {
+  yearActualsVisible.forEach((row) => {
     const inId = (row.ACCOUNT_ID_IN || "").trim();
     const outId = (row.ACCOUNT_ID_OUT || "").trim();
     const amount = parseFloat(String(row.AMOUNT ?? "0")) || 0;
@@ -481,6 +613,9 @@ function loadAndRender(): void {
   const getAccountName = (id: string) => getAccountById(id)?.ACCOUNT_NAME ?? id;
   renderAccountChart(byAccountMonth, getAccountName);
   renderAccountTable(byAccountMonth, getAccountName);
+
+  const yearLabel = document.getElementById("analysis-year-label");
+  if (yearLabel) yearLabel.textContent = `${analysisYear}年`;
 }
 
 function loadAndShowAnalysis(forceReloadFromCsv = false): void {
@@ -492,6 +627,21 @@ function loadAndShowAnalysis(forceReloadFromCsv = false): void {
 export function initTransactionAnalysisView(): void {
   registerViewHandler("transaction-analysis", () => loadAndShowAnalysis());
   registerRefreshHandler("transaction-analysis", () => loadAndShowAnalysis(true));
+
+  const prevBtn = document.getElementById("analysis-year-prev");
+  const nextBtn = document.getElementById("analysis-year-next");
+  if (prevBtn) {
+    prevBtn.addEventListener("click", () => {
+      analysisYear -= 1;
+      loadAndRender();
+    });
+  }
+  if (nextBtn) {
+    nextBtn.addEventListener("click", () => {
+      analysisYear += 1;
+      loadAndRender();
+    });
+  }
 
   document.querySelectorAll(".transaction-analysis-tab[data-analysis-category-tab]").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -506,14 +656,14 @@ export function initTransactionAnalysisView(): void {
       const tbody = document.getElementById("transaction-analysis-category-tbody");
       if (thead && tbody) {
         const ownAccountIds = getOwnAccountIds();
-        const thisYearOwn = getThisYearActuals(transactionList, ownAccountIds);
+        const yearActualsOwn = getActualsForYear(transactionList, ownAccountIds, analysisYear);
         const byCategoryMonth = {
           expense: new Map<string, number[]>(),
           income: new Map<string, number[]>(),
           transfer: new Map<string, number[]>(),
         };
         (["expense", "income", "transfer"] as const).forEach((typeKey) => {
-          thisYearOwn.filter((r) => (r.TRANSACTION_TYPE || "").toLowerCase() === typeKey).forEach((row) => {
+          yearActualsOwn.filter((r) => (r.TRANSACTION_TYPE || "").toLowerCase() === typeKey).forEach((row) => {
             const catId = (row.CATEGORY_ID || "").trim() || "—";
             const d = getActualTargetDate(row);
             const m = parseInt(d.slice(5, 7), 10) - 1;

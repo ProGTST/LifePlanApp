@@ -437,8 +437,11 @@
             <!-- ビュー: 収支分析 -->
             <div id="view-transaction-analysis" class="main-view main-view--hidden" data-view="transaction-analysis">
               <div class="view-body transaction-analysis-view-body">
-                <h1 class="transaction-analysis-page-title">収支分析</h1>
-
+                <div class="transaction-analysis-year-nav" role="group" aria-label="表示年">
+                  <button type="button" class="transaction-analysis-year-btn" id="analysis-year-prev" aria-label="前年">◀</button>
+                  <span class="transaction-analysis-year-label" id="analysis-year-label">2025年</span>
+                  <button type="button" class="transaction-analysis-year-btn" id="analysis-year-next" aria-label="翌年">▶</button>
+                </div>
                 <section class="transaction-analysis-section" aria-labelledby="analysis-cashflow-chart-heading">
                   <h2 id="analysis-cashflow-chart-heading" class="transaction-analysis-heading">予定取引の資金繰りグラフ</h2>
                   <div class="transaction-analysis-chart-wrap">
@@ -449,7 +452,7 @@
                 <section class="transaction-analysis-section" aria-labelledby="analysis-cashflow-table-heading">
                   <h2 id="analysis-cashflow-table-heading" class="transaction-analysis-heading">予定取引の資金繰り表</h2>
                   <div class="transaction-analysis-table-wrap" role="region" aria-label="予定取引の資金繰り表">
-                    <table class="data-table transaction-analysis-table" id="transaction-analysis-cashflow-table">
+                    <table class="data-table transaction-analysis-table transaction-analysis-table--fixed-cols" id="transaction-analysis-cashflow-table">
                       <thead id="transaction-analysis-cashflow-thead"></thead>
                       <tbody id="transaction-analysis-cashflow-tbody"></tbody>
                     </table>
@@ -474,10 +477,17 @@
                   </div>
                 </section>
 
+                <section class="transaction-analysis-section" aria-labelledby="analysis-actual-cashflow-chart-heading">
+                  <h2 id="analysis-actual-cashflow-chart-heading" class="transaction-analysis-heading">実績取引の資金繰りグラフ</h2>
+                  <div class="transaction-analysis-chart-wrap">
+                    <canvas id="transaction-analysis-actual-cashflow-chart" aria-label="実績取引の運転資金（月別）"></canvas>
+                  </div>
+                </section>
+
                 <section class="transaction-analysis-section" aria-labelledby="analysis-type-table-heading">
                   <h2 id="analysis-type-table-heading" class="transaction-analysis-heading">収支種別ごとの集計表</h2>
                   <div class="transaction-analysis-table-wrap">
-                    <table class="data-table transaction-analysis-table" id="transaction-analysis-type-table">
+                    <table class="data-table transaction-analysis-table transaction-analysis-table--fixed-cols" id="transaction-analysis-type-table">
                       <thead id="transaction-analysis-type-thead"></thead>
                       <tbody id="transaction-analysis-type-tbody"></tbody>
                     </table>
@@ -510,10 +520,28 @@
                     <button type="button" class="transaction-analysis-tab" role="tab" data-analysis-category-tab="transfer" aria-selected="false">振替</button>
                   </div>
                   <div class="transaction-analysis-table-wrap">
-                    <table class="data-table transaction-analysis-table" id="transaction-analysis-category-table">
+                    <table class="data-table transaction-analysis-table transaction-analysis-table--fixed-cols" id="transaction-analysis-category-table">
                       <thead id="transaction-analysis-category-thead"></thead>
                       <tbody id="transaction-analysis-category-tbody"></tbody>
                     </table>
+                  </div>
+                </section>
+
+                <section class="transaction-analysis-section" aria-labelledby="analysis-category-ratio-chart-heading">
+                  <h2 id="analysis-category-ratio-chart-heading" class="transaction-analysis-heading">カテゴリーごとの割合グラフ</h2>
+                  <div class="transaction-analysis-charts-row">
+                    <figure class="transaction-analysis-chart-figure">
+                      <figcaption class="transaction-analysis-figcaption">支出</figcaption>
+                      <div class="transaction-analysis-chart-wrap"><canvas id="transaction-analysis-ratio-expense-chart" aria-label="支出カテゴリーごとの割合"></canvas></div>
+                    </figure>
+                    <figure class="transaction-analysis-chart-figure">
+                      <figcaption class="transaction-analysis-figcaption">収入</figcaption>
+                      <div class="transaction-analysis-chart-wrap"><canvas id="transaction-analysis-ratio-income-chart" aria-label="収入カテゴリーごとの割合"></canvas></div>
+                    </figure>
+                    <figure class="transaction-analysis-chart-figure">
+                      <figcaption class="transaction-analysis-figcaption">振替</figcaption>
+                      <div class="transaction-analysis-chart-wrap"><canvas id="transaction-analysis-ratio-transfer-chart" aria-label="振替カテゴリーごとの割合"></canvas></div>
+                    </figure>
                   </div>
                 </section>
 
@@ -554,7 +582,7 @@
                 <section class="transaction-analysis-section" aria-labelledby="analysis-account-table-heading">
                   <h2 id="analysis-account-table-heading" class="transaction-analysis-heading">勘定項目ごとの集計表</h2>
                   <div class="transaction-analysis-table-wrap">
-                    <table class="data-table transaction-analysis-table" id="transaction-analysis-account-table">
+                    <table class="data-table transaction-analysis-table transaction-analysis-table--fixed-cols" id="transaction-analysis-account-table">
                       <thead id="transaction-analysis-account-thead"></thead>
                       <tbody id="transaction-analysis-account-tbody"></tbody>
                     </table>
