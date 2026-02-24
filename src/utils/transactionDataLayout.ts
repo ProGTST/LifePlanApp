@@ -60,17 +60,18 @@ export function setHistoryFilterDateFromTo(from: string, to: string): void {
 
 /**
  * 収支履歴・カレンダー共通の検索条件で、カレンダー画面のときは日付行を非表示にする。
+ * スケジュールでは日付行を表示する（カレンダー→スケジュールのあとでフォームを開いても currentView で再適用する）。
  * 収支履歴画面（一覧表示）のときは一覧パネルの hidden を外す。
  * ※一覧は別ビュー（view-transaction-history）で表示。週/月のタブはカレンダー画面（view-transaction-calendar）のみ。
  * @returns なし
  */
 export function updateTransactionHistoryTabLayout(): void {
-  const fromCalendarMenu =
+  const hideDateRow =
     currentView === "transaction-history-weekly" || currentView === "transaction-history-calendar";
   const dateRow = document.getElementById("transaction-history-date-row");
   if (dateRow) {
-    dateRow.classList.toggle("transaction-history-search-row--hidden", fromCalendarMenu);
-    dateRow.setAttribute("aria-hidden", fromCalendarMenu ? "true" : "false");
+    dateRow.classList.toggle("transaction-history-search-row--hidden", hideDateRow);
+    dateRow.setAttribute("aria-hidden", hideDateRow ? "true" : "false");
   }
   if (currentView === "transaction-history") {
     const listPanel = document.getElementById("transaction-history-list-panel");

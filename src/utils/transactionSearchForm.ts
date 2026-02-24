@@ -18,8 +18,11 @@ import {
   setCalendarPlanStatuses,
 } from "../state";
 import type { SchedulePlanStatus } from "../state";
-import { runFilterChangeCallbacks } from "./transactionDataLayout";
-import { registerHistoryFilterDateSetter } from "./transactionDataLayout";
+import {
+  runFilterChangeCallbacks,
+  registerHistoryFilterDateSetter,
+  updateTransactionHistoryTabLayout,
+} from "./transactionDataLayout";
 import {
   getCategoryById,
   getAccountById,
@@ -665,6 +668,8 @@ export function initTransactionSearchForm(): void {
       panel.style.right = "";
       const accordion = panel.querySelector(".transaction-history-search-accordion");
       if (accordion instanceof HTMLDetailsElement) accordion.open = true;
+      // カレンダー→スケジュールのあとでフォームを開いたときも日付行の表示を現在ビューに合わせて再適用
+      updateTransactionHistoryTabLayout();
     }
   });
 

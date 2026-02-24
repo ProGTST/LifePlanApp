@@ -3,6 +3,7 @@
  */
 import type { TransactionRow } from "../types";
 import type { TransactionTagRow } from "../types";
+import { getPlanOccurrenceDates } from "./planOccurrence";
 
 /** 収支履歴・スケジュールで検索条件を個別に保持するための型 */
 export interface FilterState {
@@ -34,15 +35,19 @@ export function applyFilters(
     if (state.filterStatus.length > 0 && !state.filterStatus.includes(row.PROJECT_TYPE as "plan" | "actual")) return false;
     if (state.filterType.length > 0 && !state.filterType.includes(row.TRANSACTION_TYPE as "income" | "expense" | "transfer")) return false;
     if (state.filterDateFrom || state.filterDateTo) {
-      const from = row.TRANDATE_FROM || "";
-      const to = row.TRANDATE_TO || "";
-      if (row.PROJECT_TYPE === "actual") {
+      if ((row.PROJECT_TYPE || "").toLowerCase() === "actual") {
+        const from = (row.TRANDATE_FROM || "").trim().slice(0, 10);
         if (state.filterDateFrom && from < state.filterDateFrom) return false;
         if (state.filterDateTo && from > state.filterDateTo) return false;
       } else {
-        if (!from || !to) return false;
-        if (state.filterDateFrom && to < state.filterDateFrom) return false;
-        if (state.filterDateTo && from > state.filterDateTo) return false;
+        // 予定取引: 予定発生日（完了予定日は考慮しない）のいずれかが範囲内にあれば抽出
+        const occurrenceDates = getPlanOccurrenceDates(row);
+        const inRange = occurrenceDates.some((d) => {
+          if (state.filterDateFrom && d < state.filterDateFrom) return false;
+          if (state.filterDateTo && d > state.filterDateTo) return false;
+          return true;
+        });
+        if (!inRange) return false;
       }
     }
     if (state.filterCategoryIds.length > 0 && !state.filterCategoryIds.includes(row.CATEGORY_ID)) return false;
