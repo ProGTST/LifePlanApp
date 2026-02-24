@@ -36,6 +36,7 @@ import { initTransactionSearchForm } from "./utils/transactionSearchForm";
 import { initTransactionHistoryView } from "./screens/transaction-history-screen";
 import { initCalendarView } from "./screens/calendar-screen";
 import { initScheduleView } from "./screens/schedule-screen";
+import { initTransactionAnalysisView } from "./screens/transaction-analysis-screen";
 import { initTransactionEntryView } from "./screens/transaction-entry-screen";
 
 /**
@@ -56,6 +57,7 @@ function initAppScreen(): void {
   initTransactionHistoryView();
   initCalendarView();
   initScheduleView();
+  initTransactionAnalysisView();
   initTransactionEntryView();
 
   /* メニューバー・データ最新化: 常に表示。押下で現在画面の CSV 再取得・再描画 */

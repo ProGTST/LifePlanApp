@@ -4661,6 +4661,62 @@ button.pagination-btn--disabled {
   max-height: 320px;
 }
 
+/* ----- 収支分析（#app 付きで詳細度を上げ、確実に適用） ----- */
+#app .transaction-analysis-view-body {
+  max-width: 40rem;
+}
+#app .transaction-analysis-section {
+  margin: 0;
+  padding: 0;
+}
+#app .transaction-analysis-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0 0 1rem;
+  color: var(--color-view-fg, #1a1a1a);
+}
+#app .transaction-analysis-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+#app .transaction-analysis-summary-card {
+  flex: 1 1 8rem;
+  min-width: 0;
+  padding: 1rem;
+  background: var(--color-view-bg, #fff);
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+#app .transaction-analysis-summary-label {
+  font-size: 0.875rem;
+  color: var(--gray-600, #666);
+}
+#app .transaction-analysis-summary-value {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--color-view-fg, #1a1a1a);
+}
+#app .transaction-analysis-summary-value--negative {
+  color: var(--danger, #b91c1c);
+}
+#app .transaction-analysis-summary-value--positive {
+  color: var(--color-button-bg, #646cff);
+}
+#app .transaction-analysis-description {
+  margin: 0 0 1rem;
+  font-size: 0.9375rem;
+  color: var(--gray-600, #666);
+  line-height: 1.5;
+}
+#app #transaction-analysis-to-calendar-btn {
+  margin-top: 0.25rem;
+}
+
 /* ---------------------------------------------------------------------------
    スケジュール画面（ガント風）
    --------------------------------------------------------------------------- */
