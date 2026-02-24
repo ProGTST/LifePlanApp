@@ -3182,13 +3182,47 @@
 #view-transaction-history .view-body + .view-body {
   margin-top: 1rem;
 }
-/* 収支履歴一覧：テーブル外の右上に表示範囲の件数を表示 */
+
+/* 収支履歴一覧：ページネーション位置を固定するため flex でテーブル領域を可変に */
+#view-transaction-history {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+#view-transaction-history > .view-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+#view-transaction-history .transaction-history-data {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+#transaction-history-list-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
 .transaction-history-list-header {
+  flex-shrink: 0;
   display: flex;
   justify-content: flex-end;
   align-items: center;
   min-height: 2rem;
   margin-bottom: 0.5rem;
+}
+/* テーブルを包むスクロール領域（件数に応じて伸縮し、ページネーションは常に下に固定） */
+.transaction-history-table-wrap {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: auto;
 }
 .transaction-history-pagination-info-top {
   font-size: 0.875rem;
@@ -3196,6 +3230,7 @@
 }
 
 .transaction-history-pagination {
+  flex-shrink: 0;
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
@@ -3203,6 +3238,7 @@
   gap: 0.75rem;
   width: 100%;
   text-align: center;
+  margin-top: 0.75rem;
 }
 .transaction-history-pagination-page-info {
   font-size: 0.875rem;
