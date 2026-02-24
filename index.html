@@ -436,7 +436,131 @@
 
             <!-- ビュー: 収支分析 -->
             <div id="view-transaction-analysis" class="main-view main-view--hidden" data-view="transaction-analysis">
-              <div class="view-body"></div>
+              <div class="view-body transaction-analysis-view-body">
+                <h1 class="transaction-analysis-page-title">収支分析</h1>
+
+                <section class="transaction-analysis-section" aria-labelledby="analysis-cashflow-chart-heading">
+                  <h2 id="analysis-cashflow-chart-heading" class="transaction-analysis-heading">予定取引の資金繰りグラフ</h2>
+                  <div class="transaction-analysis-chart-wrap">
+                    <canvas id="transaction-analysis-cashflow-chart" aria-label="予定取引の資金繰り（運転資金・予定支出）"></canvas>
+                  </div>
+                </section>
+
+                <section class="transaction-analysis-section" aria-labelledby="analysis-cashflow-table-heading">
+                  <h2 id="analysis-cashflow-table-heading" class="transaction-analysis-heading">予定取引の資金繰り表</h2>
+                  <div class="transaction-analysis-table-wrap" role="region" aria-label="予定取引の資金繰り表">
+                    <table class="data-table transaction-analysis-table" id="transaction-analysis-cashflow-table">
+                      <thead id="transaction-analysis-cashflow-thead"></thead>
+                      <tbody id="transaction-analysis-cashflow-tbody"></tbody>
+                    </table>
+                  </div>
+                </section>
+
+                <section class="transaction-analysis-section" aria-labelledby="analysis-type-chart-heading">
+                  <h2 id="analysis-type-chart-heading" class="transaction-analysis-heading">収支種別ごとの変動グラフ</h2>
+                  <div class="transaction-analysis-charts-row">
+                    <figure class="transaction-analysis-chart-figure">
+                      <figcaption class="transaction-analysis-figcaption">支出</figcaption>
+                      <div class="transaction-analysis-chart-wrap"><canvas id="transaction-analysis-type-expense-chart" aria-label="今年の支出の月別変動"></canvas></div>
+                    </figure>
+                    <figure class="transaction-analysis-chart-figure">
+                      <figcaption class="transaction-analysis-figcaption">収入</figcaption>
+                      <div class="transaction-analysis-chart-wrap"><canvas id="transaction-analysis-type-income-chart" aria-label="今年の収入の月別変動"></canvas></div>
+                    </figure>
+                    <figure class="transaction-analysis-chart-figure">
+                      <figcaption class="transaction-analysis-figcaption">振替</figcaption>
+                      <div class="transaction-analysis-chart-wrap"><canvas id="transaction-analysis-type-transfer-chart" aria-label="今年の振替の月別変動"></canvas></div>
+                    </figure>
+                  </div>
+                </section>
+
+                <section class="transaction-analysis-section" aria-labelledby="analysis-type-table-heading">
+                  <h2 id="analysis-type-table-heading" class="transaction-analysis-heading">収支種別ごとの集計表</h2>
+                  <div class="transaction-analysis-table-wrap">
+                    <table class="data-table transaction-analysis-table" id="transaction-analysis-type-table">
+                      <thead id="transaction-analysis-type-thead"></thead>
+                      <tbody id="transaction-analysis-type-tbody"></tbody>
+                    </table>
+                  </div>
+                </section>
+
+                <section class="transaction-analysis-section" aria-labelledby="analysis-category-chart-heading">
+                  <h2 id="analysis-category-chart-heading" class="transaction-analysis-heading">カテゴリーごとの推移グラフ</h2>
+                  <div class="transaction-analysis-charts-row">
+                    <figure class="transaction-analysis-chart-figure">
+                      <figcaption class="transaction-analysis-figcaption">支出</figcaption>
+                      <div class="transaction-analysis-chart-wrap"><canvas id="transaction-analysis-category-expense-chart" aria-label="支出カテゴリーごとの月別推移"></canvas></div>
+                    </figure>
+                    <figure class="transaction-analysis-chart-figure">
+                      <figcaption class="transaction-analysis-figcaption">収入</figcaption>
+                      <div class="transaction-analysis-chart-wrap"><canvas id="transaction-analysis-category-income-chart" aria-label="収入カテゴリーごとの月別推移"></canvas></div>
+                    </figure>
+                    <figure class="transaction-analysis-chart-figure">
+                      <figcaption class="transaction-analysis-figcaption">振替</figcaption>
+                      <div class="transaction-analysis-chart-wrap"><canvas id="transaction-analysis-category-transfer-chart" aria-label="振替カテゴリーごとの月別推移"></canvas></div>
+                    </figure>
+                  </div>
+                </section>
+
+                <section class="transaction-analysis-section" aria-labelledby="analysis-category-table-heading">
+                  <h2 id="analysis-category-table-heading" class="transaction-analysis-heading">カテゴリーごとの集計表</h2>
+                  <div class="transaction-analysis-tabs" role="tablist" aria-label="収支種別">
+                    <button type="button" class="transaction-analysis-tab is-active" role="tab" data-analysis-category-tab="expense" aria-selected="true">支出</button>
+                    <button type="button" class="transaction-analysis-tab" role="tab" data-analysis-category-tab="income" aria-selected="false">収入</button>
+                    <button type="button" class="transaction-analysis-tab" role="tab" data-analysis-category-tab="transfer" aria-selected="false">振替</button>
+                  </div>
+                  <div class="transaction-analysis-table-wrap">
+                    <table class="data-table transaction-analysis-table" id="transaction-analysis-category-table">
+                      <thead id="transaction-analysis-category-thead"></thead>
+                      <tbody id="transaction-analysis-category-tbody"></tbody>
+                    </table>
+                  </div>
+                </section>
+
+                <section class="transaction-analysis-section" aria-labelledby="analysis-category-ratio-heading">
+                  <h2 id="analysis-category-ratio-heading" class="transaction-analysis-heading">カテゴリーごとの割合表</h2>
+                  <div class="transaction-analysis-ratio-tables">
+                    <div class="transaction-analysis-ratio-block">
+                      <h3 class="transaction-analysis-ratio-subheading">支出</h3>
+                      <table class="data-table transaction-analysis-table" id="transaction-analysis-ratio-expense-table">
+                        <thead><tr><th>カテゴリー</th><th>合計</th><th>割合</th></tr></thead>
+                        <tbody id="transaction-analysis-ratio-expense-tbody"></tbody>
+                      </table>
+                    </div>
+                    <div class="transaction-analysis-ratio-block">
+                      <h3 class="transaction-analysis-ratio-subheading">収入</h3>
+                      <table class="data-table transaction-analysis-table" id="transaction-analysis-ratio-income-table">
+                        <thead><tr><th>カテゴリー</th><th>合計</th><th>割合</th></tr></thead>
+                        <tbody id="transaction-analysis-ratio-income-tbody"></tbody>
+                      </table>
+                    </div>
+                    <div class="transaction-analysis-ratio-block">
+                      <h3 class="transaction-analysis-ratio-subheading">振替</h3>
+                      <table class="data-table transaction-analysis-table" id="transaction-analysis-ratio-transfer-table">
+                        <thead><tr><th>カテゴリー</th><th>合計</th><th>割合</th></tr></thead>
+                        <tbody id="transaction-analysis-ratio-transfer-tbody"></tbody>
+                      </table>
+                    </div>
+                  </div>
+                </section>
+
+                <section class="transaction-analysis-section" aria-labelledby="analysis-account-chart-heading">
+                  <h2 id="analysis-account-chart-heading" class="transaction-analysis-heading">勘定項目ごとの変動グラフ</h2>
+                  <div class="transaction-analysis-chart-wrap">
+                    <canvas id="transaction-analysis-account-chart" aria-label="勘定項目ごとの今年の月別変動"></canvas>
+                  </div>
+                </section>
+
+                <section class="transaction-analysis-section" aria-labelledby="analysis-account-table-heading">
+                  <h2 id="analysis-account-table-heading" class="transaction-analysis-heading">勘定項目ごとの集計表</h2>
+                  <div class="transaction-analysis-table-wrap">
+                    <table class="data-table transaction-analysis-table" id="transaction-analysis-account-table">
+                      <thead id="transaction-analysis-account-thead"></thead>
+                      <tbody id="transaction-analysis-account-tbody"></tbody>
+                    </table>
+                  </div>
+                </section>
+              </div>
             </div>
 
             <!-- ビュー: 収支記録（メイン） -->

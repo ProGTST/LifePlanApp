@@ -27,7 +27,7 @@
 | エリア | 内容 |
 |--------|------|
 | ヘッダー | タイトル「スケジュール」、データ最新化、検索条件リセット |
-| 検索エリア | 収支履歴と同様の検索条件（予定/実績、種別、日付、カテゴリ、タグ、勘定、金額、フリーテキスト）。filterStateSchedule で保持 |
+| 検索エリア | 収支履歴と同様の検索条件（予定/実績、種別、**日付欄は非表示**、カテゴリ、タグ、勘定、金額、フリーテキスト）。filterStateSchedule で保持。updateTransactionHistoryTabLayout で currentView が schedule のときは日付行を非表示（transaction-history-search-row--hidden） |
 | 一覧エリア | 日/週/月の単位切替。固定列（種類・取引名・取引日・状況）＋日付列。各列に対応する取引を表示。選択月前後を表示するオプション（pastMonths, futureMonths） |
 | 集計エリア | 表示中データの予定収入・予定支出・予定残高、実績収入・実績支出・実績残高、進捗率(収入)・進捗率(支出)・進捗率(残高)。金額・進捗率は条件により赤/青で表示 |
 | 詳細エリア | 行クリックで収支記録画面へ遷移。取引日列クリックで取引予定日ポップアップ、状況列（進行中時）クリックで取引実績照会ポップアップ |
@@ -44,9 +44,11 @@
   - タイトル: 「取引実績：取引名」。
   - 一覧: 取引日・カテゴリ(アイコン)・取引名・金額。表ヘッダーはスクロール時も固定。閉じるボタンは中央寄せ。
 
-### 3.3 入力項目定義（検索条件）
+### 3.3 検索条件の表示・日付抽出
 
-収支履歴画面の検索条件と同様（filterStatus, filterType, filterDateFrom, filterDateTo, filterCategoryIds, filterTagIds, filterAccountIds, filterAmountMin, filterAmountMax, filterFreeText）。スケジュールでは filterStatus は常に ["plan", "actual"] で固定（getFilteredTransactionListForSchedule で plan と actual の両方を使用）。
+- **検索条件の日付欄**: スケジュール画面では検索条件フォームの日付欄（開始日・終了日）を**非表示**にする（updateTransactionHistoryTabLayout。カレンダー同様）。表示範囲はスケジュールの「開始日」「過去・未来の月数」で制御する。
+- **入力項目定義**: 収支履歴画面の検索条件と同様。ただし**スケジュール画面では検索条件フォームの日付欄は非表示**（カレンダー同様、updateTransactionHistoryTabLayout で日付行を隠す）。スケジュールでは filterStatus は常に ["plan", "actual"] で固定（getFilteredTransactionListForSchedule で plan と actual の両方を使用）。日付で絞る場合は filterDateFrom / filterDateTo が使われるが、UI 上は日付欄を出さず、表示範囲はツールバーの開始日・過去/未来月で制御する想定。
+- **予定取引の日付抽出**: 検索条件の日付範囲で予定を絞り込む場合は、**予定発生日**（getPlanOccurrenceDates で算出。完了予定日は考慮しない）のいずれかが範囲内に含まれる予定のみ抽出する（transactionDataFilter.applyFilters）。
 
 ---
 
@@ -67,7 +69,7 @@
 
 ## 5. 業務ルール
 
-- **表示対象**: 収支履歴と同様に、削除フラグ・勘定の参照権限・検索条件で絞り込んだ取引。予定と実績を両方表示（filterStatus は schedule 用で plan+actual 固定）。
+- **表示対象**: 収支履歴と同様に、削除フラグ・勘定の参照権限・検索条件で絞り込んだ取引。予定と実績を両方表示（filterStatus は schedule 用で plan+actual 固定）。**予定取引の日付による抽出**: 検索条件の日付範囲がある場合、予定は**予定発生日**（getPlanOccurrenceDates。完了予定日は考慮しない）のいずれかが範囲内にあるもののみ抽出（transactionDataFilter.applyFilters）。予定取引の日付条件は予定発生日（getPlanOccurrenceDates）で判定する。
 - **日付範囲**: 日単位は 1 日ごとの列、週単位は週の開始日（日曜）ごと、月単位は月ごとの列。表示範囲は過去・未来の月数で制御。
 - **ソート・集計**: 列ごとに該当する取引を日付範囲でフィルタして表示。取引は TRANDATE_FROM～TRANDATE_TO が列の範囲と重なるものを表示。
 - **集計ビュー（予定・実績・進捗率）**

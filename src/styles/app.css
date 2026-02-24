@@ -4663,58 +4663,103 @@ button.pagination-btn--disabled {
 
 /* ----- 収支分析（#app 付きで詳細度を上げ、確実に適用） ----- */
 #app .transaction-analysis-view-body {
-  max-width: 40rem;
+  max-width: none;
+  padding-bottom: 2rem;
+}
+#app .transaction-analysis-page-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0 0 1.5rem;
+  color: var(--color-view-fg, #1a1a1a);
 }
 #app .transaction-analysis-section {
-  margin: 0;
+  margin: 0 0 2.5rem;
   padding: 0;
 }
-#app .transaction-analysis-title {
-  font-size: 1.25rem;
+#app .transaction-analysis-heading {
+  font-size: 1.125rem;
   font-weight: 600;
-  margin: 0 0 1rem;
+  margin: 0 0 0.75rem;
   color: var(--color-view-fg, #1a1a1a);
 }
-#app .transaction-analysis-summary {
+#app .transaction-analysis-chart-wrap {
+  max-width: 100%;
+  min-height: 240px;
+  margin-bottom: 0.5rem;
+}
+#app .transaction-analysis-chart-wrap canvas {
+  max-width: 100%;
+  max-height: 320px;
+}
+#app .transaction-analysis-charts-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 1rem;
-  margin-bottom: 1.25rem;
+  gap: 1rem 1.5rem;
 }
-#app .transaction-analysis-summary-card {
-  flex: 1 1 8rem;
+#app .transaction-analysis-chart-figure {
+  flex: 1 1 18rem;
   min-width: 0;
-  padding: 1rem;
-  background: var(--color-view-bg, #fff);
-  border: 1px solid var(--gray-300);
-  border-radius: var(--radius-md);
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
+  margin: 0 0 0.5rem;
 }
-#app .transaction-analysis-summary-label {
-  font-size: 0.875rem;
-  color: var(--gray-600, #666);
-}
-#app .transaction-analysis-summary-value {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--color-view-fg, #1a1a1a);
-}
-#app .transaction-analysis-summary-value--negative {
-  color: var(--danger, #b91c1c);
-}
-#app .transaction-analysis-summary-value--positive {
-  color: var(--color-button-bg, #646cff);
-}
-#app .transaction-analysis-description {
-  margin: 0 0 1rem;
+#app .transaction-analysis-figcaption {
   font-size: 0.9375rem;
-  color: var(--gray-600, #666);
-  line-height: 1.5;
+  font-weight: 600;
+  margin: 0 0 0.5rem;
+  color: var(--gray-700, #444);
 }
-#app #transaction-analysis-to-calendar-btn {
-  margin-top: 0.25rem;
+#app .transaction-analysis-table-wrap {
+  overflow-x: auto;
+  margin-bottom: 0.5rem;
+}
+#app .transaction-analysis-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+#app .transaction-analysis-table th,
+#app .transaction-analysis-table td {
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--gray-300);
+  text-align: right;
+}
+#app .transaction-analysis-table th:first-child,
+#app .transaction-analysis-table td:first-child {
+  text-align: left;
+  min-width: 5rem;
+}
+#app .transaction-analysis-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+#app .transaction-analysis-tab {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.875rem;
+  border: 1px solid var(--gray-400);
+  border-radius: var(--radius-sm);
+  background: var(--gray-100);
+  color: var(--color-view-fg, #1a1a1a);
+  cursor: pointer;
+}
+#app .transaction-analysis-tab.is-active {
+  background: var(--color-button-bg, #646cff);
+  color: var(--color-button-fg, #fff);
+  border-color: var(--color-button-bg, #646cff);
+}
+#app .transaction-analysis-ratio-tables {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+}
+#app .transaction-analysis-ratio-block {
+  flex: 1 1 16rem;
+  min-width: 0;
+}
+#app .transaction-analysis-ratio-subheading {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem;
+  color: var(--gray-700, #444);
 }
 
 /* ---------------------------------------------------------------------------
