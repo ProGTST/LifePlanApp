@@ -55,14 +55,23 @@
             <!-- ビュー: ホーム -->
             <div id="view-home" class="main-view" data-view="home">
               <div id="home-view-body" class="view-body home-view-body" aria-hidden="false">
-                <section id="home-month-section" class="home-summary-section" aria-labelledby="home-month-heading">
-                  <h2 id="home-month-heading" class="home-summary-heading">今月の状況</h2>
-                  <div id="home-month-content"></div>
+                <section id="home-balance-section" class="home-summary-section" aria-labelledby="home-balance-heading">
+                  <h2 id="home-balance-heading" class="home-summary-heading">勘定項目の残高</h2>
+                  <div id="home-balance-content"></div>
                 </section>
-                <section id="home-week-section" class="home-summary-section" aria-labelledby="home-week-heading">
-                  <h2 id="home-week-heading" class="home-summary-heading">今週の状況</h2>
-                  <div id="home-week-content"></div>
-                </section>
+                <div id="home-below-balance" class="home-below-balance">
+                  <div id="home-below-balance-left" class="home-below-balance-left">
+                    <section id="home-month-section" class="home-summary-section" aria-labelledby="home-month-heading">
+                      <h2 id="home-month-heading" class="home-summary-heading">今月の状況</h2>
+                      <div id="home-month-content"></div>
+                    </section>
+                    <section id="home-week-section" class="home-summary-section" aria-labelledby="home-week-heading">
+                      <h2 id="home-week-heading" class="home-summary-heading">今週の状況</h2>
+                      <div id="home-week-content"></div>
+                    </section>
+                  </div>
+                  <div id="home-below-balance-right" class="home-below-balance-right"></div>
+                </div>
               </div>
             </div>
 
