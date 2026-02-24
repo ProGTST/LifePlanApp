@@ -1455,30 +1455,32 @@ export function refreshCalendarView(): void {
 function loadAndShowCalendar(forceReloadFromCsv = false): void {
   updateTransactionHistoryTabLayout();
   loadTransactionData(forceReloadFromCsv).then(() => {
-    const initialTab = transactionHistoryInitialTab;
-    if (initialTab === "weekly" || initialTab === "calendar") {
-      setTransactionHistoryInitialTab(null);
-      switchTab(initialTab);
-    } else {
-      const activeTab = document.querySelector(".transaction-history-tab.is-active") as HTMLButtonElement | undefined;
-      if (activeTab?.dataset.tab === "weekly") {
-        if (!selectedCalendarYM) {
-          const now = new Date();
-          selectedCalendarYM = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    requestAnimationFrame(() => {
+      const initialTab = transactionHistoryInitialTab;
+      if (initialTab === "weekly" || initialTab === "calendar") {
+        setTransactionHistoryInitialTab(null);
+        switchTab(initialTab);
+      } else {
+        const activeTab = document.querySelector(".transaction-history-tab.is-active") as HTMLButtonElement | undefined;
+        if (activeTab?.dataset.tab === "weekly") {
+          if (!selectedCalendarYM) {
+            const now = new Date();
+            selectedCalendarYM = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+          }
+          renderWeeklyPanel();
+          if (selectedCalendarYM) void renderCharts(selectedCalendarYM);
+          void renderCalendarSummaryRight();
+        } else if (activeTab?.dataset.tab === "calendar") {
+          if (!selectedCalendarYM) {
+            const now = new Date();
+            selectedCalendarYM = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+          }
+          renderCalendarPanel();
+          if (selectedCalendarYM) void renderCharts(selectedCalendarYM);
+          void renderCalendarSummaryRight();
         }
-        renderWeeklyPanel();
-        if (selectedCalendarYM) void renderCharts(selectedCalendarYM);
-        void renderCalendarSummaryRight();
-      } else if (activeTab?.dataset.tab === "calendar") {
-        if (!selectedCalendarYM) {
-          const now = new Date();
-          selectedCalendarYM = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-        }
-        renderCalendarPanel();
-        if (selectedCalendarYM) void renderCharts(selectedCalendarYM);
-        void renderCalendarSummaryRight();
       }
-    }
+    });
   });
 }
 

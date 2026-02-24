@@ -15,7 +15,7 @@ import {
 } from "../utils/csvVersionCheck.ts";
 import { updateTransactionMonthlyForTransaction } from "../utils/transactionMonthlyAggregate";
 import { getPlanOccurrenceDates } from "../utils/planOccurrence";
-import { getActualTransactionsForPlan } from "../utils/transactionDataSync";
+import { getActualTransactionsForPlan, invalidateTransactionDataCache } from "../utils/transactionDataSync";
 
 const CSV_NO_CACHE: RequestInit = { cache: "reload" };
 
@@ -2388,6 +2388,7 @@ export function initTransactionEntryView(): void {
         const txMgmtCsv = transactionManagementListToCsv(newTxMgmtRows);
         await saveTransactionManagementCsv(txMgmtCsv);
         editingTransactionId = null;
+        invalidateTransactionDataCache();
         resetForm();
         const returnView = transactionEntryReturnView || "transaction-history";
         setTransactionEntryReturnView(null);
@@ -2443,6 +2444,7 @@ export function initTransactionEntryView(): void {
           const txMgmtCsv = transactionManagementListToCsv(newTxMgmtRows);
           await saveTransactionManagementCsv(txMgmtCsv);
         }
+        invalidateTransactionDataCache();
         resetForm();
         if (!continuousMode) {
           const returnView = transactionEntryReturnView || "transaction-history";
@@ -2532,6 +2534,7 @@ export function initTransactionEntryView(): void {
         .map((r) => ({ ...r } as Record<string, string>));
       const txMgmtCsv = transactionManagementListToCsv(newTxMgmtRows);
       await saveTransactionManagementCsv(txMgmtCsv);
+      invalidateTransactionDataCache();
       editingTransactionId = null;
       resetForm();
       updateTransactionEntryDeleteButtonVisibility();
@@ -2600,6 +2603,7 @@ export function initTransactionEntryView(): void {
         const txMgmtCsv = transactionManagementListToCsv(newTxMgmtRows);
         await saveTransactionManagementCsv(txMgmtCsv);
       }
+      invalidateTransactionDataCache();
       editingTransactionId = null;
       resetForm();
       updateTransactionEntryDeleteButtonVisibility();

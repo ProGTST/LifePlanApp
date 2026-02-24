@@ -1556,11 +1556,13 @@ export function initScheduleView(): void {
   // ビュー表示時: 取引データ読み込み後、開始日未設定なら今日をセットしてグリッド描画
   registerViewHandler("schedule", () => {
     loadTransactionData().then(() => {
-      const startInput = document.getElementById("schedule-start-date") as HTMLInputElement | null;
-      if (startInput && !startInput.value) {
-        startInput.value = getTodayYMD();
-      }
-      renderScheduleGrid();
+      requestAnimationFrame(() => {
+        const startInput = document.getElementById("schedule-start-date") as HTMLInputElement | null;
+        if (startInput && !startInput.value) {
+          startInput.value = getTodayYMD();
+        }
+        renderScheduleGrid();
+      });
     });
     setDisplayedKeys("schedule", ["TRANSACTION.csv", "CATEGORY.csv", "TRANSACTION_MANAGEMENT.csv"]);
   });

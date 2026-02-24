@@ -22,6 +22,17 @@ let accountRows: AccountRow[] = [];
 let permissionRows: AccountPermissionRow[] = [];
 let transactionManagementRows: TransactionManagementRow[] = [];
 
+/** 取引・マスタを一度でも読み込み済みか（メニューからスケジュール/カレンダーを再表示するときのキャッシュ判定に使用） */
+let transactionDataLoaded = false;
+
+/**
+ * 取引データのキャッシュを無効化する。次回の loadTransactionData() で再取得される。
+ * 収支記録の保存後や、取引関連 CSV の更新後に呼ぶと、スケジュール・カレンダーで最新が表示される。
+ */
+export function invalidateTransactionDataCache(): void {
+  transactionDataLoaded = false;
+}
+
 /**
  * TRANSACTION.csv を取得して取引行の配列で返す。
  * @param noCache - true のときキャッシュを使わず再取得する
@@ -182,10 +193,18 @@ async function fetchTransactionManagementList(noCache = false): Promise<Transact
 
 /**
  * 取引・マスタデータを CSV から取得し state に反映する。一覧・カレンダー両方で利用。
- * @param noCache - true のときキャッシュを使わない
+ * レスポンス改善: noCache が false で既に読み込み済みの場合は再取得せず即解決する
+ * （メニューからスケジュール/カレンダーを再表示するときの体感速度向上）。
+ * @param noCache - true のときキャッシュを使わず必ず再取得する（データ最新化時など）
  * @returns 完了する Promise
  */
 export function loadTransactionData(noCache = false): Promise<void> {
+  if (!noCache && transactionDataLoaded) {
+    return Promise.resolve();
+  }
+  if (noCache) {
+    transactionDataLoaded = false;
+  }
   return Promise.all([
     fetchTransactionList(noCache),
     fetchCategoryList(noCache),
@@ -207,6 +226,7 @@ export function loadTransactionData(noCache = false): Promise<void> {
     permissionRows = permList;
     setTransactionTagList(txTag);
     transactionManagementRows = txMgmt;
+    transactionDataLoaded = true;
   });
 }
 
