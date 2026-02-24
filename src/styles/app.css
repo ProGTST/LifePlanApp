@@ -4807,7 +4807,7 @@ button.pagination-btn--disabled {
   box-sizing: border-box;
 }
 #app .transaction-analysis-table:not(.transaction-analysis-table--fixed-cols) {
-  width: 100%;
+  width: max-content;
 }
 #app .transaction-analysis-table {
   border-collapse: separate;
@@ -4840,6 +4840,50 @@ button.pagination-btn--disabled {
   width: 6.5rem;
   min-width: 6.5rem;
   max-width: 6.5rem;
+}
+/* 運転資金超過となる支出予定表は取引発生日列を小さく */
+#app #transaction-analysis-funds-overflow-table th:first-child,
+#app #transaction-analysis-funds-overflow-table td:first-child {
+  width: 6rem;
+  min-width: 6rem;
+  max-width: 6rem;
+  box-sizing: border-box;
+}
+/* 運転資金超過となる支出予定表はカテゴリー列を左寄せ・幅を広めに・折り返し */
+#app #transaction-analysis-funds-overflow-table th:nth-child(2),
+#app #transaction-analysis-funds-overflow-table td:nth-child(2) {
+  text-align: left;
+  width: 10rem;
+  min-width: 10rem;
+  box-sizing: border-box;
+  white-space: normal;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+#app #transaction-analysis-funds-overflow-table td:nth-child(2) {
+  flex-wrap: wrap;
+}
+/* 運転資金超過となる支出予定表は取引名列を左寄せ・幅を広めに・折り返し */
+#app #transaction-analysis-funds-overflow-table th:nth-child(3),
+#app #transaction-analysis-funds-overflow-table td:nth-child(3) {
+  text-align: left;
+  width: 14rem;
+  min-width: 14rem;
+  box-sizing: border-box;
+  white-space: normal;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+/* 運転資金超過となる支出予定表は金額・残高運転資金・積立額の列幅を同じに広めに */
+#app #transaction-analysis-funds-overflow-table th:nth-child(4),
+#app #transaction-analysis-funds-overflow-table td:nth-child(4),
+#app #transaction-analysis-funds-overflow-table th:nth-child(5),
+#app #transaction-analysis-funds-overflow-table td:nth-child(5),
+#app #transaction-analysis-funds-overflow-table th:nth-child(7),
+#app #transaction-analysis-funds-overflow-table td:nth-child(7) {
+  width: 7rem;
+  min-width: 7rem;
+  box-sizing: border-box;
 }
 #app .transaction-analysis-tabs {
   display: flex;
