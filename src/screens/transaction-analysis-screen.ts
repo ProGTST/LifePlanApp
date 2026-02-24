@@ -466,12 +466,21 @@ function renderFundsOverflowTable(
   }
 }
 
+/** 収支記録・収支履歴の収支種別と同じ色（支出・収入・振替） */
+const TYPE_CHART_COLORS = {
+  expense: "rgba(198, 40, 40, 0.7)",
+  income: "rgba(46, 125, 50, 0.7)",
+  transfer: "rgba(69, 90, 100, 0.7)",
+} as const;
+
 function renderTypeCharts(
   byMonth: { income: number[]; expense: number[]; transfer: number[] }
 ): void {
   const months = ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"];
   const opts = { responsive: true, scales: { y: { beginAtZero: true }, x: {} } };
   const ids = ["transaction-analysis-type-expense-chart", "transaction-analysis-type-income-chart", "transaction-analysis-type-transfer-chart"] as const;
+  const keys = ["expense", "income", "transfer"] as const;
+  const labels = ["支出", "収入", "振替"] as const;
   const data = [byMonth.expense, byMonth.income, byMonth.transfer] as const;
   ids.forEach((id, i) => {
     const canvas = document.getElementById(id) as HTMLCanvasElement | null;
@@ -480,7 +489,10 @@ function renderTypeCharts(
     if (!ctx) return;
     const chart = new Chart(ctx, {
       type: "bar",
-      data: { labels: months, datasets: [{ label: id.includes("expense") ? "支出" : id.includes("income") ? "収入" : "振替", data: data[i], backgroundColor: "rgba(100, 108, 255, 0.6)" }] },
+      data: {
+        labels: months,
+        datasets: [{ label: labels[i], data: data[i], backgroundColor: TYPE_CHART_COLORS[keys[i]] }],
+      },
       options: opts,
     });
     chartInstances.push(chart);
@@ -717,11 +729,15 @@ function renderAccountChart(byAccountMonth: Map<string, number[]>, getAccountNam
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
   const months = ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"];
-  const datasets = Array.from(byAccountMonth.entries()).map(([accId, values]) => ({
-    label: getAccountName(accId) || accId,
-    data: values,
-    backgroundColor: "rgba(100, 108, 255, 0.6)",
-  }));
+  const datasets = Array.from(byAccountMonth.entries()).map(([accId, values]) => {
+    const color = (getAccountById(accId)?.COLOR || ICON_DEFAULT_COLOR).trim() || ICON_DEFAULT_COLOR;
+    const bgColor = /^#[0-9A-Fa-f]{6}$/.test(color) ? `${color}99` : color;
+    return {
+      label: getAccountName(accId) || accId,
+      data: values,
+      backgroundColor: bgColor,
+    };
+  });
   const chart = new Chart(ctx, {
     type: "bar",
     data: { labels: months, datasets },

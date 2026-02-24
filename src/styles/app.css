@@ -4820,11 +4820,20 @@ button.pagination-btn--disabled {
 #app .transaction-analysis-table-wrap {
   overflow-x: auto;
   margin-bottom: 0.5rem;
+  width: fit-content;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+/* 運転資金超過となる支出予定表：縦スクロール可能・最大高さを設定 */
+#app .transaction-analysis-table-wrap:has(#transaction-analysis-funds-overflow-table) {
+  overflow: auto;
+  max-height: 30vh;
+  box-sizing: border-box;
 }
 /* ヘッダー・項目列固定＋月列横スクロール用（資金繰り表・収支種別・カテゴリー・勘定の4表） */
 #app .transaction-analysis-table-wrap:has(.transaction-analysis-table--fixed-cols) {
   overflow: auto;
-  max-height: 70vh;
+  max-height: 40vh;
   width: fit-content;
   max-width: 100%;
   padding: 0;
@@ -4907,6 +4916,17 @@ button.pagination-btn--disabled {
 }
 #app .transaction-analysis-table thead th {
   border-top: 1px solid var(--gray-300);
+}
+/* 運転資金超過となる支出予定表：縦スクロール時にヘッダーを固定 */
+#app #transaction-analysis-funds-overflow-table {
+  overflow: visible;
+}
+#app #transaction-analysis-funds-overflow-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--gray-100, #f0f0f0);
+  box-shadow: 0 1px 0 var(--gray-300);
 }
 #app .transaction-analysis-table thead th:first-child {
   border-top-left-radius: var(--radius-md);
@@ -5005,7 +5025,7 @@ button.pagination-btn--disabled {
 #app #transaction-analysis-ratio-transfer-table td:first-child {
   width: 14rem;
   min-width: 14rem;
-  max-width: 22rem;
+  max-width: 14rem;
   box-sizing: border-box;
   white-space: normal;
   word-wrap: break-word;
@@ -5025,6 +5045,28 @@ button.pagination-btn--disabled {
   min-width: 22px;
   height: 22px;
   min-height: 22px;
+}
+/* カテゴリーごとの割合表：合計列の幅を広めに */
+#app #transaction-analysis-ratio-expense-table th:nth-child(2),
+#app #transaction-analysis-ratio-expense-table td:nth-child(2),
+#app #transaction-analysis-ratio-income-table th:nth-child(2),
+#app #transaction-analysis-ratio-income-table td:nth-child(2),
+#app #transaction-analysis-ratio-transfer-table th:nth-child(2),
+#app #transaction-analysis-ratio-transfer-table td:nth-child(2) {
+  width: 8rem;
+  min-width: 8rem;
+  box-sizing: border-box;
+}
+/* カテゴリーごとの割合表：割合列の幅を広めに */
+#app #transaction-analysis-ratio-expense-table th:nth-child(3),
+#app #transaction-analysis-ratio-expense-table td:nth-child(3),
+#app #transaction-analysis-ratio-income-table th:nth-child(3),
+#app #transaction-analysis-ratio-income-table td:nth-child(3),
+#app #transaction-analysis-ratio-transfer-table th:nth-child(3),
+#app #transaction-analysis-ratio-transfer-table td:nth-child(3) {
+  width: 3rem;
+  min-width: 3rem;
+  box-sizing: border-box;
 }
 /* 勘定項目ごとの集計表：勘定項目列を折り返し・幅を広めに・アイコン表示 */
 #app #transaction-analysis-account-table th:first-child,
@@ -5071,6 +5113,9 @@ button.pagination-btn--disabled {
   display: flex;
   flex-wrap: wrap;
   gap: 1.5rem;
+  max-height: 40vh;
+  overflow: auto;
+  box-sizing: border-box;
 }
 #app .transaction-analysis-ratio-block {
   flex: 1 1 16rem;
