@@ -4886,6 +4886,10 @@ button.pagination-btn--disabled {
   overflow: hidden;
   font-size: 0.875rem;
 }
+/* 固定列テーブルは overflow: visible にして sticky が効くようにする */
+#app .transaction-analysis-table--fixed-cols {
+  overflow: visible;
+}
 #app .transaction-analysis-table th,
 #app .transaction-analysis-table td {
   padding: 0.35rem 0.5rem;
@@ -4969,6 +4973,7 @@ button.pagination-btn--disabled {
   min-width: 7rem;
   box-sizing: border-box;
 }
+
 /* カテゴリーごとの集計表：カテゴリー列を折り返し・幅を広めに・アイコン表示 */
 #app #transaction-analysis-category-table th:first-child,
 #app #transaction-analysis-category-table td:first-child {
