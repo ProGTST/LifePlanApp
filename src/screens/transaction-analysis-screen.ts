@@ -127,6 +127,80 @@ function getPlanRowsForFundsOverflow(list: TransactionRow[], ownAccountIds: Set<
   });
 }
 
+/** 完了の予定取引から運転資金を計算する対象：未削除・個人勘定・計画中または完了（中止以外）・振替以外。 */
+function getPlanRowsForCompletedFunds(list: TransactionRow[], ownAccountIds: Set<string>): TransactionRow[] {
+  return list.filter((row) => {
+    if ((row.PROJECT_TYPE || "").toLowerCase() !== "plan") return false;
+    if ((row.DLT_FLG || "0") === "1") return false;
+    if (!isRowOnlyOwnAccounts(row, ownAccountIds)) return false;
+    const status = (row.PLAN_STATUS || "planning").toLowerCase();
+    if (status === "canceled") return false;
+    const type = (row.TRANSACTION_TYPE || "").toLowerCase();
+    if (type === "transfer") return false;
+    return true;
+  });
+}
+
+type PlanFundsEvent = { date: string; type: "income" | "expense"; amount: number };
+
+/**
+ * 完了として扱う予定取引のイベントを構築する。
+ * 発生日ごとの金額は ①同一取引日の実績取引 → ②予定発生日が予定完了日かつ計画中で実績なし → ③ステータス完了で予定完了日 の優先順位で決定。
+ */
+function getCompletedPlanEvents(planRows: TransactionRow[]): PlanFundsEvent[] {
+  const events: PlanFundsEvent[] = [];
+  for (const row of planRows) {
+    const planAmount = parseFloat(String(row.AMOUNT ?? "0")) || 0;
+    const planType = (row.TRANSACTION_TYPE || "").toLowerCase() as "income" | "expense";
+    const completedSet = parseCompletedPlanDates(row.COMPLETED_PLANDATE);
+    const actualRows = getActualTransactionsForPlan(row.ID);
+    const actualByDate = new Map<string, TransactionRow>();
+    for (const r of actualRows) {
+      const d = getActualTargetDate(r).slice(0, 10);
+      actualByDate.set(d, r);
+    }
+    const allDates = getPlanOccurrenceDates(row);
+
+    for (const d of allDates) {
+      const dateKey = d.slice(0, 10);
+      const isCompletedDate = completedSet.has(dateKey) || actualByDate.has(dateKey);
+      if (!isCompletedDate) continue;
+
+      let amount = planAmount;
+      let type: "income" | "expense" = planType === "income" ? "income" : "expense";
+
+      const actualOnDate = actualByDate.get(dateKey);
+      if (actualOnDate) {
+        amount = parseFloat(String(actualOnDate.AMOUNT ?? "0")) || 0;
+        const t = (actualOnDate.TRANSACTION_TYPE || "").toLowerCase();
+        type = t === "income" ? "income" : "expense";
+      } else if (completedSet.has(dateKey)) {
+        amount = planAmount;
+        type = planType === "income" ? "income" : "expense";
+      }
+
+      events.push({ date: dateKey, type, amount });
+    }
+  }
+  return events;
+}
+
+/** 完了の予定取引イベントを日付順（同一日は収入を先）で処理し、最終時点の運転資金を返す。 */
+function getCompletedFunds(planRows: TransactionRow[]): number {
+  const events = getCompletedPlanEvents(planRows);
+  events.sort((a, b) => {
+    const d = a.date.localeCompare(b.date);
+    if (d !== 0) return d;
+    return a.type === "income" ? -1 : 1;
+  });
+  let funds = 0;
+  for (const e of events) {
+    if (e.type === "income") funds += e.amount;
+    else funds -= e.amount;
+  }
+  return funds;
+}
+
 /** 日付ごとの予定収入・予定支出を集計（同一日は収入を先に計算）。未完了の発生日のみ使用。返却は Map<YYYY-MM-DD, { income, expense }> */
 function aggregatePlanByDate(rows: TransactionRow[]): Map<string, { income: number; expense: number }> {
   const byDate = new Map<string, { income: number; expense: number }>();
@@ -283,8 +357,11 @@ function renderCashFlowTable(cashFlow: { month: string; income: number; expense:
   row("充足率(%)", cashFlow.map((r) => r.rate));
 }
 
-/** 運転資金超過となる支出予定の一覧を取得。同一日は収入を先に計算し、支出時点で 金額 > 運転資金 となる支出を列挙。未完了の発生日のみ使用。 */
-function getFundsOverflowExpenses(planRows: TransactionRow[]): { date: string; row: TransactionRow; amount: number }[] {
+/** 運転資金超過となる支出予定の一覧を取得。同一日は収入を先に計算し、支出時点で 金額 > 運転資金 となる支出を列挙。未完了の発生日のみ使用。計算開始金額は完了の予定取引から求めた運転資金。 */
+function getFundsOverflowExpenses(
+  planRows: TransactionRow[],
+  initialFunds: number
+): { date: string; row: TransactionRow; amount: number; fundsAtDate: number; fundsAfterExpense: number; monthsFromNow: number }[] {
   const events: { date: string; type: "income" | "expense"; amount: number; row?: TransactionRow }[] = [];
   for (const row of planRows) {
     const amount = parseFloat(String(row.AMOUNT ?? "0")) || 0;
@@ -304,22 +381,31 @@ function getFundsOverflowExpenses(planRows: TransactionRow[]): { date: string; r
     if (d !== 0) return d;
     return a.type === "income" ? -1 : 1;
   });
-  let funds = 0;
-  const overflow: { date: string; row: TransactionRow; amount: number }[] = [];
+  const now = new Date();
+  const currY = now.getFullYear();
+  const currM = now.getMonth() + 1;
+  let funds = initialFunds;
+  const overflow: { date: string; row: TransactionRow; amount: number; fundsAtDate: number; fundsAfterExpense: number; monthsFromNow: number }[] = [];
   for (const e of events) {
     if (e.type === "income") {
       funds += e.amount;
     } else {
-      if (e.row && e.amount > funds) overflow.push({ date: e.date, row: e.row, amount: e.amount });
+      if (e.row && e.amount > funds) {
+        const [y, m] = e.date.slice(0, 7).split("-").map(Number);
+        const monthsFromNow = Math.max(1, (y - currY) * 12 + (m - currM));
+        const fundsAfter = funds - e.amount;
+        overflow.push({ date: e.date, row: e.row, amount: e.amount, fundsAtDate: funds, fundsAfterExpense: fundsAfter, monthsFromNow });
+      }
       funds -= e.amount;
     }
   }
   return overflow;
 }
 
-/** 運転資金超過となる取引支出表と合計・毎月の積立額を描画。 */
+/** 運転資金超過となる支出予定表と合計・毎月の積立額を描画。 */
 function renderFundsOverflowTable(
-  overflow: { date: string; row: TransactionRow; amount: number }[],
+  overflow: { date: string; row: TransactionRow; amount: number; fundsAtDate: number; fundsAfterExpense: number; monthsFromNow: number }[],
+  initialFunds: number,
   getCategoryName: (id: string) => string,
   getCategoryIcon: (id: string) => HTMLElement
 ): void {
@@ -327,7 +413,9 @@ function renderFundsOverflowTable(
   const summaryEl = document.getElementById("transaction-analysis-funds-overflow-summary");
   if (!tbody) return;
   tbody.innerHTML = "";
-  overflow.forEach(({ date, row, amount }) => {
+  overflow.forEach(({ date, row, amount, fundsAtDate, fundsAfterExpense, monthsFromNow }) => {
+    const shortfall = Math.max(0, amount - fundsAtDate);
+    const monthlyRequired = monthsFromNow > 0 ? Math.round(shortfall / monthsFromNow) : shortfall;
     const tr = document.createElement("tr");
     const dateTd = document.createElement("td");
     dateTd.textContent = date;
@@ -338,15 +426,23 @@ function renderFundsOverflowTable(
     const catId = (row.CATEGORY_ID || "").trim() || "—";
     catTd.appendChild(getCategoryIcon(catId));
     catTd.appendChild(document.createTextNode(getCategoryName(catId) || catId));
-    const memoTd = document.createElement("td");
-    memoTd.textContent = (row.MEMO || "").trim() || "—";
+    const nameTd = document.createElement("td");
+    nameTd.textContent = (row.NAME || "").trim() || "—";
     const amountTd = document.createElement("td");
     amountTd.textContent = amount.toLocaleString();
     amountTd.style.textAlign = "right";
+    const fundsTd = document.createElement("td");
+    fundsTd.textContent = fundsAfterExpense.toLocaleString();
+    fundsTd.style.textAlign = "right";
+    const monthlyTd = document.createElement("td");
+    monthlyTd.textContent = monthlyRequired.toLocaleString();
+    monthlyTd.style.textAlign = "right";
     tr.appendChild(dateTd);
     tr.appendChild(catTd);
-    tr.appendChild(memoTd);
+    tr.appendChild(nameTd);
     tr.appendChild(amountTd);
+    tr.appendChild(fundsTd);
+    tr.appendChild(monthlyTd);
     tbody.appendChild(tr);
   });
   const total = overflow.reduce((s, { amount }) => s + amount, 0);
@@ -361,10 +457,11 @@ function renderFundsOverflowTable(
   }
   const monthly = months > 0 ? Math.round(total / months) : 0;
   if (summaryEl) {
+    const fundsText = `運転資金: ${initialFunds.toLocaleString()}円`;
     if (overflow.length === 0) {
-      summaryEl.textContent = "運転資金を超過する予定支出はありません。";
+      summaryEl.textContent = `${fundsText}　運転資金を超過する予定支出はありません。`;
     } else {
-      summaryEl.textContent = `合計金額: ${total.toLocaleString()}円　毎月の積立額: ${monthly.toLocaleString()}円（現在から最終取引発生日まで${months}ヶ月）`;
+      summaryEl.textContent = `${fundsText}　合計金額: ${total.toLocaleString()}円　毎月の積立額: ${monthly.toLocaleString()}円（現在から最終取引発生日まで${months}ヶ月）`;
     }
   }
 }
@@ -706,8 +803,10 @@ function loadAndRender(): void {
     return createIconWrap(cat?.COLOR || ICON_DEFAULT_COLOR, cat?.ICON_PATH, { tag: "span" });
   };
   const fundsOverflowPlanRows = getPlanRowsForFundsOverflow(transactionList, ownAccountIds);
-  const fundsOverflow = getFundsOverflowExpenses(fundsOverflowPlanRows);
-  renderFundsOverflowTable(fundsOverflow, getCategoryName, getCategoryIcon);
+  const completedFundsPlanRows = getPlanRowsForCompletedFunds(transactionList, ownAccountIds);
+  const initialFunds = getCompletedFunds(completedFundsPlanRows);
+  const fundsOverflow = getFundsOverflowExpenses(fundsOverflowPlanRows, initialFunds);
+  renderFundsOverflowTable(fundsOverflow, initialFunds, getCategoryName, getCategoryIcon);
   renderCategoryCharts(byCategoryMonth, getCategoryName);
   const categoryTab = document.querySelector(".transaction-analysis-tab[data-analysis-category-tab].is-active") as HTMLButtonElement | undefined;
   renderCategoryTable(byCategoryMonth, (categoryTab?.dataset.analysisCategoryTab as "expense" | "income" | "transfer") || "expense", getCategoryName);
