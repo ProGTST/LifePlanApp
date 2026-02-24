@@ -42,6 +42,7 @@
   flex: 1;
   min-height: 0;
   overflow: hidden;
+  position: relative;
 }
 
 .app-body {
@@ -162,7 +163,13 @@
 }
 
 /* ----- サイドバー ----- */
+/* オーバーレイ表示のため position: absolute でメインの幅を変更しない */
 .app-sidebar {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
   flex-shrink: 0;
   width: 0;
   padding: 0;
