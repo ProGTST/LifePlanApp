@@ -553,6 +553,68 @@
   box-sizing: border-box;
 }
 
+/* ホーム: 今月の状況・今週の状況 */
+.home-summary-section {
+  margin-bottom: 2rem;
+}
+.home-summary-section:last-of-type {
+  margin-bottom: 0;
+}
+.home-summary-heading {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin: 0 0 0.75rem;
+  color: var(--color-view-fg, #1a1a1a);
+}
+.home-summary-table {
+  width: 100%;
+  max-width: 32rem;
+  border-collapse: separate;
+  border-spacing: 0;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  font-size: 0.875rem;
+  margin-bottom: 0.5rem;
+}
+.home-summary-table th,
+.home-summary-table td {
+  padding: 0.4rem 0.75rem;
+  border: none;
+  border-right: 1px solid var(--gray-300);
+  border-bottom: 1px solid var(--gray-300);
+  text-align: left;
+  background: var(--color-view-bg, #fff);
+  box-sizing: border-box;
+}
+.home-summary-table th:first-child,
+.home-summary-table td:first-child {
+  border-left: 1px solid var(--gray-300);
+}
+.home-summary-table thead th {
+  border-top: 1px solid var(--gray-300);
+}
+.home-summary-table thead th:first-child {
+  border-top-left-radius: var(--radius-md);
+}
+.home-summary-table thead th:last-child {
+  border-top-right-radius: var(--radius-md);
+}
+.home-summary-table tbody tr:last-child td:first-child {
+  border-bottom-left-radius: var(--radius-md);
+}
+.home-summary-table tbody tr:last-child td:last-child {
+  border-bottom-right-radius: var(--radius-md);
+}
+.home-summary-table th {
+  background: var(--gray-100, #f0f0f0);
+  font-weight: 600;
+}
+.home-summary-table td:nth-child(2),
+.home-summary-table td:nth-child(3),
+.home-summary-table td:nth-child(4) {
+  text-align: right;
+}
+
 .view-header {
   display: flex;
   align-items: center;
@@ -4820,6 +4882,8 @@ button.pagination-btn--disabled {
 #app .transaction-analysis-table {
   border-collapse: separate;
   border-spacing: 0;
+  border-radius: var(--radius-md);
+  overflow: hidden;
   font-size: 0.875rem;
 }
 #app .transaction-analysis-table th,
@@ -4839,6 +4903,18 @@ button.pagination-btn--disabled {
 }
 #app .transaction-analysis-table thead th {
   border-top: 1px solid var(--gray-300);
+}
+#app .transaction-analysis-table thead th:first-child {
+  border-top-left-radius: var(--radius-md);
+}
+#app .transaction-analysis-table thead th:last-child {
+  border-top-right-radius: var(--radius-md);
+}
+#app .transaction-analysis-table tbody tr:last-child td:first-child {
+  border-bottom-left-radius: var(--radius-md);
+}
+#app .transaction-analysis-table tbody tr:last-child td:last-child {
+  border-bottom-right-radius: var(--radius-md);
 }
 /* 資金繰り表・収支種別集計表は項目列を6.5remに */
 #app #transaction-analysis-cashflow-table th:first-child,

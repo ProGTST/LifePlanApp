@@ -54,7 +54,16 @@
           <main class="app-main">
             <!-- ビュー: ホーム -->
             <div id="view-home" class="main-view" data-view="home">
-              <div class="home-view-body" aria-hidden="false"></div>
+              <div id="home-view-body" class="view-body home-view-body" aria-hidden="false">
+                <section id="home-month-section" class="home-summary-section" aria-labelledby="home-month-heading">
+                  <h2 id="home-month-heading" class="home-summary-heading">今月の状況</h2>
+                  <div id="home-month-content"></div>
+                </section>
+                <section id="home-week-section" class="home-summary-section" aria-labelledby="home-week-heading">
+                  <h2 id="home-week-heading" class="home-summary-heading">今週の状況</h2>
+                  <div id="home-week-content"></div>
+                </section>
+              </div>
             </div>
 
             <!-- ビュー: カレンダー -->
