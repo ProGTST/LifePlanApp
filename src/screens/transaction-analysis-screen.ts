@@ -457,7 +457,7 @@ function renderFundsOverflowTable(
   }
   const monthly = months > 0 ? Math.round(total / months) : 0;
   if (summaryEl) {
-    const fundsText = `運転資金: ${initialFunds.toLocaleString()}円`;
+    const fundsText = `予定完了分の運転資金: ${initialFunds.toLocaleString()}円`;
     if (overflow.length === 0) {
       summaryEl.textContent = `${fundsText}　運転資金を超過する予定支出はありません。`;
     } else {
