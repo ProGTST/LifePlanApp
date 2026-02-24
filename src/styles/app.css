@@ -419,6 +419,7 @@
 #app .btn-header-delete,
 #app .btn-header-save,
 #app .btn-header-default,
+#app #header-entry-btn,
 #app #transaction-history-show-conditions-btn,
 #app #transaction-history-reset-conditions-btn,
 #app #header-transaction-entry-submit,
@@ -439,6 +440,7 @@
 #app .btn-header-delete.is-visible,
 #app .btn-header-save.is-visible,
 #app .btn-header-default.is-visible,
+#app #header-entry-btn.is-visible,
 #app #transaction-history-show-conditions-btn.is-visible,
 #app #transaction-history-reset-conditions-btn.is-visible,
 #app #header-transaction-entry-submit.is-visible,
@@ -543,6 +545,12 @@
 
 .main-view--hidden {
   display: none !important;
+}
+
+/* ホーム: 空白ビューブロックをメイン領域いっぱいに表示 */
+#view-home .home-view-body {
+  min-height: 100%;
+  box-sizing: border-box;
 }
 
 .view-header {

@@ -72,6 +72,11 @@ function initAppScreen(): void {
     updateCurrentMenuItem();
   }
 
+  document.getElementById("header-entry-btn")?.addEventListener("click", () => {
+    setTransactionEntryEditId(null);
+    setTransactionEntryViewOnly(false);
+    navigateTo("transaction-entry");
+  });
   document.getElementById("footer-home-btn")?.addEventListener("click", () => navigateTo("home"));
   document.getElementById("footer-calendar-btn")?.addEventListener("click", () => navigateTo("transaction-history-calendar"));
   document.getElementById("footer-schedule-btn")?.addEventListener("click", () => navigateTo("schedule"));

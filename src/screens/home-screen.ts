@@ -7,9 +7,6 @@ import { PROFILE_ICON_DEFAULT_COLOR } from "../constants/colorPresets.ts";
 
 const PROFILE_NAME_LENGTH = 4;
 
-let greetInputEl: HTMLInputElement | null = null;
-let greetMsgEl: HTMLElement | null = null;
-
 /**
  * 表示名の先頭 N 文字を取得する（デフォルトアイコン用略称）。
  * @param name - 表示名
@@ -85,19 +82,7 @@ async function renderHeaderProfile(forceReloadFromCsv = false): Promise<void> {
 }
 
 /**
- * 挨拶メッセージを Tauri の greet で取得し、表示要素に反映する。
- * @returns Promise
- */
-async function greet(): Promise<void> {
-  if (greetMsgEl && greetInputEl) {
-    greetMsgEl.textContent = await invoke("greet", {
-      name: greetInputEl.value,
-    });
-  }
-}
-
-/**
- * ホーム画面の初期化を行う。「home」ビュー表示時のハンドラ登録と挨拶フォームのイベント登録を行う。
+ * ホーム画面の初期化を行う。「home」ビュー表示時のハンドラ登録を行う。
  * @returns なし
  */
 export function initHomeScreen(): void {
@@ -105,11 +90,4 @@ export function initHomeScreen(): void {
     renderHeaderProfile();
   });
   registerRefreshHandler("home", () => renderHeaderProfile(true));
-
-  greetInputEl = document.querySelector("#greet-input");
-  greetMsgEl = document.querySelector("#greet-msg");
-  document.querySelector("#greet-form")?.addEventListener("submit", (e) => {
-    e.preventDefault();
-    greet();
-  });
 }

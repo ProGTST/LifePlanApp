@@ -160,6 +160,9 @@ export function showMainView(viewId: string): void {
   const showMasterTools = MASTER_LIST_VIEW_IDS.includes(viewId as (typeof MASTER_LIST_VIEW_IDS)[number]);
   const showFooterNav = showMasterTools || viewId === "profile" || viewId === "design" || viewId === "system";
 
+  const headerEntryBtn = document.getElementById("header-entry-btn");
+  if (headerEntryBtn) headerEntryBtn.classList.toggle("is-visible", viewId === "home");
+
   const headerAddBtn = document.getElementById("header-add-btn");
   if (headerAddBtn) headerAddBtn.classList.toggle("is-visible", showMasterTools);
 
@@ -224,15 +227,17 @@ export function showMainView(viewId: string): void {
   const footerSettingsBtn = document.getElementById("footer-settings-btn");
   const footerBackBtn = document.getElementById("footer-back-btn");
   const isScheduleView = viewId === "schedule";
-  if (footerHomeBtn) footerHomeBtn.classList.toggle("is-visible", showFooterNav || isTransactionView || isScheduleView);
+  const isHomeView = viewId === "home";
+  if (footerHomeBtn) footerHomeBtn.classList.toggle("is-visible", !isHomeView && (showFooterNav || isTransactionView || isScheduleView));
   if (footerCalendarBtn)
-    footerCalendarBtn.classList.toggle("is-visible", isScheduleView);
+    footerCalendarBtn.classList.toggle("is-visible", isHomeView || isScheduleView);
   if (footerScheduleBtn)
-    footerScheduleBtn.classList.toggle("is-visible", (isMasterListOnly || isTransactionHistorySubView) && !isScheduleView);
+    footerScheduleBtn.classList.toggle("is-visible", isHomeView || ((isMasterListOnly || isTransactionHistorySubView) && !isScheduleView));
   if (footerHistoryBtn)
     footerHistoryBtn.classList.toggle(
       "is-visible",
-      isMasterListOnly ||
+      isHomeView ||
+        isMasterListOnly ||
         isScheduleView ||
         viewId === "transaction-entry" ||
         viewId === "transaction-analysis" ||
@@ -241,12 +246,16 @@ export function showMainView(viewId: string): void {
   if (footerEntryBtn)
     footerEntryBtn.classList.toggle(
       "is-visible",
-      (viewId === "transaction-history" || viewId === "transaction-analysis") && !isTransactionHistorySubView && !isScheduleView
+      !isHomeView &&
+        (viewId === "transaction-history" || viewId === "transaction-analysis") &&
+        !isTransactionHistorySubView &&
+        !isScheduleView
     );
   if (footerAnalysisBtn)
     footerAnalysisBtn.classList.toggle(
       "is-visible",
-      (viewId === "transaction-history" || viewId === "transaction-entry") && !isTransactionHistorySubView && !isScheduleView
+      isHomeView ||
+        ((viewId === "transaction-history" || viewId === "transaction-entry") && !isTransactionHistorySubView && !isScheduleView)
     );
   if (footerMenuBtn) footerMenuBtn.classList.toggle("is-visible", isProfileOrDesign);
   if (footerSettingsBtn) footerSettingsBtn.classList.toggle("is-visible", isProfileOrDesign);

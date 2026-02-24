@@ -34,6 +34,7 @@
             </div>
             <span class="app-header-spacer"></span>
             <div class="app-header-actions">
+              <button type="button" class="btn-primary" id="header-entry-btn">収支記録</button>
               <button type="button" class="btn-primary btn-header-add" id="header-add-btn">追加</button>
               <button type="button" class="btn-secondary btn-header-delete" id="header-delete-btn">削除モード</button>
               <button type="button" class="btn-primary btn-header-save" id="header-save-btn">保存</button>
@@ -53,13 +54,7 @@
           <main class="app-main">
             <!-- ビュー: ホーム -->
             <div id="view-home" class="main-view" data-view="home">
-              <h1>Welcome to Tauri</h1>
-              <p>Click on the Tauri logo to learn more about the framework.</p>
-              <form id="greet-form">
-                <input id="greet-input" type="text" placeholder="Enter a name..." />
-                <button type="submit">Greet</button>
-              </form>
-              <p id="greet-msg"></p>
+              <div class="home-view-body" aria-hidden="false"></div>
             </div>
 
             <!-- ビュー: カレンダー -->
@@ -1106,8 +1101,8 @@
           <footer class="app-footer">
             <div class="app-footer-spacer"></div>
             <button type="button" class="btn-footer-nav" id="footer-home-btn">ホーム</button>
-            <button type="button" class="btn-footer-nav" id="footer-calendar-btn">カレンダー</button>
             <button type="button" class="btn-footer-nav" id="footer-schedule-btn">スケジュール</button>
+            <button type="button" class="btn-footer-nav" id="footer-calendar-btn">カレンダー</button>
             <button type="button" class="btn-footer-nav" id="footer-history-btn">収支履歴</button>
             <button type="button" class="btn-footer-nav" id="footer-analysis-btn">収支分析</button>
             <button type="button" class="btn-footer-nav" id="footer-entry-btn">収支記録</button>
