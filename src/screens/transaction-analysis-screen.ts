@@ -4,10 +4,11 @@
 import type { TransactionRow } from "../types";
 import { transactionList, currentUserId } from "../state";
 import { registerViewHandler, registerRefreshHandler } from "../app/screen";
-import { loadTransactionData, getAccountRows, getCategoryById, getAccountById } from "../utils/transactionDataSync";
+import { loadTransactionData, getAccountRows, getCategoryById, getAccountById, getActualTransactionsForPlan } from "../utils/transactionDataSync";
 import { setDisplayedKeys } from "../utils/csvWatch";
 import { getPlanOccurrenceDates } from "../utils/planOccurrence";
 import { Chart, registerables } from "chart.js";
+import type { ChartOptions } from "chart.js";
 import ChartDataLabels from "chartjs-plugin-datalabels";
 import { createIconWrap } from "../utils/iconWrap";
 import { ICON_DEFAULT_COLOR } from "../constants/colorPresets";
@@ -78,6 +79,26 @@ function getActualTargetDate(row: TransactionRow): string {
   return to || from || "";
 }
 
+/** 予定完了日（COMPLETED_PLANDATE）のカンマ区切り日付を Set にパース。 */
+function parseCompletedPlanDates(completedPlanDate: string | undefined): Set<string> {
+  const set = new Set<string>();
+  if (!completedPlanDate || typeof completedPlanDate !== "string") return set;
+  for (const s of completedPlanDate.split(",")) {
+    const d = s.trim().slice(0, 10);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(d)) set.add(d);
+  }
+  return set;
+}
+
+/** 予定の「未完了」発生日のみ返す（予定完了日・紐づく実績の取引日に含まれない日付）。 */
+function getOpenOccurrenceDates(row: TransactionRow): string[] {
+  const all = getPlanOccurrenceDates(row);
+  const completedSet = parseCompletedPlanDates(row.COMPLETED_PLANDATE);
+  const actualRows = getActualTransactionsForPlan(row.ID);
+  const actualDates = new Set(actualRows.map((r) => getActualTargetDate(r)));
+  return all.filter((d) => !completedSet.has(d) && !actualDates.has(d));
+}
+
 /** 未削除かつ個人の勘定の予定取引のうち、計画中(完了・中止でない)かつ振替以外。 */
 function getPlanRowsForCashFlow(list: TransactionRow[], ownAccountIds: Set<string>): TransactionRow[] {
   return list.filter((row) => {
@@ -92,14 +113,28 @@ function getPlanRowsForCashFlow(list: TransactionRow[], ownAccountIds: Set<strin
   });
 }
 
-/** 日付ごとの予定収入・予定支出を集計（同一日は収入を先に計算）。返却は Map<YYYY-MM-DD, { income, expense }> */
+/** 運転資金超過表用：取引中(planning)のみ、かつ予定完了日・紐づく実績の取引日に含まれない発生日が1件以上ある予定取引。 */
+function getPlanRowsForFundsOverflow(list: TransactionRow[], ownAccountIds: Set<string>): TransactionRow[] {
+  return list.filter((row) => {
+    if ((row.PROJECT_TYPE || "").toLowerCase() !== "plan") return false;
+    if ((row.DLT_FLG || "0") === "1") return false;
+    if (!isRowOnlyOwnAccounts(row, ownAccountIds)) return false;
+    const status = (row.PLAN_STATUS || "planning").toLowerCase();
+    if (status !== "planning") return false;
+    const type = (row.TRANSACTION_TYPE || "").toLowerCase();
+    if (type === "transfer") return false;
+    return getOpenOccurrenceDates(row).length > 0;
+  });
+}
+
+/** 日付ごとの予定収入・予定支出を集計（同一日は収入を先に計算）。未完了の発生日のみ使用。返却は Map<YYYY-MM-DD, { income, expense }> */
 function aggregatePlanByDate(rows: TransactionRow[]): Map<string, { income: number; expense: number }> {
   const byDate = new Map<string, { income: number; expense: number }>();
   const events: { date: string; type: "income" | "expense"; amount: number }[] = [];
   for (const row of rows) {
     const amount = parseFloat(String(row.AMOUNT ?? "0")) || 0;
     const type = (row.TRANSACTION_TYPE || "").toLowerCase() as "income" | "expense";
-    const dates = getPlanOccurrenceDates(row);
+    const dates = getOpenOccurrenceDates(row);
     for (const d of dates) {
       events.push({ date: d.slice(0, 10), type: type === "income" ? "income" : "expense", amount });
     }
@@ -180,10 +215,10 @@ function formatMonthLabel(ym: string): string {
 /** 収支分析で表示する年（グラフ・表の抽出条件）。 */
 let analysisYear = new Date().getFullYear();
 
-let chartInstances: Chart[] = [];
+let chartInstances: unknown[] = [];
 
 function destroyCharts(): void {
-  chartInstances.forEach((c) => c.destroy());
+  chartInstances.forEach((c) => (c as { destroy(): void }).destroy());
   chartInstances = [];
 }
 
@@ -246,6 +281,92 @@ function renderCashFlowTable(cashFlow: { month: string; income: number; expense:
   row("予定残高", cashFlow.map((r) => r.balance));
   row("運転資金", cashFlow.map((r) => r.funds));
   row("充足率(%)", cashFlow.map((r) => r.rate));
+}
+
+/** 運転資金超過となる支出予定の一覧を取得。同一日は収入を先に計算し、支出時点で 金額 > 運転資金 となる支出を列挙。未完了の発生日のみ使用。 */
+function getFundsOverflowExpenses(planRows: TransactionRow[]): { date: string; row: TransactionRow; amount: number }[] {
+  const events: { date: string; type: "income" | "expense"; amount: number; row?: TransactionRow }[] = [];
+  for (const row of planRows) {
+    const amount = parseFloat(String(row.AMOUNT ?? "0")) || 0;
+    const type = (row.TRANSACTION_TYPE || "").toLowerCase() as "income" | "expense";
+    const dates = getOpenOccurrenceDates(row);
+    for (const d of dates) {
+      events.push({
+        date: d.slice(0, 10),
+        type: type === "income" ? "income" : "expense",
+        amount,
+        row: type === "expense" ? row : undefined,
+      });
+    }
+  }
+  events.sort((a, b) => {
+    const d = a.date.localeCompare(b.date);
+    if (d !== 0) return d;
+    return a.type === "income" ? -1 : 1;
+  });
+  let funds = 0;
+  const overflow: { date: string; row: TransactionRow; amount: number }[] = [];
+  for (const e of events) {
+    if (e.type === "income") {
+      funds += e.amount;
+    } else {
+      if (e.row && e.amount > funds) overflow.push({ date: e.date, row: e.row, amount: e.amount });
+      funds -= e.amount;
+    }
+  }
+  return overflow;
+}
+
+/** 運転資金超過となる取引支出表と合計・毎月の積立額を描画。 */
+function renderFundsOverflowTable(
+  overflow: { date: string; row: TransactionRow; amount: number }[],
+  getCategoryName: (id: string) => string,
+  getCategoryIcon: (id: string) => HTMLElement
+): void {
+  const tbody = document.getElementById("transaction-analysis-funds-overflow-tbody");
+  const summaryEl = document.getElementById("transaction-analysis-funds-overflow-summary");
+  if (!tbody) return;
+  tbody.innerHTML = "";
+  overflow.forEach(({ date, row, amount }) => {
+    const tr = document.createElement("tr");
+    const dateTd = document.createElement("td");
+    dateTd.textContent = date;
+    const catTd = document.createElement("td");
+    catTd.style.display = "flex";
+    catTd.style.alignItems = "center";
+    catTd.style.gap = "0.5rem";
+    const catId = (row.CATEGORY_ID || "").trim() || "—";
+    catTd.appendChild(getCategoryIcon(catId));
+    catTd.appendChild(document.createTextNode(getCategoryName(catId) || catId));
+    const memoTd = document.createElement("td");
+    memoTd.textContent = (row.MEMO || "").trim() || "—";
+    const amountTd = document.createElement("td");
+    amountTd.textContent = amount.toLocaleString();
+    amountTd.style.textAlign = "right";
+    tr.appendChild(dateTd);
+    tr.appendChild(catTd);
+    tr.appendChild(memoTd);
+    tr.appendChild(amountTd);
+    tbody.appendChild(tr);
+  });
+  const total = overflow.reduce((s, { amount }) => s + amount, 0);
+  const now = new Date();
+  const currY = now.getFullYear();
+  const currM = now.getMonth() + 1;
+  const lastItem = overflow[overflow.length - 1];
+  let months = 1;
+  if (lastItem) {
+    const [lastY, lastM] = lastItem.date.slice(0, 7).split("-").map(Number);
+    months = Math.max(1, (lastY - currY) * 12 + (lastM - currM) + 1);
+  }
+  const monthly = months > 0 ? Math.round(total / months) : 0;
+  if (summaryEl) {
+    if (overflow.length === 0) {
+      summaryEl.textContent = "運転資金を超過する予定支出はありません。";
+    } else {
+      summaryEl.textContent = `合計金額: ${total.toLocaleString()}円　毎月の積立額: ${monthly.toLocaleString()}円（現在から最終取引発生日まで${months}ヶ月）`;
+    }
+  }
 }
 
 function renderTypeCharts(
@@ -445,7 +566,7 @@ function renderCategoryRatioCharts(
             font: { size: 12, weight: "bold" },
           },
         },
-      },
+      } as ChartOptions<"doughnut">,
     });
     chartInstances.push(chart);
   });
@@ -536,8 +657,10 @@ function loadAndRender(): void {
   destroyCharts();
   const ownAccountIds = getOwnAccountIds();
 
-  const planRows = getPlanRowsForCashFlow(transactionList, ownAccountIds);
-  const byDate = aggregatePlanByDate(planRows);
+  const planRowsForCashFlow = getPlanRowsForCashFlow(transactionList, ownAccountIds).filter(
+    (row) => getOpenOccurrenceDates(row).length > 0
+  );
+  const byDate = aggregatePlanByDate(planRowsForCashFlow);
   const cashFlow = buildCashFlowByMonth(byDate);
   renderCashFlowChart(cashFlow);
   renderCashFlowTable(cashFlow);
@@ -582,6 +705,9 @@ function loadAndRender(): void {
     const cat = id === "—" ? null : getCategoryById(id);
     return createIconWrap(cat?.COLOR || ICON_DEFAULT_COLOR, cat?.ICON_PATH, { tag: "span" });
   };
+  const fundsOverflowPlanRows = getPlanRowsForFundsOverflow(transactionList, ownAccountIds);
+  const fundsOverflow = getFundsOverflowExpenses(fundsOverflowPlanRows);
+  renderFundsOverflowTable(fundsOverflow, getCategoryName, getCategoryIcon);
   renderCategoryCharts(byCategoryMonth, getCategoryName);
   const categoryTab = document.querySelector(".transaction-analysis-tab[data-analysis-category-tab].is-active") as HTMLButtonElement | undefined;
   renderCategoryTable(byCategoryMonth, (categoryTab?.dataset.analysisCategoryTab as "expense" | "income" | "transfer") || "expense", getCategoryName);
@@ -679,5 +805,5 @@ export function initTransactionAnalysisView(): void {
     });
   });
 
-  setDisplayedKeys(["TRANSACTION", "ACCOUNT", "ACCOUNT_PERMISSION", "CATEGORY", "TAG", "TRANSACTION_TAG", "TRANSACTION_MANAGEMENT"]);
+  setDisplayedKeys("transaction-analysis", ["TRANSACTION", "ACCOUNT", "ACCOUNT_PERMISSION", "CATEGORY", "TAG", "TRANSACTION_TAG", "TRANSACTION_MANAGEMENT"]);
 }

@@ -4715,6 +4715,11 @@ button.pagination-btn--disabled {
   margin: 0 0 0.75rem;
   color: var(--color-view-fg, #1a1a1a);
 }
+#app .transaction-analysis-funds-overflow-summary {
+  margin: 0.75rem 0 0;
+  font-size: 0.9375rem;
+  color: var(--color-view-fg, #1a1a1a);
+}
 #app .transaction-analysis-chart-wrap {
   max-width: 100%;
   margin-bottom: 0;
