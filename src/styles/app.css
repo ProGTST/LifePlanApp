@@ -4969,6 +4969,80 @@ button.pagination-btn--disabled {
   min-width: 7rem;
   box-sizing: border-box;
 }
+/* カテゴリーごとの集計表：カテゴリー列を折り返し・幅を広めに・アイコン表示 */
+#app #transaction-analysis-category-table th:first-child,
+#app #transaction-analysis-category-table td:first-child {
+  width: 14rem;
+  min-width: 14rem;
+  max-width: 22rem;
+  box-sizing: border-box;
+  white-space: normal;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  text-align: left;
+}
+#app #transaction-analysis-category-table td:first-child {
+  flex-wrap: wrap;
+}
+#app #transaction-analysis-category-table td:first-child .category-icon-wrap {
+  flex-shrink: 0;
+  width: 22px;
+  min-width: 22px;
+  height: 22px;
+  min-height: 22px;
+}
+/* カテゴリーごとの割合表：カテゴリー列を折り返し・幅を広めに・アイコン表示 */
+#app #transaction-analysis-ratio-expense-table th:first-child,
+#app #transaction-analysis-ratio-expense-table td:first-child,
+#app #transaction-analysis-ratio-income-table th:first-child,
+#app #transaction-analysis-ratio-income-table td:first-child,
+#app #transaction-analysis-ratio-transfer-table th:first-child,
+#app #transaction-analysis-ratio-transfer-table td:first-child {
+  width: 14rem;
+  min-width: 14rem;
+  max-width: 22rem;
+  box-sizing: border-box;
+  white-space: normal;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  text-align: left;
+}
+#app #transaction-analysis-ratio-expense-table td:first-child,
+#app #transaction-analysis-ratio-income-table td:first-child,
+#app #transaction-analysis-ratio-transfer-table td:first-child {
+  flex-wrap: wrap;
+}
+#app #transaction-analysis-ratio-expense-table td:first-child .category-icon-wrap,
+#app #transaction-analysis-ratio-income-table td:first-child .category-icon-wrap,
+#app #transaction-analysis-ratio-transfer-table td:first-child .category-icon-wrap {
+  flex-shrink: 0;
+  width: 22px;
+  min-width: 22px;
+  height: 22px;
+  min-height: 22px;
+}
+/* 勘定項目ごとの集計表：勘定項目列を折り返し・幅を広めに・アイコン表示 */
+#app #transaction-analysis-account-table th:first-child,
+#app #transaction-analysis-account-table td:first-child {
+  width: 14rem;
+  min-width: 14rem;
+  max-width: 22rem;
+  box-sizing: border-box;
+  white-space: normal;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  text-align: left;
+}
+#app #transaction-analysis-account-table td:first-child {
+  flex-wrap: wrap;
+}
+#app #transaction-analysis-account-table td:first-child .category-icon-wrap {
+  flex-shrink: 0;
+  width: 22px;
+  min-width: 22px;
+  height: 22px;
+  min-height: 22px;
+}
 #app .transaction-analysis-tabs {
   display: flex;
   gap: 0.5rem;

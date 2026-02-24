@@ -593,7 +593,8 @@ function renderCategoryCharts(
 function renderCategoryTable(
   byCategoryMonth: { expense: Map<string, number[]>; income: Map<string, number[]>; transfer: Map<string, number[]> },
   activeTab: "expense" | "income" | "transfer",
-  getCategoryName: (id: string) => string
+  getCategoryName: (id: string) => string,
+  getCategoryIcon: (id: string) => HTMLElement
 ): void {
   const thead = document.getElementById("transaction-analysis-category-thead");
   const tbody = document.getElementById("transaction-analysis-category-tbody");
@@ -612,7 +613,13 @@ function renderCategoryTable(
   const map = byCategoryMonth[activeTab];
   map.forEach((values, catId) => {
     const tr = document.createElement("tr");
-    tr.innerHTML = `<td>${getCategoryName(catId) || catId}</td>`;
+    const categoryTd = document.createElement("td");
+    categoryTd.style.display = "flex";
+    categoryTd.style.alignItems = "center";
+    categoryTd.style.gap = "0.5rem";
+    categoryTd.appendChild(getCategoryIcon(catId));
+    categoryTd.appendChild(document.createTextNode(getCategoryName(catId) || catId));
+    tr.appendChild(categoryTd);
     values.forEach((v) => {
       const td = document.createElement("td");
       td.textContent = v.toLocaleString();
@@ -723,7 +730,11 @@ function renderAccountChart(byAccountMonth: Map<string, number[]>, getAccountNam
   chartInstances.push(chart);
 }
 
-function renderAccountTable(byAccountMonth: Map<string, number[]>, getAccountName: (id: string) => string): void {
+function renderAccountTable(
+  byAccountMonth: Map<string, number[]>,
+  getAccountName: (id: string) => string,
+  getAccountIcon: (id: string) => HTMLElement
+): void {
   const thead = document.getElementById("transaction-analysis-account-thead");
   const tbody = document.getElementById("transaction-analysis-account-tbody");
   if (!thead || !tbody) return;
@@ -740,7 +751,13 @@ function renderAccountTable(byAccountMonth: Map<string, number[]>, getAccountNam
   thead.appendChild(headerRow);
   byAccountMonth.forEach((values, accId) => {
     const tr = document.createElement("tr");
-    tr.innerHTML = `<td>${getAccountName(accId) || accId}</td>`;
+    const accountTd = document.createElement("td");
+    accountTd.style.display = "flex";
+    accountTd.style.alignItems = "center";
+    accountTd.style.gap = "0.5rem";
+    accountTd.appendChild(getAccountIcon(accId));
+    accountTd.appendChild(document.createTextNode(getAccountName(accId) || accId));
+    tr.appendChild(accountTd);
     values.forEach((v) => {
       const td = document.createElement("td");
       td.textContent = v.toLocaleString();
@@ -809,7 +826,7 @@ function loadAndRender(): void {
   renderFundsOverflowTable(fundsOverflow, initialFunds, getCategoryName, getCategoryIcon);
   renderCategoryCharts(byCategoryMonth, getCategoryName);
   const categoryTab = document.querySelector(".transaction-analysis-tab[data-analysis-category-tab].is-active") as HTMLButtonElement | undefined;
-  renderCategoryTable(byCategoryMonth, (categoryTab?.dataset.analysisCategoryTab as "expense" | "income" | "transfer") || "expense", getCategoryName);
+  renderCategoryTable(byCategoryMonth, (categoryTab?.dataset.analysisCategoryTab as "expense" | "income" | "transfer") || "expense", getCategoryName, getCategoryIcon);
   renderCategoryRatioCharts(categoryTotals, getCategoryName);
   renderCategoryRatioTables(categoryTotals, getCategoryName, getCategoryIcon);
 
@@ -836,8 +853,12 @@ function loadAndRender(): void {
     }
   });
   const getAccountName = (id: string) => getAccountById(id)?.ACCOUNT_NAME ?? id;
+  const getAccountIcon = (id: string) => {
+    const acc = getAccountById(id);
+    return createIconWrap(acc?.COLOR || ICON_DEFAULT_COLOR, acc?.ICON_PATH, { tag: "span" });
+  };
   renderAccountChart(byAccountMonth, getAccountName);
-  renderAccountTable(byAccountMonth, getAccountName);
+  renderAccountTable(byAccountMonth, getAccountName, getAccountIcon);
 
   const yearLabel = document.getElementById("analysis-year-label");
   if (yearLabel) yearLabel.textContent = `${analysisYear}年`;
@@ -899,7 +920,11 @@ export function initTransactionAnalysisView(): void {
           });
         });
         const getCategoryName = (id: string) => (id === "—" ? "—" : getCategoryById(id)?.CATEGORY_NAME ?? id);
-        renderCategoryTable(byCategoryMonth, tab, getCategoryName);
+        const getCategoryIcon = (id: string) => {
+          const cat = id === "—" ? null : getCategoryById(id);
+          return createIconWrap(cat?.COLOR || ICON_DEFAULT_COLOR, cat?.ICON_PATH, { tag: "span" });
+        };
+        renderCategoryTable(byCategoryMonth, tab, getCategoryName, getCategoryIcon);
       }
     });
   });
