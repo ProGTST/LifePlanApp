@@ -312,19 +312,19 @@ const defaultFilterState = (): FilterState => ({
 });
 
 /** 収支履歴用の検索条件（一覧で使用）。transaction-history-screen が参照する。 */
-export let historyFilterState: FilterState = defaultFilterState();
+export const historyFilterState: FilterState = defaultFilterState();
 export function setHistoryFilterState(partial: Partial<FilterState> | FilterState): void {
   Object.assign(historyFilterState, partial);
 }
 
 /** カレンダー用の検索条件（週・月カレンダーで使用）。calendar-screen が参照する。 */
-export let calendarFilterState: FilterState = defaultFilterState();
+export const calendarFilterState: FilterState = defaultFilterState();
 export function setCalendarFilterState(partial: Partial<FilterState> | FilterState): void {
   Object.assign(calendarFilterState, partial);
 }
 
 /** スケジュール用の検索条件。schedule-screen が参照する。 */
-export let scheduleFilterState: FilterState = defaultFilterState();
+export const scheduleFilterState: FilterState = defaultFilterState();
 export function setScheduleFilterState(partial: Partial<FilterState> | FilterState): void {
   Object.assign(scheduleFilterState, partial);
 }

@@ -1,0 +1,3 @@
+# ビルド出力先: src-tauri/target（../target だと serde_core 等の build スクリプトが Windows で private.rs を書き損ねることがあるため）
+# [build]
+# target-dir = "../target"

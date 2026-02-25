@@ -32,7 +32,7 @@ import {
   registerFilterChangeCallback,
 } from "../utils/transactionDataLayout";
 import { getCalendarFilteredList } from "../utils/transactionDataFilter";
-import { getPlanOccurrenceDates, getPlanOccurrenceDatesForDisplay } from "../utils/planOccurrence";
+import { getPlanOccurrenceDatesForDisplay } from "../utils/planOccurrence";
 import { getTransactionMonthlyRows } from "../utils/transactionMonthlyAggregate";
 
 /**

@@ -1,0 +1,36 @@
+# cargo-deny: https://embarkstudios.github.io/cargo-deny/
+# 生成: cargo deny init を参考にした最小構成
+
+[advisories]
+# 未メンテ: workspace=直接依存のみエラー, all=すべてエラー, transitive, none
+unmaintained = "workspace"
+yanked = "deny"
+# vulnerability は新形式では常にエラーになるため指定不要
+ignore = []
+
+[bans]
+# 複数バージョン・ワイルドカード
+multiple-versions = "warn"
+wildcards = "deny"
+deny = []
+skip = []
+skip-tree = []
+
+[licenses]
+# version 2: unlicensed は常に deny、allow に無いライセンスは拒否（deny キーは廃止）
+version = 2
+allow = [
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "MIT",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+]
+confidence-threshold = 0.8
+
+[sources]
+# 不明なレジストリ・Git ソースを禁止
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []

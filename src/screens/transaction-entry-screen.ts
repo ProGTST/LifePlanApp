@@ -99,6 +99,7 @@ function filterTransactionsByVisibleAccounts(
  * @param days - 加算する日数
  * @returns 計算後の日付文字列（YYYY-MM-DD）
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- 将来の週表示用に保持
 function addDays(dateStr: string, days: number): string {
   const [y, m, d] = dateStr.split("-").map(Number);
   const date = new Date(y, (m ?? 1) - 1, (d ?? 1) + days);
@@ -113,6 +114,7 @@ function addDays(dateStr: string, days: number): string {
  * @param dateStr - 日付（YYYY-MM-DD）
  * @returns 週の開始日・終了日（YYYY-MM-DD）
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- 将来の週表示用に保持
 function getWeekRangeFromDate(dateStr: string): { start: string; end: string } {
   const [y, m, d] = dateStr.split("-").map(Number);
   const date = new Date(y, (m ?? 1) - 1, d ?? 1);
@@ -129,7 +131,7 @@ function getWeekRangeFromDate(dateStr: string): { start: string; end: string } {
 }
 
 /** 週範囲のラベル文字列（例: 2025年2月10日～2月16日）を返す。将来の表示用に保持。 */
-// @ts-expect-error TS6133 -- 未使用のユーティリティ。週ラベル表示で利用予定。
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- 週ラベル表示で利用予定
 function formatWeekLabel(weekStart: string, weekEnd: string): string {
   const [ys, ms, ds] = weekStart.split("-").map(Number);
   const [ye, me, de] = weekEnd.split("-").map(Number);
@@ -143,6 +145,7 @@ function formatWeekLabel(weekStart: string, weekEnd: string): string {
 }
 
 /** 日付が週範囲内か（以上・以下）で判定する。 */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- 将来の週表示用に保持
 function isDateInWeek(dateStr: string, weekStart: string, weekEnd: string): boolean {
   return dateStr >= weekStart && dateStr <= weekEnd;
 }
@@ -1581,6 +1584,7 @@ function resetForm(): void {
  * @param _which - "out" | "in"（未使用・呼び出し元でどちらの列か判別用）
  * @returns 勘定 ID または空文字
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- 呼び出し元で out/in 判別用の引数
 function getFirstEditableAccountId(_which: "out" | "in"): string {
   const sorted = accountRows
     .filter((a) => editableAccountIds.has(a.ID))

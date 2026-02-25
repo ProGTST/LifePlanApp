@@ -215,7 +215,7 @@ async function handleProfileIconFileSelect(e: Event): Promise<void> {
       if (oldPath.startsWith("/icon/profile/")) {
         try {
           await invoke("delete_profile_icon", { iconPath: oldPath });
-        } catch (_) {
+        } catch {
           /* 削除失敗は無視（ファイルが無い等） */
         }
       }
@@ -345,7 +345,7 @@ export function initProfileView(): void {
         try {
           const { invoke } = await import("@tauri-apps/api/core");
           await invoke("delete_profile_icon", { iconPath: oldPath });
-        } catch (_) { /* 削除失敗は無視 */ }
+        } catch { /* 削除失敗は無視 */ }
       }
     }
     updateProfileIconDisplay();

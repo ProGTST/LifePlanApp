@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "lint": "eslint src",
     "dev": "node scripts/generate-custom-icons-json.js && vite",
     "dev:host": "node scripts/generate-custom-icons-json.js && vite --host",
     "build": "node scripts/generate-custom-icons-json.js && tsc && vite build",
@@ -20,8 +21,11 @@
     "fastify": "^5.7.4"
   },
   "devDependencies": {
+    "@eslint/js": "^9",
     "@tauri-apps/cli": "^2",
+    "eslint": "^9",
     "typescript": "~5.6.2",
+    "typescript-eslint": "^8",
     "vite": "^6.0.3"
   }
 }

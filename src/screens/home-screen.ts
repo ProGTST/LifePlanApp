@@ -56,6 +56,7 @@ const centerLabelAndHolePlugin = {
     const x = arc.x;
     const y = arc.y;
     const r = arc.innerRadius;
+    // 中心に白円を描画
     if (r > 0) {
       ctx.save();
       ctx.beginPath();
@@ -64,6 +65,7 @@ const centerLabelAndHolePlugin = {
       ctx.fill();
       ctx.restore();
     }
+    // ラベルと合計金額を中心に描画
     const label = centerOpts?.label ?? "";
     const total = centerOpts?.total ?? 0;
     const totalStr = total.toLocaleString();
@@ -130,6 +132,7 @@ async function renderHeaderProfile(forceReloadFromCsv = false): Promise<void> {
     const img = document.createElement("img");
     img.alt = "";
     img.className = "app-header-profile-icon-img";
+    // Tauri 環境ではアイコンを base64 で取得、それ以外はパスをそのまま使用
     const isTauri = typeof (window as unknown as { __TAURI_INTERNALS__?: { invoke?: unknown } }).__TAURI_INTERNALS__?.invoke === "function";
     if (isTauri) {
       try {
@@ -173,14 +176,30 @@ function getActualTargetDate(row: TransactionRow): string {
   return to || from || "";
 }
 
-function parseCompletedPlanDates(completedPlanDate: string | undefined): Set<string> {
-  const set = new Set<string>();
-  if (!completedPlanDate || typeof completedPlanDate !== "string") return set;
-  for (const s of completedPlanDate.split(",")) {
-    const d = s.trim().slice(0, 10);
-    if (/^\d{4}-\d{2}-\d{2}$/.test(d)) set.add(d);
-  }
-  return set;
+/** 未削除・個人勘定の予定取引（振替は呼び出し側で除外可）。 */
+function getPlanRowsForHome(list: TransactionRow[], ownAccountIds: Set<string>): TransactionRow[] {
+  return list.filter((row) => {
+    if ((row.PROJECT_TYPE || "").toLowerCase() !== "plan") return false;
+    if ((row.DLT_FLG || "0") === "1") return false;
+    if (!isRowOnlyOwnAccounts(row, ownAccountIds)) return false;
+    return true;
+  });
+}
+
+/** 指定範囲の未削除・個人勘定の実績取引。 */
+function getActualRowsInRange(
+  list: TransactionRow[],
+  ownAccountIds: Set<string>,
+  rangeStart: string,
+  rangeEnd: string
+): TransactionRow[] {
+  return list.filter((row) => {
+    if ((row.PROJECT_TYPE || "").toLowerCase() !== "actual") return false;
+    if ((row.DLT_FLG || "0") === "1") return false;
+    if (!isRowOnlyOwnAccounts(row, ownAccountIds)) return false;
+    const d = getActualTargetDate(row).slice(0, 10);
+    return d >= rangeStart && d <= rangeEnd;
+  });
 }
 
 /** 今月の開始日・終了日（YYYY-MM-DD） */
@@ -211,24 +230,18 @@ function getMonthDailyCumulative(): {
   const dailyIncome = new Array<number>(lastDay).fill(0);
   const dailyExpense = new Array<number>(lastDay).fill(0);
 
-  const actualRows = transactionList.filter((row) => {
-    if ((row.PROJECT_TYPE || "").toLowerCase() !== "actual") return false;
-    if ((row.DLT_FLG || "0") === "1") return false;
-    if (!isRowOnlyOwnAccounts(row, ownAccountIds)) return false;
-    const type = (row.TRANSACTION_TYPE || "").toLowerCase();
-    if (type !== "income" && type !== "expense") return false;
-    const d = getActualTargetDate(row).slice(0, 10);
-    return d >= monthStart && d <= monthEnd;
-  });
+  const actualRows = getActualRowsInRange(transactionList, ownAccountIds, monthStart, monthEnd);
 
+  // 日ごとの収入・支出を加算（収入・支出のみ対象）
   for (const row of actualRows) {
+    const type = (row.TRANSACTION_TYPE || "").toLowerCase();
+    if (type !== "income" && type !== "expense") continue;
     const d = getActualTargetDate(row).slice(0, 10);
     const dayIndex = parseInt(d.slice(8, 10), 10) - 1;
     if (dayIndex < 0 || dayIndex >= lastDay) continue;
     const amount = parseFloat(String(row.AMOUNT ?? "0")) || 0;
-    const type = (row.TRANSACTION_TYPE || "").toLowerCase();
     if (type === "income") dailyIncome[dayIndex] += amount;
-    else if (type === "expense") dailyExpense[dayIndex] += amount;
+    else dailyExpense[dayIndex] += amount;
   }
 
   const labels = Array.from({ length: lastDay }, (_, i) => String(i + 1));
@@ -236,6 +249,7 @@ function getMonthDailyCumulative(): {
   const cumulativeExpense: number[] = [];
   let sumI = 0;
   let sumE = 0;
+  // 1日から月末まで累計を算出
   for (let i = 0; i < lastDay; i++) {
     sumI += dailyIncome[i];
     sumE += dailyExpense[i];
@@ -251,12 +265,7 @@ function getMonthDailyCumulative(): {
 function getMonthPlanOccurrences(): { date: string; row: TransactionRow }[] {
   const ownAccountIds = getOwnAccountIds();
   const { start: monthStart, end: monthEnd } = getMonthRange();
-  const planRows = transactionList.filter((row) => {
-    if ((row.PROJECT_TYPE || "").toLowerCase() !== "plan") return false;
-    if ((row.DLT_FLG || "0") === "1") return false;
-    if (!isRowOnlyOwnAccounts(row, ownAccountIds)) return false;
-    return true;
-  });
+  const planRows = getPlanRowsForHome(transactionList, ownAccountIds);
   const result: { date: string; row: TransactionRow }[] = [];
   for (const row of planRows) {
     const allDates = getPlanOccurrenceDates(row);
@@ -305,13 +314,7 @@ function aggregateActualByCategoryForRange(
     income: new Map(),
     transfer: new Map(),
   };
-  const actualRows = list.filter((row) => {
-    if ((row.PROJECT_TYPE || "").toLowerCase() !== "actual") return false;
-    if ((row.DLT_FLG || "0") === "1") return false;
-    if (!isRowOnlyOwnAccounts(row, ownAccountIds)) return false;
-    const d = getActualTargetDate(row).slice(0, 10);
-    return d >= rangeStart && d <= rangeEnd;
-  });
+  const actualRows = getActualRowsInRange(list, ownAccountIds, rangeStart, rangeEnd);
   for (const row of actualRows) {
     const type = (row.TRANSACTION_TYPE || "").toLowerCase() as "income" | "expense" | "transfer";
     if (type !== "income" && type !== "expense" && type !== "transfer") continue;
@@ -342,15 +345,12 @@ function aggregateForRange(
     actualExpenseOnly: 0,
   };
 
-  const planRows = list.filter((row) => {
-    if ((row.PROJECT_TYPE || "").toLowerCase() !== "plan") return false;
-    if ((row.DLT_FLG || "0") === "1") return false;
-    if (!isRowOnlyOwnAccounts(row, ownAccountIds)) return false;
+  const planRows = getPlanRowsForHome(list, ownAccountIds).filter((row) => {
     const type = (row.TRANSACTION_TYPE || "").toLowerCase();
-    if (type === "transfer") return false;
-    return true;
+    return type !== "transfer";
   });
 
+  // 予定ごとに範囲内の発生日を列挙し、予定金額と紐づく実績金額を集計
   for (const row of planRows) {
     const planAmount = parseFloat(String(row.AMOUNT ?? "0")) || 0;
     const planType = (row.TRANSACTION_TYPE || "").toLowerCase() as "income" | "expense";
@@ -363,8 +363,6 @@ function aggregateForRange(
       const d = getActualTargetDate(r).slice(0, 10);
       actualByDate.set(d, r);
     }
-    const completedSet = parseCompletedPlanDates(row.COMPLETED_PLANDATE);
-    const status = (row.PLAN_STATUS || "planning").toLowerCase();
 
     for (const dateKey of datesInRange) {
       if (planType === "income") {
@@ -375,25 +373,17 @@ function aggregateForRange(
 
       const actualOnDate = actualByDate.get(dateKey);
       if (actualOnDate) {
+        // 発生日に紐づく実績がある場合のみ実績金額を加算
         const amt = parseFloat(String(actualOnDate.AMOUNT ?? "0")) || 0;
         const t = (actualOnDate.TRANSACTION_TYPE || "").toLowerCase();
         if (t === "income") summary.actualIncomeFromPlan += amt;
         else summary.actualExpenseFromPlan += amt;
-      } else if (completedSet.has(dateKey)) {
-        if (planType === "income") summary.actualIncomeFromPlan += planAmount;
-        else summary.actualExpenseFromPlan += planAmount;
       }
     }
   }
 
-  const actualRows = list.filter((row) => {
-    if ((row.PROJECT_TYPE || "").toLowerCase() !== "actual") return false;
-    if ((row.DLT_FLG || "0") === "1") return false;
-    if (!isRowOnlyOwnAccounts(row, ownAccountIds)) return false;
-    const d = getActualTargetDate(row).slice(0, 10);
-    return d >= rangeStart && d <= rangeEnd;
-  });
-
+  // 範囲内の実績取引で予定に紐づかない収入・支出を集計
+  const actualRows = getActualRowsInRange(list, ownAccountIds, rangeStart, rangeEnd);
   for (const row of actualRows) {
     const amount = parseFloat(String(row.AMOUNT ?? "0")) || 0;
     const type = (row.TRANSACTION_TYPE || "").toLowerCase();
@@ -423,6 +413,7 @@ function renderSummaryGauges(summary: RangeSummary): HTMLDivElement {
     ? Math.min(100, Math.round((summary.actualExpenseFromPlan / summary.plannedExpense) * 100))
     : 0;
 
+  // 予定収入・予定支出のゲージを1行ずつ生成
   [
     {
       label: "予定収入",
@@ -473,9 +464,10 @@ function renderSummaryGauges(summary: RangeSummary): HTMLDivElement {
   return wrap;
 }
 
-const homeMonthChartInstances: Chart[] = [];
-const homeWeekChartInstances: Chart[] = [];
-let homeTrendChartInstance: Chart | null = null;
+/** 破棄可能な Chart インスタンスの配列（型の互換のため unknown[]）。 */
+const homeMonthChartInstances: unknown[] = [];
+const homeWeekChartInstances: unknown[] = [];
+let homeTrendChartInstance: { destroy(): void } | null = null;
 
 function getCategoryName(id: string): string {
   return id === "—" ? "—" : (getCategoryById(id)?.CATEGORY_NAME ?? id);
@@ -485,7 +477,7 @@ function renderSummaryPieCharts(
   parent: HTMLElement,
   categoryTotals: ActualByCategory,
   idPrefix: string,
-  chartInstances: Chart[]
+  chartInstances: unknown[]
 ): void {
   if (!homeChartJsRegistered) {
     Chart.register(...registerables, ChartDataLabels, centerLabelAndHolePlugin);
@@ -496,6 +488,7 @@ function renderSummaryPieCharts(
   wrap.className = "home-summary-pie-charts";
   const labels = ["実績支出", "実績収入", "実績振替"] as const;
   const keys: ("expense" | "income" | "transfer")[] = ["expense", "income", "transfer"];
+  // 種別ごとに figure + canvas + figcaption を追加
   keys.forEach((key, idx) => {
     const fig = document.createElement("figure");
     fig.className = "home-summary-pie-figure";
@@ -511,7 +504,8 @@ function renderSummaryPieCharts(
   });
   parent.appendChild(wrap);
 
-  keys.forEach((key, idx) => {
+  // 種別ごとにドーナツチャートを描画
+  keys.forEach((key) => {
     const canvas = document.getElementById(`${idPrefix}-actual-${key}-chart`) as HTMLCanvasElement | null;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
@@ -562,6 +556,7 @@ function renderBalanceSection(): void {
   const totalPermission = permissionGranted.reduce((s, a) => s + parseBalance(a), 0);
   const totalAll = all.reduce((s, a) => s + parseBalance(a), 0);
 
+  // 個人を先に、同種内は SORT_ORDER でソート
   const sortedAll = all.slice().sort((a, b) => {
     const aPersonal = personal.some((p) => p.ID === a.ID) ? 0 : 1;
     const bPersonal = personal.some((p) => p.ID === b.ID) ? 0 : 1;
@@ -589,6 +584,7 @@ function renderBalanceSection(): void {
   const rightBlock = document.createElement("div");
   rightBlock.className = "home-balance-totals-right";
   sortedAll.forEach((row) => {
+    // 勘定ごとにアイコン・名前・残高のブロックを追加
     const block = document.createElement("div");
     block.className = "home-balance-account-block";
     const iconWrap = createIconWrap(
@@ -654,6 +650,7 @@ function renderMonthPlanSection(container: HTMLElement): void {
   const todayYMD = new Date().toISOString().slice(0, 10);
   const occurrences = getMonthPlanOccurrences();
   for (const { date, row } of occurrences) {
+    // 1行: 予定日・ステータス・取引名・金額
     const tr = document.createElement("tr");
     tr.className = "home-plan-row-clickable";
     tr.tabIndex = 0;
@@ -680,6 +677,7 @@ function renderMonthPlanSection(container: HTMLElement): void {
       getActualTransactionsForPlan(row.ID).map((a) => getActualTargetDate(a).slice(0, 10)).filter((s) => /^\d{4}-\d{2}-\d{2}$/.test(s))
     );
     const isDelayed = hasDelayedPlanDates(row, todayYMD, actualTargetDates);
+    // 遅れでなければ計画中/実績あり/完了/中止のアイコン、遅れなら炎アイコン
     if (!isDelayed) {
       let statusClass =
         planStatus === "complete" ? "complete" : planStatus === "canceled" ? "canceled" : "planning";
@@ -696,6 +694,7 @@ function renderMonthPlanSection(container: HTMLElement): void {
       statusWrap.appendChild(statusInner);
       planInner.appendChild(statusWrap);
     } else {
+      // 遅れアイコン
       const delayedIcon = document.createElement("span");
       delayedIcon.className = "transaction-history-plan-status-icon transaction-history-plan-status-icon--delayed";
       delayedIcon.setAttribute("aria-label", "遅れ");
@@ -774,6 +773,7 @@ function renderMonthTrendChart(): void {
 
   renderMonthPlanSection(container);
 
+  // 今月の日別累計で折れ線グラフを描画
   const { labels, cumulativeIncome, cumulativeExpense } = getMonthDailyCumulative();
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
@@ -840,15 +840,16 @@ function renderHomeSummary(): void {
   const weekContent = document.getElementById("home-week-content");
   if (!monthContent || !weekContent) return;
 
-  homeMonthChartInstances.forEach((ch) => ch.destroy());
+  homeMonthChartInstances.forEach((ch) => (ch as { destroy(): void }).destroy());
   homeMonthChartInstances.length = 0;
-  homeWeekChartInstances.forEach((ch) => ch.destroy());
+  homeWeekChartInstances.forEach((ch) => (ch as { destroy(): void }).destroy());
   homeWeekChartInstances.length = 0;
 
   const ownAccountIds = getOwnAccountIds();
   const monthRange = getMonthRange();
   const weekRange = getWeekRange();
 
+  // 今月・今週の予定/実績集計
   const monthSummary = aggregateForRange(
     transactionList,
     ownAccountIds,
@@ -881,6 +882,7 @@ function renderHomeSummary(): void {
   weekContent.innerHTML = "";
   weekContent.appendChild(renderSummaryGauges(weekSummary));
   renderSummaryPieCharts(weekContent, weekActualByCategory, "home-week", homeWeekChartInstances);
+  // 今月・今週それぞれにゲージと円グラフを描画
 }
 
 export function initHomeScreen(): void {

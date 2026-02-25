@@ -56,7 +56,9 @@ fn project_public_data_dir() -> Option<PathBuf> {
     if from_exe.is_some() {
         return from_exe;
     }
-    std::env::current_dir().ok().map(|cwd| cwd.join("public").join("data"))
+    std::env::current_dir()
+        .ok()
+        .map(|cwd| cwd.join("public").join("data"))
 }
 
 /// 開発時: プロジェクトルートの public/icon/profile/ を返す。失敗時は current_dir を利用。
@@ -106,7 +108,11 @@ fn save_csv_to_public_always(filename: &str, contents: &str) {
 }
 
 /// app_data_dir/data/ に CSV を保存する。
-fn save_csv_to_app_data(app: &tauri::AppHandle, filename: &str, contents: &str) -> Result<(), String> {
+fn save_csv_to_app_data(
+    app: &tauri::AppHandle,
+    filename: &str,
+    contents: &str,
+) -> Result<(), String> {
     let dir = app_data_data_dir(app)?;
     write_csv(&dir.join(filename), contents)
 }
@@ -176,7 +182,11 @@ fn save_master_csv(
 }
 
 #[tauri::command]
-fn save_account_csv(app: tauri::AppHandle, account: String, account_permission: String) -> Result<(), String> {
+fn save_account_csv(
+    app: tauri::AppHandle,
+    account: String,
+    account_permission: String,
+) -> Result<(), String> {
     save_csv_to_public_if_has_data("ACCOUNT.csv", &account);
     save_csv_to_app_data(&app, "ACCOUNT.csv", &account)?;
     // 権限は0件でもヘッダーだけ書いて上書きし、削除した勘定に紐づく古い行を残さない

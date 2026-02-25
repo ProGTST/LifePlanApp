@@ -27,6 +27,7 @@ const centerLabelAndHolePlugin = {
     const x = arc.x;
     const y = arc.y;
     const r = arc.innerRadius;
+    // 中心に白円を描画
     if (r > 0) {
       ctx.save();
       ctx.beginPath();
@@ -35,6 +36,7 @@ const centerLabelAndHolePlugin = {
       ctx.fill();
       ctx.restore();
     }
+    // ラベルと合計金額を中心に描画
     const label = centerOpts?.label ?? "";
     const total = centerOpts?.total ?? 0;
     const totalStr = total.toLocaleString();
@@ -51,6 +53,9 @@ const centerLabelAndHolePlugin = {
 };
 
 Chart.register(...registerables, ChartDataLabels, centerLabelAndHolePlugin);
+
+/** 月ラベル（1月〜12月）。グラフ・表の軸・ヘッダで共通利用。 */
+const MONTH_LABELS = ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"];
 
 /** 自分の勘定 ID の Set（権限付与勘定は含めず、集計は自分の勘定のみ）。 */
 function getOwnAccountIds(): Set<string> {
@@ -96,6 +101,7 @@ function getOpenOccurrenceDates(row: TransactionRow): string[] {
   const completedSet = parseCompletedPlanDates(row.COMPLETED_PLANDATE);
   const actualRows = getActualTransactionsForPlan(row.ID);
   const actualDates = new Set(actualRows.map((r) => getActualTargetDate(r)));
+  // 完了日でも実績日でもない発生日のみ
   return all.filter((d) => !completedSet.has(d) && !actualDates.has(d));
 }
 
@@ -145,14 +151,12 @@ type PlanFundsEvent = { date: string; type: "income" | "expense"; amount: number
 
 /**
  * 完了として扱う予定取引のイベントを構築する。
- * 発生日ごとの金額は ①同一取引日の実績取引 → ②予定発生日が予定完了日かつ計画中で実績なし → ③ステータス完了で予定完了日 の優先順位で決定。
+ * 発生日ごとの金額は「その発生日に紐づく実績取引」がある場合のみ実績金額で集計する（予定完了日のみの日は含めない）。
  */
 function getCompletedPlanEvents(planRows: TransactionRow[]): PlanFundsEvent[] {
   const events: PlanFundsEvent[] = [];
   for (const row of planRows) {
-    const planAmount = parseFloat(String(row.AMOUNT ?? "0")) || 0;
-    const planType = (row.TRANSACTION_TYPE || "").toLowerCase() as "income" | "expense";
-    const completedSet = parseCompletedPlanDates(row.COMPLETED_PLANDATE);
+    // 予定に紐づく実績を取引日キーでマップ化
     const actualRows = getActualTransactionsForPlan(row.ID);
     const actualByDate = new Map<string, TransactionRow>();
     for (const r of actualRows) {
@@ -161,24 +165,15 @@ function getCompletedPlanEvents(planRows: TransactionRow[]): PlanFundsEvent[] {
     }
     const allDates = getPlanOccurrenceDates(row);
 
+    // 発生日ごとに紐づく実績がある場合のみイベント追加
     for (const d of allDates) {
       const dateKey = d.slice(0, 10);
-      const isCompletedDate = completedSet.has(dateKey) || actualByDate.has(dateKey);
-      if (!isCompletedDate) continue;
-
-      let amount = planAmount;
-      let type: "income" | "expense" = planType === "income" ? "income" : "expense";
-
       const actualOnDate = actualByDate.get(dateKey);
-      if (actualOnDate) {
-        amount = parseFloat(String(actualOnDate.AMOUNT ?? "0")) || 0;
-        const t = (actualOnDate.TRANSACTION_TYPE || "").toLowerCase();
-        type = t === "income" ? "income" : "expense";
-      } else if (completedSet.has(dateKey)) {
-        amount = planAmount;
-        type = planType === "income" ? "income" : "expense";
-      }
+      if (!actualOnDate) continue;
 
+      const amount = parseFloat(String(actualOnDate.AMOUNT ?? "0")) || 0;
+      const t = (actualOnDate.TRANSACTION_TYPE || "").toLowerCase();
+      const type: "income" | "expense" = t === "income" ? "income" : "expense";
       events.push({ date: dateKey, type, amount });
     }
   }
@@ -205,6 +200,7 @@ function getCompletedFunds(planRows: TransactionRow[]): number {
 function aggregatePlanByDate(rows: TransactionRow[]): Map<string, { income: number; expense: number }> {
   const byDate = new Map<string, { income: number; expense: number }>();
   const events: { date: string; type: "income" | "expense"; amount: number }[] = [];
+  // 全予定の未完了発生日をイベント列に展開
   for (const row of rows) {
     const amount = parseFloat(String(row.AMOUNT ?? "0")) || 0;
     const type = (row.TRANSACTION_TYPE || "").toLowerCase() as "income" | "expense";
@@ -213,21 +209,19 @@ function aggregatePlanByDate(rows: TransactionRow[]): Map<string, { income: numb
       events.push({ date: d.slice(0, 10), type: type === "income" ? "income" : "expense", amount });
     }
   }
+  // 日付昇順・同一日は収入を先にソート
   events.sort((a, b) => {
     const d = a.date.localeCompare(b.date);
     if (d !== 0) return d;
     return a.type === "income" ? -1 : 1;
   });
-  let running = 0;
   for (const e of events) {
     if (!byDate.has(e.date)) byDate.set(e.date, { income: 0, expense: 0 });
     const cur = byDate.get(e.date)!;
     if (e.type === "income") {
       cur.income += e.amount;
-      running += e.amount;
     } else {
       cur.expense += e.amount;
-      running -= e.amount;
     }
   }
   return byDate;
@@ -243,6 +237,7 @@ function buildCashFlowByMonth(byDate: Map<string, { income: number; expense: num
   for (const ym of sortedMonths) {
     let income = 0;
     let expense = 0;
+    // 当該月の日付のみ集計
     byDate.forEach((v, d) => {
       if (d.slice(0, 7) !== ym) return;
       income += v.income;
@@ -286,10 +281,93 @@ function formatMonthLabel(ym: string): string {
   return `${y}年${parseInt(m, 10)}月`;
 }
 
+/** 指定年の実績から収支種別ごとの月別金額（1〜12月）を集計する。 */
+function buildByMonthFromActuals(rows: TransactionRow[]): { income: number[]; expense: number[]; transfer: number[] } {
+  const byMonth = { income: new Array(12).fill(0), expense: new Array(12).fill(0), transfer: new Array(12).fill(0) };
+  for (const row of rows) {
+    const d = getActualTargetDate(row);
+    const m = parseInt(d.slice(5, 7), 10) - 1;
+    if (m < 0 || m > 11) continue;
+    const type = (row.TRANSACTION_TYPE || "").toLowerCase();
+    const amount = parseFloat(String(row.AMOUNT ?? "0")) || 0;
+    if (type === "income") byMonth.income[m] += amount;
+    else if (type === "expense") byMonth.expense[m] += amount;
+    else if (type === "transfer") byMonth.transfer[m] += amount;
+  }
+  return byMonth;
+}
+
+/** 指定年の実績からカテゴリ別月別金額と種別別合計を集計する。 */
+function buildByCategoryMonthAndTotals(rows: TransactionRow[]): {
+  byCategoryMonth: { expense: Map<string, number[]>; income: Map<string, number[]>; transfer: Map<string, number[]> };
+  categoryTotals: { expense: Map<string, number>; income: Map<string, number>; transfer: Map<string, number> };
+} {
+  const byCategoryMonth = {
+    expense: new Map<string, number[]>(),
+    income: new Map<string, number[]>(),
+    transfer: new Map<string, number[]>(),
+  };
+  const categoryTotals = {
+    expense: new Map<string, number>(),
+    income: new Map<string, number>(),
+    transfer: new Map<string, number>(),
+  };
+  const typeKeys = ["expense", "income", "transfer"] as const;
+  // 収支種別ごとにカテゴリ別月別と合計を集計
+  for (const typeKey of typeKeys) {
+    const typeVal = typeKey;
+    for (const row of rows.filter((r) => (r.TRANSACTION_TYPE || "").toLowerCase() === typeVal)) {
+      const catId = (row.CATEGORY_ID || "").trim() || "—";
+      const d = getActualTargetDate(row);
+      const m = parseInt(d.slice(5, 7), 10) - 1;
+      if (m < 0 || m > 11) continue;
+      const amount = parseFloat(String(row.AMOUNT ?? "0")) || 0;
+      if (!byCategoryMonth[typeKey].has(catId)) byCategoryMonth[typeKey].set(catId, new Array(12).fill(0));
+      byCategoryMonth[typeKey].get(catId)![m] += amount;
+      categoryTotals[typeKey].set(catId, (categoryTotals[typeKey].get(catId) ?? 0) + amount);
+    }
+  }
+  return { byCategoryMonth, categoryTotals };
+}
+
+/** 参照可能な実績から勘定別月別残高変動（入金・出金）を集計する。 */
+function buildByAccountMonthFromActuals(rows: TransactionRow[]): Map<string, number[]> {
+  const byAccountMonth = new Map<string, number[]>();
+  for (const row of rows) {
+    const inId = (row.ACCOUNT_ID_IN || "").trim();
+    const outId = (row.ACCOUNT_ID_OUT || "").trim();
+    const amount = parseFloat(String(row.AMOUNT ?? "0")) || 0;
+    const d = getActualTargetDate(row);
+    const m = parseInt(d.slice(5, 7), 10) - 1;
+    if (m < 0 || m > 11) continue;
+    const type = (row.TRANSACTION_TYPE || "").toLowerCase();
+    // 入金勘定: 収入・振替入
+    if (inId) {
+      if (!byAccountMonth.has(inId)) byAccountMonth.set(inId, new Array(12).fill(0));
+      if (type === "income" || type === "transfer") byAccountMonth.get(inId)![m] += amount;
+      if (type === "transfer" && outId) {
+        if (!byAccountMonth.has(outId)) byAccountMonth.set(outId, new Array(12).fill(0));
+        byAccountMonth.get(outId)![m] -= amount;
+      }
+    }
+    // 出金勘定: 支出
+    if (outId && type === "expense") {
+      if (!byAccountMonth.has(outId)) byAccountMonth.set(outId, new Array(12).fill(0));
+      byAccountMonth.get(outId)![m] -= amount;
+    }
+  }
+  return byAccountMonth;
+}
+
 /** 収支分析で表示する年（グラフ・表の抽出条件）。 */
 let analysisYear = new Date().getFullYear();
 
 let chartInstances: unknown[] = [];
+
+/** カテゴリタブ切替時に再描画するためのキャッシュ（loadAndRender で設定）。 */
+let cachedByCategoryMonth: { expense: Map<string, number[]>; income: Map<string, number[]>; transfer: Map<string, number[]> } | null = null;
+let cachedGetCategoryName: ((id: string) => string) | null = null;
+let cachedGetCategoryIcon: ((id: string) => HTMLElement) | null = null;
 
 function destroyCharts(): void {
   chartInstances.forEach((c) => (c as { destroy(): void }).destroy());
@@ -334,12 +412,14 @@ function renderCashFlowTable(cashFlow: { month: string; income: number; expense:
   if (cashFlow.length === 0) return;
   const headerRow = document.createElement("tr");
   headerRow.innerHTML = "<th>項目</th>";
+  // 月ごとの列ヘッダを追加
   cashFlow.forEach((r) => {
     const th = document.createElement("th");
     th.textContent = formatMonthLabel(r.month);
     headerRow.appendChild(th);
   });
   thead.appendChild(headerRow);
+  // 行ラベルと月別の値を1行ずつ追加
   const row = (label: string, values: (number | null)[]) => {
     const tr = document.createElement("tr");
     tr.innerHTML = `<td>${label}</td>`;
@@ -363,6 +443,7 @@ function getFundsOverflowExpenses(
   initialFunds: number
 ): { date: string; row: TransactionRow; amount: number; fundsAtDate: number; fundsAfterExpense: number; monthsFromNow: number }[] {
   const events: { date: string; type: "income" | "expense"; amount: number; row?: TransactionRow }[] = [];
+  // 未完了発生日ごとに収支イベントを列挙（支出のみ row を保持）
   for (const row of planRows) {
     const amount = parseFloat(String(row.AMOUNT ?? "0")) || 0;
     const type = (row.TRANSACTION_TYPE || "").toLowerCase() as "income" | "expense";
@@ -390,6 +471,7 @@ function getFundsOverflowExpenses(
     if (e.type === "income") {
       funds += e.amount;
     } else {
+      // 支出時点で運転資金を超過する場合のみ overflow に追加
       if (e.row && e.amount > funds) {
         const [y, m] = e.date.slice(0, 7).split("-").map(Number);
         const monthsFromNow = Math.max(1, (y - currY) * 12 + (m - currM));
@@ -413,6 +495,7 @@ function renderFundsOverflowTable(
   const summaryEl = document.getElementById("transaction-analysis-funds-overflow-summary");
   if (!tbody) return;
   tbody.innerHTML = "";
+  // 超過行ごとに表の行を追加
   overflow.forEach(({ date, row, amount, fundsAtDate, fundsAfterExpense, monthsFromNow }) => {
     const shortfall = Math.max(0, amount - fundsAtDate);
     const monthlyRequired = monthsFromNow > 0 ? Math.round(shortfall / monthsFromNow) : shortfall;
@@ -459,9 +542,11 @@ function renderFundsOverflowTable(
   if (summaryEl) {
     const fundsText = `予定完了分の運転資金: ${initialFunds.toLocaleString()}円`;
     if (overflow.length === 0) {
-      summaryEl.textContent = `${fundsText}　運転資金を超過する予定支出はありません。`;
+      // 超過なし
+      summaryEl.textContent = `${fundsText} 運転資金を超過する予定支出はありません。`;
     } else {
-      summaryEl.textContent = `${fundsText}　合計金額: ${total.toLocaleString()}円　毎月の積立額: ${monthly.toLocaleString()}円（現在から最終取引発生日まで${months}ヶ月）`;
+      // 超過あり：合計と毎月積立額を表示
+      summaryEl.textContent = `${fundsText} 合計金額: ${total.toLocaleString()}円 毎月の積立額: ${monthly.toLocaleString()}円（現在から最終取引発生日まで${months}ヶ月）`;
     }
   }
 }
@@ -476,7 +561,6 @@ const TYPE_CHART_COLORS = {
 function renderTypeCharts(
   byMonth: { income: number[]; expense: number[]; transfer: number[] }
 ): void {
-  const months = ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"];
   const opts = { responsive: true, scales: { y: { beginAtZero: true }, x: {} } };
   const ids = ["transaction-analysis-type-expense-chart", "transaction-analysis-type-income-chart", "transaction-analysis-type-transfer-chart"] as const;
   const keys = ["expense", "income", "transfer"] as const;
@@ -490,7 +574,7 @@ function renderTypeCharts(
     const chart = new Chart(ctx, {
       type: "bar",
       data: {
-        labels: months,
+        labels: MONTH_LABELS,
         datasets: [{ label: labels[i], data: data[i], backgroundColor: TYPE_CHART_COLORS[keys[i]] }],
       },
       options: opts,
@@ -505,19 +589,18 @@ function renderActualCashFlowChart(byMonth: { income: number[]; expense: number[
   if (!canvas) return;
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
-  const months = ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"];
   let funds = 0;
-  const fundsData = months.map((_, i) => {
+  const fundsData = MONTH_LABELS.map((_, i) => {
     const inc = byMonth.income[i] ?? 0;
     const exp = byMonth.expense[i] ?? 0;
     funds += inc - exp;
     return funds;
   });
-  const balanceData = months.map((_, i) => (byMonth.income[i] ?? 0) - (byMonth.expense[i] ?? 0));
+  const balanceData = MONTH_LABELS.map((_, i) => (byMonth.income[i] ?? 0) - (byMonth.expense[i] ?? 0));
   const chart = new Chart(ctx, {
     type: "line",
     data: {
-      labels: months,
+      labels: MONTH_LABELS,
       datasets: [
         { label: "運転資金", data: fundsData, type: "line", borderColor: "#1d4ed8", backgroundColor: "rgba(29, 78, 216, 0.1)", fill: true, tension: 0.2, order: 1 },
         { label: "残高", data: balanceData, type: "bar", backgroundColor: "rgba(34, 197, 94, 0.6)", order: 2 },
@@ -541,17 +624,16 @@ function renderTypeTable(byMonth: { income: number[]; expense: number[]; transfe
   if (!thead || !tbody) return;
   thead.innerHTML = "";
   tbody.innerHTML = "";
-  const months = ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"];
   const headerRow = document.createElement("tr");
   headerRow.innerHTML = "<th>項目</th>";
-  months.forEach((m) => {
+  MONTH_LABELS.forEach((m) => {
     const th = document.createElement("th");
     th.textContent = m;
     headerRow.appendChild(th);
   });
   thead.appendChild(headerRow);
   let funds = 0;
-  const balanceByMonth = months.map((_, i) => {
+  const balanceByMonth = MONTH_LABELS.map((_, i) => {
     const inc = byMonth.income[i] ?? 0;
     const exp = byMonth.expense[i] ?? 0;
     funds += inc - exp;
@@ -578,7 +660,6 @@ function renderCategoryCharts(
   byCategoryMonth: { expense: Map<string, number[]>; income: Map<string, number[]>; transfer: Map<string, number[]> },
   getCategoryName: (id: string) => string
 ): void {
-  const months = ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"];
   const ids = ["transaction-analysis-category-expense-chart", "transaction-analysis-category-income-chart", "transaction-analysis-category-transfer-chart"] as const;
   const keys = ["expense", "income", "transfer"] as const;
   keys.forEach((key, idx) => {
@@ -595,7 +676,7 @@ function renderCategoryCharts(
     }));
     const chart = new Chart(ctx, {
       type: "line",
-      data: { labels: months, datasets },
+      data: { labels: MONTH_LABELS, datasets },
       options: { responsive: true, scales: { y: { beginAtZero: true }, x: {} } },
     });
     chartInstances.push(chart);
@@ -613,10 +694,9 @@ function renderCategoryTable(
   if (!thead || !tbody) return;
   thead.innerHTML = "";
   tbody.innerHTML = "";
-  const months = ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"];
   const headerRow = document.createElement("tr");
   headerRow.innerHTML = "<th>カテゴリー</th>";
-  months.forEach((m) => {
+  MONTH_LABELS.forEach((m) => {
     const th = document.createElement("th");
     th.textContent = m;
     headerRow.appendChild(th);
@@ -728,7 +808,6 @@ function renderAccountChart(byAccountMonth: Map<string, number[]>, getAccountNam
   if (!canvas) return;
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
-  const months = ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"];
   const datasets = Array.from(byAccountMonth.entries()).map(([accId, values]) => {
     const color = (getAccountById(accId)?.COLOR || ICON_DEFAULT_COLOR).trim() || ICON_DEFAULT_COLOR;
     const bgColor = /^#[0-9A-Fa-f]{6}$/.test(color) ? `${color}99` : color;
@@ -740,7 +819,7 @@ function renderAccountChart(byAccountMonth: Map<string, number[]>, getAccountNam
   });
   const chart = new Chart(ctx, {
     type: "bar",
-    data: { labels: months, datasets },
+    data: { labels: MONTH_LABELS, datasets },
     options: { responsive: true, scales: { y: { beginAtZero: true }, x: {} } },
   });
   chartInstances.push(chart);
@@ -756,10 +835,9 @@ function renderAccountTable(
   if (!thead || !tbody) return;
   thead.innerHTML = "";
   tbody.innerHTML = "";
-  const months = ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"];
   const headerRow = document.createElement("tr");
   headerRow.innerHTML = "<th>勘定項目</th>";
-  months.forEach((m) => {
+  MONTH_LABELS.forEach((m) => {
     const th = document.createElement("th");
     th.textContent = m;
     headerRow.appendChild(th);
@@ -787,6 +865,7 @@ function loadAndRender(): void {
   destroyCharts();
   const ownAccountIds = getOwnAccountIds();
 
+  // 資金繰り: 予定の未完了発生日で月別集計しグラフ・表を描画
   const planRowsForCashFlow = getPlanRowsForCashFlow(transactionList, ownAccountIds).filter(
     (row) => getOpenOccurrenceDates(row).length > 0
   );
@@ -797,44 +876,25 @@ function loadAndRender(): void {
 
   const yearActualsOwn = getActualsForYear(transactionList, ownAccountIds, analysisYear);
   const yearActualsVisible = getActualsVisibleForYear(transactionList, analysisYear);
-  const byMonth = { income: new Array(12).fill(0), expense: new Array(12).fill(0), transfer: new Array(12).fill(0) };
-  yearActualsOwn.forEach((row) => {
-    const d = getActualTargetDate(row);
-    const m = parseInt(d.slice(5, 7), 10) - 1;
-    if (m < 0 || m > 11) return;
-    const type = (row.TRANSACTION_TYPE || "").toLowerCase();
-    const amount = parseFloat(String(row.AMOUNT ?? "0")) || 0;
-    if (type === "income") byMonth.income[m] += amount;
-    else if (type === "expense") byMonth.expense[m] += amount;
-    else if (type === "transfer") byMonth.transfer[m] += amount;
-  });
+
+  // 収支種別（収入・支出・振替）の月別集計と描画
+  const byMonth = buildByMonthFromActuals(yearActualsOwn);
   renderTypeCharts(byMonth);
   renderActualCashFlowChart(byMonth);
   renderTypeTable(byMonth);
 
-  const byCategoryMonth = {
-    expense: new Map<string, number[]>(),
-    income: new Map<string, number[]>(),
-    transfer: new Map<string, number[]>(),
-  };
-  const categoryTotals = { expense: new Map<string, number>(), income: new Map<string, number>(), transfer: new Map<string, number>() };
-  ([["expense", "expense"], ["income", "income"], ["transfer", "transfer"]] as const).forEach(([typeKey, typeVal]) => {
-    yearActualsOwn.filter((r) => (r.TRANSACTION_TYPE || "").toLowerCase() === typeVal).forEach((row) => {
-      const catId = (row.CATEGORY_ID || "").trim() || "—";
-      const d = getActualTargetDate(row);
-      const m = parseInt(d.slice(5, 7), 10) - 1;
-      if (m < 0 || m > 11) return;
-      const amount = parseFloat(String(row.AMOUNT ?? "0")) || 0;
-      if (!byCategoryMonth[typeKey].has(catId)) byCategoryMonth[typeKey].set(catId, new Array(12).fill(0));
-      byCategoryMonth[typeKey].get(catId)![m] += amount;
-      categoryTotals[typeKey].set(catId, (categoryTotals[typeKey].get(catId) ?? 0) + amount);
-    });
-  });
+  // カテゴリ別月別集計と種別別合計（共通関数で一括算出）
+  const { byCategoryMonth, categoryTotals } = buildByCategoryMonthAndTotals(yearActualsOwn);
   const getCategoryName = (id: string) => (id === "—" ? "—" : getCategoryById(id)?.CATEGORY_NAME ?? id);
   const getCategoryIcon = (id: string) => {
     const cat = id === "—" ? null : getCategoryById(id);
     return createIconWrap(cat?.COLOR || ICON_DEFAULT_COLOR, cat?.ICON_PATH, { tag: "span" });
   };
+  cachedByCategoryMonth = byCategoryMonth;
+  cachedGetCategoryName = getCategoryName;
+  cachedGetCategoryIcon = getCategoryIcon;
+
+  // 運転資金超過: 完了分の運転資金を初期値に未完了予定を時系列でシミュレート
   const fundsOverflowPlanRows = getPlanRowsForFundsOverflow(transactionList, ownAccountIds);
   const completedFundsPlanRows = getPlanRowsForCompletedFunds(transactionList, ownAccountIds);
   const initialFunds = getCompletedFunds(completedFundsPlanRows);
@@ -846,28 +906,8 @@ function loadAndRender(): void {
   renderCategoryRatioCharts(categoryTotals, getCategoryName);
   renderCategoryRatioTables(categoryTotals, getCategoryName, getCategoryIcon);
 
-  const byAccountMonth = new Map<string, number[]>();
-  yearActualsVisible.forEach((row) => {
-    const inId = (row.ACCOUNT_ID_IN || "").trim();
-    const outId = (row.ACCOUNT_ID_OUT || "").trim();
-    const amount = parseFloat(String(row.AMOUNT ?? "0")) || 0;
-    const d = getActualTargetDate(row);
-    const m = parseInt(d.slice(5, 7), 10) - 1;
-    if (m < 0 || m > 11) return;
-    const type = (row.TRANSACTION_TYPE || "").toLowerCase();
-    if (inId) {
-      if (!byAccountMonth.has(inId)) byAccountMonth.set(inId, new Array(12).fill(0));
-      if (type === "income" || type === "transfer") byAccountMonth.get(inId)![m] += amount;
-      if (type === "transfer" && outId) {
-        if (!byAccountMonth.has(outId)) byAccountMonth.set(outId, new Array(12).fill(0));
-        byAccountMonth.get(outId)![m] -= amount;
-      }
-    }
-    if (outId && type === "expense") {
-      if (!byAccountMonth.has(outId)) byAccountMonth.set(outId, new Array(12).fill(0));
-      byAccountMonth.get(outId)![m] -= amount;
-    }
-  });
+  // 勘定別: 参照可能な実績で勘定別月別を集計しグラフ・表を描画
+  const byAccountMonth = buildByAccountMonthFromActuals(yearActualsVisible);
   const getAccountName = (id: string) => getAccountById(id)?.ACCOUNT_NAME ?? id;
   const getAccountIcon = (id: string) => {
     const acc = getAccountById(id);
@@ -890,6 +930,7 @@ export function initTransactionAnalysisView(): void {
   registerViewHandler("transaction-analysis", () => loadAndShowAnalysis());
   registerRefreshHandler("transaction-analysis", () => loadAndShowAnalysis(true));
 
+  // 表示年の前年・翌年ボタン
   const prevBtn = document.getElementById("analysis-year-prev");
   const nextBtn = document.getElementById("analysis-year-next");
   if (prevBtn) {
@@ -905,6 +946,7 @@ export function initTransactionAnalysisView(): void {
     });
   }
 
+  // カテゴリタブ切替: キャッシュを使って表のみ再描画
   document.querySelectorAll(".transaction-analysis-tab[data-analysis-category-tab]").forEach((btn) => {
     btn.addEventListener("click", () => {
       document.querySelectorAll(".transaction-analysis-tab[data-analysis-category-tab]").forEach((b) => {
@@ -914,33 +956,9 @@ export function initTransactionAnalysisView(): void {
       btn.classList.add("is-active");
       btn.setAttribute("aria-selected", "true");
       const tab = (btn as HTMLButtonElement).dataset.analysisCategoryTab as "expense" | "income" | "transfer";
-      const thead = document.getElementById("transaction-analysis-category-thead");
-      const tbody = document.getElementById("transaction-analysis-category-tbody");
-      if (thead && tbody) {
-        const ownAccountIds = getOwnAccountIds();
-        const yearActualsOwn = getActualsForYear(transactionList, ownAccountIds, analysisYear);
-        const byCategoryMonth = {
-          expense: new Map<string, number[]>(),
-          income: new Map<string, number[]>(),
-          transfer: new Map<string, number[]>(),
-        };
-        (["expense", "income", "transfer"] as const).forEach((typeKey) => {
-          yearActualsOwn.filter((r) => (r.TRANSACTION_TYPE || "").toLowerCase() === typeKey).forEach((row) => {
-            const catId = (row.CATEGORY_ID || "").trim() || "—";
-            const d = getActualTargetDate(row);
-            const m = parseInt(d.slice(5, 7), 10) - 1;
-            if (m < 0 || m > 11) return;
-            const amount = parseFloat(String(row.AMOUNT ?? "0")) || 0;
-            if (!byCategoryMonth[typeKey].has(catId)) byCategoryMonth[typeKey].set(catId, new Array(12).fill(0));
-            byCategoryMonth[typeKey].get(catId)![m] += amount;
-          });
-        });
-        const getCategoryName = (id: string) => (id === "—" ? "—" : getCategoryById(id)?.CATEGORY_NAME ?? id);
-        const getCategoryIcon = (id: string) => {
-          const cat = id === "—" ? null : getCategoryById(id);
-          return createIconWrap(cat?.COLOR || ICON_DEFAULT_COLOR, cat?.ICON_PATH, { tag: "span" });
-        };
-        renderCategoryTable(byCategoryMonth, tab, getCategoryName, getCategoryIcon);
+      // キャッシュ済みのカテゴリ集計と表示用関数で再描画のみ行う
+      if (cachedByCategoryMonth && cachedGetCategoryName && cachedGetCategoryIcon) {
+        renderCategoryTable(cachedByCategoryMonth, tab, cachedGetCategoryName, cachedGetCategoryIcon);
       }
     });
   });

@@ -23,7 +23,11 @@ dist-ssr
 *.sln
 *.sw?
 
+# Pre-commit: skip Clippy when Defender blocks (Windows). Do not commit.
+.skip-clippy
+
 # Tauri
 src-tauri/target/
+src-tauri/target-precommit/
 src-tauri/target_build/
 src-tauri/Cargo.lock
