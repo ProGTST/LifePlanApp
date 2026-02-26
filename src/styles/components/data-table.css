@@ -1,0 +1,269 @@
+@layer components {
+/* ----- データテーブル ----- */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9375rem;
+}
+
+.data-table th,
+.data-table td {
+  padding: 0.6rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid var(--gray-300);
+  vertical-align: middle;
+}
+
+.data-table tbody td {
+  min-height: 2.5rem;
+  box-sizing: border-box;
+}
+
+.data-table th {
+  font-weight: 600;
+  color: var(--color-main-fg);
+  background: var(--gray-100);
+}
+
+/* view-body内のテーブルヘッダーはビュー文字色を使用 */
+.view-body .data-table th {
+  color: var(--color-view-fg, #1a1a1a);
+}
+
+.data-table tbody tr:hover {
+  background: var(--gray-50);
+}
+
+.data-table-drag-col {
+  width: 2.5rem;
+  min-width: 2.5rem;
+  padding: 0.6rem 0.5rem;
+  vertical-align: middle;
+  cursor: grab;
+  user-select: none;
+}
+
+.data-table-drag-col:active {
+  cursor: grabbing;
+}
+
+.data-table-drag-col img {
+  display: block;
+  pointer-events: none;
+}
+
+.data-table tbody tr .data-table-drag-col[draggable="true"] {
+  cursor: grab;
+}
+
+.data-table tbody tr .data-table-drag-col[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+.data-table tbody tr.drag-source {
+  opacity: 0.6;
+}
+
+.data-table tbody tr.drag-over {
+  background: var(--color-highlight-bg);
+}
+
+/* カテゴリー：列幅を固定してタブ切替時も親カテゴリー列の位置を揃える */
+#category-table {
+  table-layout: fixed;
+}
+#category-table .data-table-icon-col,
+#account-table .data-table-icon-col,
+#tag-table .data-table-icon-col {
+  width: 2.5rem;
+  min-width: 2.5rem;
+  max-width: 2.5rem;
+  padding: 0.5rem;
+  vertical-align: middle;
+  box-sizing: border-box;
+}
+#category-table th.category-parent-col,
+#category-table td.category-parent-col {
+  width: 20rem;
+  min-width: 20rem;
+  max-width: 20rem;
+  box-sizing: border-box;
+}
+
+/* カテゴリー：アイコン列（デフォルトは四角、ICON_PATH あり時はマスクで色表示） */
+.category-icon-wrap {
+  width: var(--icon-size, 22px);
+  height: var(--icon-size, 22px);
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.category-icon-wrap--img {
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+}
+
+/* カテゴリー：ツリービューでは並び替え列を非表示 */
+.category-table--tree thead th:first-child {
+  display: none;
+}
+
+/* 行間ドロップ用インジケーター（ドラッグ中に表示） */
+.drop-indicator-row {
+  pointer-events: none;
+}
+
+#app .drop-indicator-row td {
+  padding: 0;
+  height: 0;
+  border: none;
+  vertical-align: middle;
+}
+
+.drop-indicator-line {
+  height: 3px;
+  background: var(--color-button-bg);
+  margin: -1px 0;
+}
+
+#app #account-table .account-table-balance-col,
+#app #account-shared-table .account-table-balance-col {
+  text-align: right;
+  white-space: nowrap;
+  width: 6rem;
+  min-width: 6rem;
+  max-width: 6rem;
+}
+.account-table-permission-col {
+  width: 20rem;
+  max-width: 20rem;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.account-table-permission-col .account-table-permission-count {
+  margin-right: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--color-main-fg);
+}
+#account-table .account-table-permission-add-btn {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.8125rem;
+  background: var(--color-button-bg);
+  color: var(--color-button-fg);
+  border: none;
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  cursor: pointer;
+}
+#account-table .account-table-permission-add-btn:hover {
+  filter: brightness(1.05);
+}
+
+/* 参照可能な勘定（他ユーザー共有） */
+.account-shared-view-body {
+  margin-top: 1.5rem;
+}
+.account-shared-title {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-main-fg);
+}
+#account-shared-table .data-table-icon-col {
+  width: 2.5rem;
+}
+#account-shared-tbody .account-shared-empty {
+  padding: 1rem;
+  text-align: center;
+  color: var(--gray-600);
+  font-size: 0.875rem;
+}
+.account-shared-user-col {
+  width: 17rem;
+  max-width: 17rem;
+  white-space: nowrap;
+}
+.account-shared-user-name {
+  color: var(--color-main-fg);
+  font-size: 0.875rem;
+}
+
+.account-shared-permission-col {
+  width: 5rem;
+  max-width: 5rem;
+  white-space: nowrap;
+}
+.account-shared-permission-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 27px;
+  box-sizing: border-box;
+  padding: 0 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+}
+.account-shared-permission-badge--view {
+  background: var(--color-base-bg);
+  color: var(--color-base-fg);
+  border: 1px solid var(--color-base-fg);
+}
+.account-shared-permission-badge--edit {
+  background: var(--color-accent-bg);
+  color: var(--color-accent-fg);
+}
+
+#app .account-table-delete-col {
+  width: 48px;
+  padding: 0.4rem;
+  text-align: center;
+  vertical-align: middle;
+}
+
+/* 非表示時もスペースを確保して行の高さを揃える */
+#app .account-row-delete-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 27px;
+  height: 27px;
+  padding: 0;
+  background: var(--danger);
+  border: none;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  line-height: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+#app .account-row-delete-btn.is-visible {
+  visibility: visible;
+  pointer-events: auto;
+}
+
+#app .account-row-delete-btn:hover {
+  background: var(--danger-hover);
+  filter: brightness(1.05);
+}
+
+.account-row-delete-btn img {
+  width: 20px;
+  height: 20px;
+  display: block;
+  filter: brightness(0) invert(1);
+}
+
+.data-table--editable td[contenteditable="true"] {
+  outline: none;
+}
+
+.data-table--editable td[contenteditable="true"]:focus {
+  background: var(--color-view-bg);
+  box-shadow: inset 0 0 0 2px var(--color-button-bg);
+  border-radius: 2px;
+}
+}

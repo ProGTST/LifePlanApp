@@ -1,4 +1,4 @@
-import "./styles/app.css";
+import "./styles/main.css";
 import {
   USER_ID_STORAGE_KEY,
   LOGIN_PAGE_PATH,

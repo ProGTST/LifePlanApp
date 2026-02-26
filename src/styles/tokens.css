@@ -1,11 +1,42 @@
-/* 共通デザイントークン（ログイン・アプリ両方で利用） */
+/**
+ * デザイントークン（共通）
+ * ログイン・アプリ両方で利用。ハードコード値を排除し、ここで一元管理する。
+ */
 
 :root {
+  /* ----- フォント・行間 ----- */
   font-family: "Segoe UI", system-ui, sans-serif;
   line-height: 1.5;
   color: #1a1a1a;
   background: #f0f2f5;
 
+  /* Typography */
+  --font-size-xs: 0.6875rem;
+  --font-size-sm: 0.75rem;
+  --font-size-md: 0.8125rem;
+  --font-size-base: 0.875rem;
+  --font-size-lg: 0.9375rem;
+  --font-size-xl: 1rem;
+  --font-size-2xl: 1.125rem;
+  --font-size-3xl: 1.25rem;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --line-height-tight: 1.25;
+  --line-height-normal: 1.5;
+
+  /* Spacing (0.25rem = 4px 刻み) */
+  --space-0: 0;
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+
+  /* Grayscale */
   --gray-50: #fafafa;
   --gray-100: #f8f8f8;
   --gray-200: #f0f0f0;
@@ -15,21 +46,80 @@
   --gray-600: #999999;
   --gray-700: #666666;
   --gray-800: #333333;
+
+  /* Border radius */
   --radius-sm: 4px;
   --radius-md: 6px;
   --radius-lg: 8px;
   --radius-xl: 12px;
+
+  /* Shadow */
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
   --shadow-md: 0 4px 24px rgba(0, 0, 0, 0.08);
   --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.2);
+
+  /* Focus */
   --focus-ring: 0 0 0 2px rgba(100, 108, 255, 0.2);
+
+  /* Brand & semantic */
   --brand: #646cff;
   --brand-hover: #5359d6;
   --danger: #e85050;
   --danger-hover: #dc4040;
+  --danger-solid: #c62828;
+  --color-delayed-bg: #dc2626;
+  --color-delayed-border: #b91c1c;
+  --color-error-text: #cc0000;
+  --color-success: #16a34a;
+  --color-success-dark: #2e7d32;
+  --color-info: #2563eb;
+  --color-info-dark: #1565c0;
+  --color-highlight-bg: #e8f0fe;
+  --color-permission-view-bg: #fffde7;
+  --color-permission-edit-bg: #e8f5e9;
+  --color-summary-blue: #1d4ed8;
+  --gray-250: #e5e5e5;
+  --overlay-white-15: rgba(255, 255, 255, 0.15);
+  --overlay-white-25: rgba(255, 255, 255, 0.25);
+
+  /* View (login など #app 外でも利用) */
+  --color-view-bg: #ffffff;
+
+  /* Component tokens */
+  --icon-size-sm: 18px;
+  --icon-size-md: 22px;
+  --icon-size-lg: 30px;
+  --btn-height-sm: 25px;
+  --btn-height-md: 30px;
+  --btn-height-lg: 40px;
+  --input-height-md: 40px;
 }
 
 html,
 body {
   margin: 0;
+}
+
+/*
+ * アプリ用セマンティックトークン（#app 内でパレットから上書き可能）
+ * 色・背景は COLOR_PALETTE.csv から注入されるため、ここではデフォルトのみ定義。
+ */
+#app {
+  --icon-size: var(--icon-size-md);
+  --color-menubar-bg: #2c2c2e;
+  --color-menubar-fg: #ffffff;
+  --color-header-bg: #ffffff;
+  --color-header-fg: #1a1a1a;
+  --color-main-bg: #f0f2f5;
+  --color-main-fg: #1a1a1a;
+  --color-view-bg: #ffffff;
+  --color-view-fg: #1a1a1a;
+  --color-footer-bg: #ffffff;
+  --color-footer-fg: #666666;
+  --color-button-bg: var(--brand);
+  --color-button-fg: #ffffff;
+  --color-base-bg: #ffffff;
+  --color-base-fg: #333333;
+  --color-accent-bg: var(--brand);
+  --color-accent-fg: #ffffff;
 }

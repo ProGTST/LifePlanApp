@@ -1,0 +1,575 @@
+@layer layout {
+/* ----- レイアウト ----- */
+.app-layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  height: 100vh;
+  padding: 0;
+  align-items: stretch;
+  justify-content: flex-start;
+}
+
+.app-body-with-sidebar {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+.app-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* ----- メニューバー ----- */
+.app-menubar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 1rem;
+  background: var(--color-menubar-bg, #2c2c2e);
+  color: var(--color-menubar-fg, #ffffff);
+  font-size: 0.875rem;
+}
+
+/* ヘッダー：プロフィールアイコン */
+.app-header-profile-icon {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-menubar-fg);
+  overflow: hidden;
+}
+
+.app-header-profile-icon[data-mode="default"] {
+  line-height: 1.2;
+  text-align: center;
+}
+
+/* ヘッダー・プロフィールフォームのアイコン画像共通 */
+.app-header-profile-icon .app-header-profile-icon-img,
+.profile-icon-display .profile-icon-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.app-menubar__actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.app-menubar__icon {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 30px;
+  height: 30px;
+  padding: 0 0.5rem;
+  overflow: visible;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-md);
+  color: var(--color-menubar-fg);
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+  box-sizing: border-box;
+}
+
+.app-menubar__icon:hover {
+  background: var(--overlay-white-15);
+}
+
+.app-menubar__icon:active {
+  background: var(--overlay-white-25);
+}
+
+/* ボタン内アイコン：絶対配置で余白を付け、マスクで BUTTON_FG 表示（30px ボタン用） */
+.app-menubar__icon-inner {
+  position: absolute;
+  inset: 6px;
+  display: block;
+  background-color: var(--color-button-fg, #ffffff);
+  -webkit-mask-image: var(--icon);
+  mask-image: var(--icon);
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+}
+
+/* ----- サイドバー ----- */
+/* オーバーレイ表示のため position: absolute でメインの幅を変更しない */
+.app-sidebar {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+  flex-shrink: 0;
+  width: 0;
+  padding: 0;
+  overflow: hidden;
+  background: var(--color-base-bg, #ffffff);
+  border-left: none;
+  transition: width 0.2s ease;
+}
+
+.app-sidebar.is-visible {
+  display: flex;
+  flex-direction: column;
+  width: 260px;
+  padding: 1rem;
+  border-left: 1px solid var(--gray-400);
+  overflow: hidden;
+}
+
+.sidebar-panel {
+  display: none;
+}
+
+.sidebar-panel.is-active {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.sidebar-panel-menu.is-active {
+  display: flex;
+}
+
+.sidebar-panel-menu .sidebar-accordion {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.sidebar-menu-footer {
+  flex-shrink: 0;
+  margin-top: auto;
+  padding-top: 0.75rem;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+/* メニュー画面右下の設定アイコンボタン（メニューバーアイコンと同じ見た目・サイズ） */
+.sidebar-settings-entry-btn {
+  flex-shrink: 0;
+}
+
+.app-sidebar .sidebar-settings-entry-btn {
+  background: var(--color-button-bg, #646cff);
+}
+
+.app-sidebar .sidebar-settings-entry-btn .app-menubar__icon-inner {
+  background-color: var(--color-button-fg, #ffffff);
+}
+
+.app-sidebar .sidebar-settings-entry-btn:hover .app-menubar__icon-inner {
+  background-color: var(--color-button-fg, #ffffff);
+  filter: brightness(1.15);
+}
+
+/* サイドバーリストリセット */
+.sidebar-accordion,
+.sidebar-settings-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+
+.sidebar-accordion-item {
+  margin: 0;
+  padding: 0;
+  border-bottom: 1px solid var(--gray-300);
+}
+
+.sidebar-accordion-item:last-child {
+  border-bottom: none;
+}
+
+.sidebar-accordion-head {
+  padding: 0.6rem 0.5rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--color-base-fg);
+  cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
+  list-style: none;
+}
+
+.sidebar-accordion-head::-webkit-details-marker {
+  display: none;
+}
+
+.sidebar-accordion-head::before {
+  content: "▸ ";
+  display: inline-block;
+  width: 1em;
+  transition: transform 0.15s ease;
+}
+
+.sidebar-accordion-item[open] .sidebar-accordion-head::before {
+  transform: rotate(90deg);
+}
+
+.sidebar-accordion-body {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0.5rem 1.2rem;
+  min-width: 0;
+}
+
+.sidebar-accordion-body li {
+  margin: 0;
+  min-width: 0;
+}
+
+/* サイドバー項目（メニュー・設定で見た目を統一） */
+#app .app-sidebar .sidebar-menu-item {
+  display: block;
+  width: 100%;
+  padding: 0.45rem 0.5rem;
+  margin: 0.1rem 0;
+  text-align: left;
+  font-size: 0.875rem;
+  background: var(--color-base-bg);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  color: var(--color-base-fg);
+  transition: background 0.15s;
+}
+
+#app .app-sidebar .sidebar-menu-item:hover:not(.is-current) {
+  background: var(--gray-200);
+}
+
+#app .app-sidebar .sidebar-menu-item.is-current {
+  background: var(--color-accent-bg);
+  color: var(--color-accent-fg);
+  cursor: default;
+  pointer-events: none;
+  font-weight: 500;
+}
+
+.sidebar-settings-list li {
+  margin: 0;
+  min-width: 0;
+}
+
+/* #app button の背景・文字色を上書き（詳細度を合わせる） */
+#app .app-sidebar .sidebar-menu-item,
+#app .app-sidebar .sidebar-settings-item {
+  margin: 0.1rem 0;
+  padding: 0.45rem 0.5rem;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+#app .sidebar-settings-item {
+  background: var(--color-base-bg);
+  color: var(--color-base-fg);
+  font-size: 0.875rem;
+  border: none;
+}
+
+.sidebar-settings-item {
+  display: block;
+  width: 100%;
+  padding: 0.45rem 0.5rem;
+  text-align: left;
+  font-size: 0.875rem;
+  background: var(--color-base-bg);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  color: var(--color-base-fg);
+  transition: background 0.15s;
+}
+
+#app .sidebar-settings-item:hover:not(.is-current) {
+  background: var(--gray-200);
+}
+
+#app .app-sidebar .sidebar-settings-item.is-current {
+  background: var(--color-accent-bg);
+  color: var(--color-accent-fg);
+  cursor: default;
+  pointer-events: none;
+  font-weight: 500;
+}
+
+/* ----- ヘッダー ----- */
+.app-header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0.5rem 1rem;
+  background: var(--color-header-bg, #ffffff);
+  color: var(--color-header-fg, #1a1a1a);
+  border-bottom: 1px solid var(--gray-400);
+  box-shadow: var(--shadow-sm);
+}
+
+.app-header-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-header-fg);
+}
+
+.app-header-left {
+  display: none;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.app-header-left.is-visible {
+  display: flex;
+}
+
+.app-header-profile-name {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--color-header-fg);
+}
+
+.app-header-spacer {
+  flex: 1;
+}
+
+.app-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* ヘッダー追加・削除ボタン（#app button より優先・高さ統一） */
+#app .btn-header-add,
+#app .btn-header-delete,
+#app .btn-header-save,
+#app .btn-header-default,
+#app #header-entry-btn,
+#app #transaction-history-show-conditions-btn,
+#app #transaction-history-reset-conditions-btn,
+#app #header-transaction-entry-submit,
+#app #header-transaction-entry-copy-as-new,
+#app #header-transaction-entry-reset,
+#app #header-transaction-entry-continuous,
+#app #header-transaction-entry-delete {
+  display: none;
+  margin: 0;
+  padding: 0 0.5rem;
+  font-size: 0.75rem;
+  height: 30px;
+  line-height: 1.25;
+  box-sizing: border-box;
+  align-items: center;
+}
+
+#app .btn-header-add.is-visible,
+#app .btn-header-delete.is-visible,
+#app .btn-header-save.is-visible,
+#app .btn-header-default.is-visible,
+#app #header-entry-btn.is-visible,
+#app #transaction-history-show-conditions-btn.is-visible,
+#app #transaction-history-reset-conditions-btn.is-visible,
+#app #header-transaction-entry-submit.is-visible,
+#app #header-transaction-entry-copy-as-new.is-visible,
+#app #header-transaction-entry-reset.is-visible,
+#app #header-transaction-entry-continuous.is-visible,
+#app #header-transaction-entry-delete.is-visible {
+  display: inline-flex;
+}
+
+.transaction-entry-view-only-notice {
+  display: none;
+  margin-right: 0.75rem;
+  font-size: 0.875rem;
+  color: var(--color-error-text);
+}
+.transaction-entry-view-only-notice.is-visible {
+  display: inline;
+}
+
+#app #header-transaction-entry-continuous.btn-header-transaction-entry-continuous {
+  background-color: var(--color-base-bg, #ffffff);
+  color: var(--color-base-fg, #333333);
+  border: 1px solid var(--color-base-fg, #333333);
+}
+
+#app #header-transaction-entry-continuous.btn-header-transaction-entry-continuous.is-on {
+  background-color: var(--color-accent-bg, #646cff);
+  color: var(--color-accent-fg, #ffffff);
+  border-color: var(--color-accent-bg, #646cff);
+}
+
+#app #header-transaction-entry-continuous.btn-header-transaction-entry-continuous:hover {
+  filter: brightness(0.95);
+}
+
+#app #header-transaction-entry-continuous.btn-header-transaction-entry-continuous.is-on:hover {
+  filter: brightness(1.1);
+}
+
+#app #header-transaction-entry-delete.btn-header-transaction-entry-delete {
+  background-color: var(--danger-solid);
+  color: var(--color-button-fg);
+  border: none;
+}
+
+#app #header-transaction-entry-delete.btn-header-transaction-entry-delete:hover {
+  filter: brightness(1.1);
+}
+
+#app .btn-header-delete.is-active {
+  background: var(--danger);
+  color: var(--color-button-fg);
+}
+
+#app .btn-header-delete.is-active:hover {
+  filter: brightness(1.05);
+}
+
+/* 収支記録：新規時は登録（青）、修正時は更新（緑） */
+#app #header-transaction-entry-submit.transaction-entry-submit--register {
+  background-color: var(--color-info);
+  color: var(--color-button-fg);
+  border: none;
+}
+#app #header-transaction-entry-submit.transaction-entry-submit--register:hover {
+  filter: brightness(1.05);
+}
+#app #header-transaction-entry-submit.transaction-entry-submit--update {
+  background-color: var(--color-success);
+  color: var(--color-button-fg);
+  border: none;
+}
+#app #header-transaction-entry-submit.transaction-entry-submit--update:hover {
+  filter: brightness(1.05);
+}
+
+/* ----- メインコンテンツ ----- */
+.app-main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+  padding: 1rem 1rem 1rem;
+  background: var(--color-main-bg, #f0f2f5);
+  color: var(--color-main-fg, #1a1a1a);
+  min-height: 0;
+}
+
+/* 検索条件エリアは高さを内容に合わせ、スケジュール・収支履歴などが残りを占有 */
+.app-main > #transaction-history-common {
+  flex-shrink: 0;
+}
+
+.main-view {
+  display: block;
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: auto;
+  height: 100%;
+}
+
+#app .main-view--hidden {
+  display: none;
+}
+
+
+/* ----- フッター（スペーサー先頭で右寄せ） ----- */
+.app-footer {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: var(--color-footer-bg, #ffffff);
+  color: var(--color-footer-fg, #666666);
+  border-top: 1px solid var(--gray-400);
+  font-size: 0.875rem;
+}
+
+.app-footer-spacer {
+  flex: 1;
+}
+
+/* #app button より優先してフッターボタンのスタイルを指定 */
+#app .btn-footer-nav {
+  display: none;
+  margin: 0;
+  padding: 0 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  height: 30px;
+  box-sizing: border-box;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-button-bg);
+  color: var(--color-button-fg);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+#app .btn-footer-nav.is-visible {
+  display: inline-flex;
+}
+
+#app .btn-footer-nav:hover {
+  filter: brightness(1.05);
+}
+
+#app .btn-footer-back {
+  display: none;
+  margin: 0;
+  padding: 0 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  height: 30px;
+  box-sizing: border-box;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-button-bg);
+  color: var(--color-button-fg);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  margin-left: 0.5rem;
+}
+
+#app .btn-footer-back.is-visible {
+  display: inline-flex;
+}
+
+#app .btn-footer-back:hover {
+  filter: brightness(1.05);
+}
+}

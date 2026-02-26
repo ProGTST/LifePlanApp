@@ -1,0 +1,7 @@
+/**
+ * エントリ CSS（Vite から読み込む）
+ * @import は先頭にまとめる。tailwind-layer → tokens → app の順で Tailwind が先に適用される。
+ */
+@import "./tailwind-layer.css";
+@import "./tokens.css";
+@import "./app.css";

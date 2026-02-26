@@ -3,6 +3,7 @@ name = "life-plan-gant"
 version = "0.1.0"
 description = "A Tauri App"
 edition = "2021"
+license = "MIT"
 
 [lib]
 name = "life_plan_gant_lib"

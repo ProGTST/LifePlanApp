@@ -1,0 +1,379 @@
+@layer components {
+/* ----- モーダル ----- */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background: #0006;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-overlay.is-visible {
+  display: flex;
+}
+
+.modal-content {
+  background: var(--color-view-bg);
+  border-radius: var(--radius-xl);
+  padding: 1.5rem;
+  min-width: 320px;
+  max-width: 90vw;
+  box-shadow: var(--shadow-lg);
+}
+
+/* 収支履歴検索：カテゴリー・タグ・勘定項目選択モーダル */
+.transaction-history-select-modal {
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 収支記録：月ごと対象日選択ポップアップ */
+.transaction-entry-cycle-monthly-select-modal {
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  max-width:  min(24rem, 90vw);
+}
+.transaction-entry-cycle-monthly-select-modal .transaction-entry-cycle-monthly-select-grid {
+  overflow-y: auto;
+  margin-bottom: 1rem;
+}
+.transaction-entry-cycle-monthly-select-modal .transaction-entry-cycle-month-select-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.transaction-entry-cycle-monthly-select-modal .transaction-entry-cycle-month-days-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.25rem;
+}
+.transaction-entry-cycle-monthly-select-modal .transaction-entry-cycle-month-day {
+  width: 2.25rem;
+  min-width: 2.25rem;
+  max-width: 2.25rem;
+  aspect-ratio: 1;
+  padding: 0.35rem;
+  font-size: 0.8125rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.transaction-entry-cycle-monthly-select-modal .transaction-entry-cycle-month-special {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+.transaction-entry-cycle-monthly-select-modal .transaction-entry-cycle-month-special .transaction-history-filter-btn {
+  margin: 0;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+}
+
+.transaction-history-select-title {
+  margin: 0 0 1rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+/* 収支記録：タグ選択・取引実績選択モーダル（固定ヘッダー・最大高さ50vh） */
+#transaction-entry-tag-select-overlay .transaction-history-select-modal,
+#transaction-entry-actual-select-overlay .transaction-history-select-modal {
+  max-height: 50vh;
+  display: flex;
+  flex-direction: column;
+}
+#transaction-entry-tag-select-overlay .transaction-history-select-modal .transaction-history-select-title,
+#transaction-entry-actual-select-overlay .transaction-history-select-modal .transaction-history-select-title {
+  flex-shrink: 0;
+  margin-bottom: 0.5rem;
+}
+#transaction-entry-actual-select-overlay .transaction-history-select-modal .transaction-entry-actual-select-ym-picker {
+  flex-shrink: 0;
+}
+#transaction-entry-tag-select-overlay .transaction-history-select-list,
+#transaction-entry-actual-select-overlay .transaction-history-select-list {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  max-height: none;
+  margin-bottom: 0.5rem;
+}
+/* タグ選択：リストヘッダー・スクロール領域 */
+.transaction-entry-tag-select-list-wrap {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+.transaction-entry-tag-select-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0;
+  flex-shrink: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--gray-600);
+  background: var(--gray-50);
+  border-bottom: 1px solid var(--gray-200);
+}
+.transaction-entry-tag-select-header-check {
+  width: var(--icon-size, 22px);
+  min-width: var(--icon-size, 22px);
+  flex-shrink: 0;
+}
+.transaction-entry-tag-select-header-icon {
+  width: 1.25rem;
+  min-width: 1.25rem;
+  flex-shrink: 0;
+}
+.transaction-entry-tag-select-header-name {
+  flex: 1;
+  min-width: 0;
+}
+.transaction-entry-tag-select-list-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+#transaction-entry-tag-select-overlay .transaction-history-select-actions,
+#transaction-entry-actual-select-overlay .transaction-history-select-actions {
+  flex-shrink: 0;
+}
+
+.transaction-history-category-select-tabs-row {
+  margin-bottom: 0.75rem;
+}
+
+.transaction-history-category-select-tabs {
+  display: flex;
+  gap: 0;
+}
+
+.transaction-history-account-select-tabs-row {
+  margin-bottom: 0.75rem;
+}
+
+.transaction-history-account-select-tabs {
+  display: flex;
+  gap: 0;
+}
+
+.transaction-history-select-list {
+  overflow-y: auto;
+  max-height: 50vh;
+  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.transaction-history-select-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0;
+  font-size: 0.875rem;
+}
+
+.transaction-history-select-item .category-icon-wrap {
+  flex-shrink: 0;
+}
+
+.transaction-entry-actual-select-category-icon {
+  flex-shrink: 0;
+  width: 1.25rem;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  border-radius: var(--radius-sm);
+  box-sizing: border-box;
+}
+
+/* 取引実績選択：年月選択ピッカー */
+.transaction-entry-actual-select-ym-picker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+  margin-bottom: 0.25rem;
+}
+.transaction-entry-actual-select-ym-picker button {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius-sm);
+  background: var(--gray-50);
+  color: var(--gray-700);
+  cursor: pointer;
+}
+.transaction-entry-actual-select-ym-picker button:hover {
+  background: var(--gray-100);
+}
+.transaction-entry-actual-select-ym-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--gray-800);
+  min-width: 9rem;
+  width: 9rem;
+  text-align: center;
+  padding: 0.25rem 0.35rem;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius-sm);
+  background: var(--gray-50);
+  box-sizing: border-box;
+}
+.transaction-entry-actual-select-ym-picker .transaction-entry-actual-select-ym-label:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* 取引実績選択：リストヘッダー・スクロール領域 */
+.transaction-entry-actual-select-list-wrap {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+.transaction-entry-actual-select-header {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 8rem) 6.5rem 5rem;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0;
+  flex-shrink: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--gray-600);
+  background: var(--gray-50);
+  border-bottom: 1px solid var(--gray-200);
+}
+.transaction-entry-actual-select-header-amount {
+  text-align: right;
+  padding-right: 1rem;
+}
+.transaction-entry-actual-select-list-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+#transaction-entry-actual-select-list-body .transaction-entry-actual-select-empty {
+  margin: 0;
+  padding: 1.5rem 0.75rem;
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--gray-600);
+}
+
+/* 取引実績選択：グリッドで列を固定し、カテゴリーアイコン・取引名・開始日・金額を縦に整列 */
+#transaction-entry-actual-select-list .transaction-history-select-item {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 8rem) 6.5rem 5rem;
+  align-items: center;
+  gap: 0.5rem;
+}
+#transaction-entry-actual-select-list .transaction-entry-actual-select-name {
+  min-width: 0;
+  cursor: pointer;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  white-space: normal;
+  line-height: 1.35;
+}
+#transaction-entry-actual-select-list .transaction-entry-actual-select-date {
+  cursor: pointer;
+  color: var(--gray-600);
+  font-size: 0.8125rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#transaction-entry-actual-select-list .transaction-entry-actual-select-amount-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0;
+  min-width: 0;
+  cursor: pointer;
+  font-weight: 600;
+}
+#transaction-entry-actual-select-list .transaction-entry-actual-select-amount-num {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+#transaction-entry-actual-select-list .transaction-entry-actual-select-amount-unit {
+  flex-shrink: 0;
+}
+
+.transaction-history-select-item-name {
+  flex: 1;
+  min-width: 0;
+  cursor: pointer;
+}
+
+/* 勘定項目のユーザー選択と同じチェックボタン */
+#app .transaction-history-select-modal .transaction-history-select-check-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--icon-size, 22px);
+  height: var(--icon-size, 22px);
+  padding: 0;
+  border: none;
+  background: var(--color-base-bg);
+  color: var(--color-base-fg);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+  transition: box-shadow 0.15s;
+}
+
+#app .transaction-history-select-modal .transaction-history-select-check-btn .transaction-history-select-check-icon {
+  display: block;
+  width: var(--icon-size, 22px);
+  height: var(--icon-size, 22px);
+  flex-shrink: 0;
+  background-color: var(--color-base-fg);
+  -webkit-mask-image: var(--icon-check);
+  mask-image: var(--icon-check);
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  transition: background-color 0.15s;
+}
+
+#app .transaction-history-select-modal .transaction-history-select-check-btn.is-selected .transaction-history-select-check-icon {
+  background-color: var(--color-accent-bg);
+}
+
+#app .transaction-history-select-modal .transaction-history-select-check-btn:hover:not(:disabled) {
+  box-shadow: 0 0 0 1px var(--color-base-fg);
+}
+
+.transaction-history-select-actions {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+}

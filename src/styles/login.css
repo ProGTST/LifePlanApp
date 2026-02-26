@@ -18,14 +18,15 @@
   flex-shrink: 0;
 }
 
-.screen--hidden {
-  display: none !important;
+#login-screen.screen--hidden,
+.screen.screen--hidden {
+  display: none;
 }
 
 .login-card {
   width: 100%;
   max-width: 360px;
-  background: #ffffff;
+  background: var(--color-view-bg);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-md);
   padding: 1.5rem;

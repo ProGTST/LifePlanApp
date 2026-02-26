@@ -53,8 +53,8 @@ export function openSidebarPanel(panel: string): void {
   }
 }
 
-const MENU_CURRENT_CLASS = "sidebar-menu-item--current";
-const SETTINGS_CURRENT_CLASS = "sidebar-settings-item--current";
+const MENU_CURRENT_CLASS = "is-current";
+const SETTINGS_CURRENT_CLASS = "is-current";
 
 /**
  * サイドバーのメニュー・設定項目のうち、現在のビューに一致するものを「現在」スタイルにし、他を更新する。
