@@ -180,6 +180,14 @@
   align-items: center;
   gap: 0.35rem;
 }
+.home-plan-cell-name .home-plan-name-category-icon {
+  width: var(--icon-size-md);
+  height: var(--icon-size-md);
+  min-width: var(--icon-size-md);
+  min-height: var(--icon-size-md);
+  flex-shrink: 0;
+  border-radius: 2px;
+}
 .home-plan-cell-amount {
   text-align: right;
   white-space: nowrap;

@@ -772,8 +772,8 @@
                   </div>
                 </div>
               </div>
-              <!-- 収支記録モーダルオーバーレイ（ビュー全体を覆うため view-transaction-entry 直下に配置） -->
-              <div class="transaction-entry-overlays" aria-hidden="true">
+              <!-- 収支記録モーダルオーバーレイ（ビュー全体を覆うため view-transaction-entry 直下に配置）。aria-hidden は子の modal-overlay のみに付与し、開いているオーバーレイの子孫にフォーカスがあるときに祖先を隠さないようにする。 -->
+              <div class="transaction-entry-overlays">
                 <div id="transaction-entry-actual-select-overlay" class="modal-overlay" aria-hidden="true">
                   <div class="modal-content transaction-history-select-modal" role="dialog" aria-labelledby="transaction-entry-actual-select-title" aria-modal="true" style="--icon-check: url(/icon/circle-check-solid-full.svg);">
                     <h2 id="transaction-entry-actual-select-title" class="transaction-history-select-title">取引実績を選択</h2>

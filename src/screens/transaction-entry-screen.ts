@@ -929,13 +929,8 @@ function renderActualSelectList(): void {
 
 function openTransactionEntryActualModal(): void {
   const planType = (getTypeInput()?.value ?? "expense").toLowerCase();
-  const dateFromEl = document.getElementById("transaction-entry-date-from") as HTMLInputElement | null;
-  const dateEl = document.getElementById("transaction-entry-date") as HTMLInputElement | null;
-  const planStart = (dateFromEl?.value || dateEl?.value || "").trim();
   const today = new Date();
-  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-  const initialDate = planStart || todayStr;
-  const initialYM = initialDate.slice(0, 7);
+  const initialYM = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
   (async () => {
     const [txResult, accList, permList] = await Promise.all([
       fetchTransactionRows(true),

@@ -351,35 +351,29 @@ function aggregateForRange(
     return type !== "transfer";
   });
 
-  // 予定ごとに範囲内の発生日を列挙し、予定金額と紐づく実績金額を集計
+  // 予定ごとに範囲内の発生日で予定金額を集計。紐づく実績は取引日が範囲内なら発生日と異なっても集計する
+  const actualFromPlanIds = new Set<string>();
   for (const row of planRows) {
     const planAmount = parseFloat(String(row.AMOUNT ?? "0")) || 0;
     const planType = (row.TRANSACTION_TYPE || "").toLowerCase() as "income" | "expense";
     const allDates = getPlanOccurrenceDates(row);
     const datesInRange = allDates.filter((d) => d >= rangeStart && d <= rangeEnd);
 
-    const actualRows = getActualTransactionsForPlan(row.ID);
-    const actualByDate = new Map<string, TransactionRow>();
-    for (const r of actualRows) {
-      const d = getActualTargetDate(r).slice(0, 10);
-      actualByDate.set(d, r);
+    for (const _ of datesInRange) {
+      if (planType === "income") summary.plannedIncome += planAmount;
+      else summary.plannedExpense += planAmount;
     }
 
-    for (const dateKey of datesInRange) {
-      if (planType === "income") {
-        summary.plannedIncome += planAmount;
-      } else {
-        summary.plannedExpense += planAmount;
-      }
-
-      const actualOnDate = actualByDate.get(dateKey);
-      if (actualOnDate) {
-        // 発生日に紐づく実績がある場合のみ実績金額を加算
-        const amt = parseFloat(String(actualOnDate.AMOUNT ?? "0")) || 0;
-        const t = (actualOnDate.TRANSACTION_TYPE || "").toLowerCase();
-        if (t === "income") summary.actualIncomeFromPlan += amt;
-        else summary.actualExpenseFromPlan += amt;
-      }
+    const actualRows = getActualTransactionsForPlan(row.ID);
+    for (const r of actualRows) {
+      if (actualFromPlanIds.has(r.ID ?? "")) continue;
+      const actualDate = getActualTargetDate(r).slice(0, 10);
+      if (actualDate < rangeStart || actualDate > rangeEnd) continue;
+      actualFromPlanIds.add(r.ID ?? "");
+      const amt = parseFloat(String(r.AMOUNT ?? "0")) || 0;
+      const t = (r.TRANSACTION_TYPE || "").toLowerCase();
+      if (t === "income") summary.actualIncomeFromPlan += amt;
+      else if (t === "expense") summary.actualExpenseFromPlan += amt;
     }
   }
 
@@ -722,6 +716,15 @@ function renderMonthPlanSection(container: HTMLElement): void {
     typeIcon.setAttribute("aria-label", txType === "income" ? "収入" : txType === "expense" ? "支出" : "振替");
     typeIcon.textContent = txType === "income" ? "収" : txType === "expense" ? "支" : "振";
     nameInner.appendChild(typeIcon);
+    const cat = getCategoryById(row.CATEGORY_ID);
+    if (cat) {
+      const catIcon = createIconWrap(cat.COLOR || ICON_DEFAULT_COLOR, cat.ICON_PATH, {
+        tag: "span",
+        className: "category-icon-wrap home-plan-name-category-icon",
+      });
+      catIcon.setAttribute("aria-label", cat.CATEGORY_NAME || "カテゴリ");
+      nameInner.appendChild(catIcon);
+    }
     const nameText = document.createElement("span");
     nameText.className = "transaction-history-name-text";
     nameText.textContent = row.NAME || "—";

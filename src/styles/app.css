@@ -2679,7 +2679,7 @@
   margin: 0;
   padding: 0 0.5rem;
   box-sizing: border-box;
-  font-size: 0.75rem;
+  font-size: 0.85rem;
   font-weight: 600;
   border: 1px solid var(--gray-500);
   border-radius: var(--radius-md);
@@ -3346,7 +3346,7 @@
 
 .transaction-history-calendar-ym {
   font-weight: 600;
-  font-size: 1rem;
+  font-size: 0.85rem;
   min-width: 8rem;
   text-align: center;
   box-sizing: border-box;
@@ -4082,7 +4082,7 @@
   margin: 0;
   padding: 0 0.5rem;
   box-sizing: border-box;
-  font-size: 0.875rem;
+  font-size: 0.85rem;
   border: 1px solid var(--gray-500);
   border-radius: var(--radius-md);
   background: var(--color-view-bg);
@@ -4097,7 +4097,7 @@
   margin: 0;
   padding: 0.35rem 0.5rem;
   box-sizing: border-box;
-  font-size: 0.875rem;
+  font-size: 0.85rem;
   border: 1px solid var(--gray-500);
   border-radius: var(--radius-md);
 }
@@ -4612,6 +4612,7 @@
   white-space: nowrap;
   line-height: 1;
 }
+/* 未着: BASE / 完了・中止・進行中: ACCENT / 遅れ: 赤背景・白文字 */
 #app .schedule-status-btn--not-started {
   background: var(--color-base-bg);
   color: var(--color-base-fg);
@@ -4632,14 +4633,14 @@
   border-color: color-mix(in srgb, var(--color-accent-bg) 75%, transparent);
 }
 #app .schedule-status-btn--canceled {
-  background: var(--gray-600);
-  color: var(--color-button-fg);
-  border-color: var(--gray-600);
+  background: var(--color-accent-bg);
+  color: var(--color-accent-fg);
+  border-color: color-mix(in srgb, var(--color-accent-bg) 75%, transparent);
 }
 #app .schedule-status-btn--delayed {
-  background: var(--color-delayed-bg);
-  color: var(--color-button-fg);
-  border-color: var(--color-delayed-border);
+  background: #b91c1c;
+  color: #ffffff;
+  border-color: #b91c1c;
 }
 
 .schedule-status-btn {
@@ -5100,6 +5101,23 @@
   justify-content: center;
   gap: 0.5rem;
 }
+
+/* 収支記録から開く完了日選択画面：アクション間隔・設定ボタンの高さ・フォントサイズ */
+#transaction-entry-completed-dates-overlay .schedule-occurrence-actions {
+  gap: 0.25rem;
+}
+#app #transaction-entry-completed-dates-apply {
+  height: 30px;
+  min-height: 30px;
+  font-size: 0.75rem;
+  line-height: 1;
+  box-sizing: border-box;
+  padding: 0 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 /* 取引予定日・取引実績ポップアップ：設定・閉じるボタン（高さ・フォントサイズ統一） */
 #app #schedule-occurrence-apply,
 #app #schedule-actual-list-close {
@@ -5239,6 +5257,32 @@
     margin: 0;
     box-sizing: border-box;
   }
+  /* 状況ボタン・連続モード：#app button を上書き（STYLE_CODING_RULES.md 5.3 のとおり overrides で詳細度を上げずに適用） */
+  #app .schedule-status-btn--not-started {
+    background: var(--color-base-bg);
+    color: var(--color-base-fg);
+    border: 1px solid var(--color-base-fg);
+  }
+  #app .schedule-status-btn--in-progress,
+  #app .schedule-status-btn--complete,
+  #app .schedule-status-btn--canceled {
+    background: var(--color-accent-bg);
+    color: var(--color-accent-fg);
+  }
+  #app .schedule-status-btn--delayed {
+    background: var(--color-delayed-bg);
+    color: var(--color-button-fg);
+  }
+  #app #header-transaction-entry-continuous.btn-header-transaction-entry-continuous {
+    background-color: var(--color-base-bg);
+    color: var(--color-base-fg);
+    border: 1px solid var(--color-base-fg);
+  }
+  #app #header-transaction-entry-continuous.btn-header-transaction-entry-continuous.is-on {
+    background-color: var(--color-accent-bg);
+    color: var(--color-accent-fg);
+    border-color: var(--color-accent-bg);
+  }
 }
 
 /* レイヤー外：デザイン画面のパレット入力の margin を #app input より確実に 0 にする */
@@ -5313,4 +5357,31 @@
   padding: 0;
   margin: 0;
   box-sizing: border-box;
+}
+
+/* レイヤー外：状況ボタン・連続モードを #app button より確実に適用（unlayered で全レイヤーより優先、!important は使わない） */
+#app .schedule-status-btn--not-started {
+  background: var(--color-base-bg);
+  color: var(--color-base-fg);
+  border: 1px solid var(--color-base-fg);
+}
+#app .schedule-status-btn--in-progress,
+#app .schedule-status-btn--complete,
+#app .schedule-status-btn--canceled {
+  background: var(--color-accent-bg);
+  color: var(--color-accent-fg);
+}
+#app .schedule-status-btn--delayed {
+  background: var(--color-delayed-bg);
+  color: var(--color-button-fg);
+}
+#app #header-transaction-entry-continuous.btn-header-transaction-entry-continuous {
+  background-color: var(--color-base-bg);
+  color: var(--color-base-fg);
+  border: 1px solid var(--color-base-fg);
+}
+#app #header-transaction-entry-continuous.btn-header-transaction-entry-continuous.is-on {
+  background-color: var(--color-accent-bg);
+  color: var(--color-accent-fg);
+  border-color: var(--color-accent-bg);
 }

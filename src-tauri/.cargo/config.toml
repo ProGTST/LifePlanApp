@@ -1,3 +1,2 @@
-# ビルド出力先: src-tauri/target（../target だと serde_core 等の build スクリプトが Windows で private.rs を書き損ねることがあるため）
-# [build]
-# target-dir = "../target"
+# Windows で「アクセスが拒否されました」(serde_core / anyhow / thiserror の build 失敗) が出る場合:
+# → docs/TAURI_BUILD_WINDOWS.md の「ウイルス対策の除外」を実施してください。

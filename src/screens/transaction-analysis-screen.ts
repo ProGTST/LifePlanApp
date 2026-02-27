@@ -151,28 +151,17 @@ type PlanFundsEvent = { date: string; type: "income" | "expense"; amount: number
 
 /**
  * 完了として扱う予定取引のイベントを構築する。
- * 発生日ごとの金額は「その発生日に紐づく実績取引」がある場合のみ実績金額で集計する（予定完了日のみの日は含めない）。
+ * 予定に紐づく実績取引をすべて集計する（実績の取引日が予定発生日と異なる場合も対象）。
  */
 function getCompletedPlanEvents(planRows: TransactionRow[]): PlanFundsEvent[] {
   const events: PlanFundsEvent[] = [];
   for (const row of planRows) {
-    // 予定に紐づく実績を取引日キーでマップ化
     const actualRows = getActualTransactionsForPlan(row.ID);
-    const actualByDate = new Map<string, TransactionRow>();
     for (const r of actualRows) {
-      const d = getActualTargetDate(r).slice(0, 10);
-      actualByDate.set(d, r);
-    }
-    const allDates = getPlanOccurrenceDates(row);
-
-    // 発生日ごとに紐づく実績がある場合のみイベント追加
-    for (const d of allDates) {
-      const dateKey = d.slice(0, 10);
-      const actualOnDate = actualByDate.get(dateKey);
-      if (!actualOnDate) continue;
-
-      const amount = parseFloat(String(actualOnDate.AMOUNT ?? "0")) || 0;
-      const t = (actualOnDate.TRANSACTION_TYPE || "").toLowerCase();
+      const dateKey = getActualTargetDate(r).slice(0, 10);
+      if (!dateKey) continue;
+      const amount = parseFloat(String(r.AMOUNT ?? "0")) || 0;
+      const t = (r.TRANSACTION_TYPE || "").toLowerCase();
       const type: "income" | "expense" = t === "income" ? "income" : "expense";
       events.push({ date: dateKey, type, amount });
     }

@@ -508,6 +508,9 @@ function getActualIconColumnIndices(
 /** スケジュール表の固定列数（種類・カテゴリ・取引名・金額・取引日・状況）。日付列はこの次から。 */
 const SCHEDULE_FIXED_COL_COUNT = 6;
 
+/** 1フレームあたりに描画する行数（Violation 対策でチャンク描画）。 */
+const SCHEDULE_ROW_CHUNK_SIZE = 5;
+
 /**
  * 実績アイコンが複数列ある行について、オーバーレイで1本の線を描画する。
  * テーブル描画後の requestAnimationFrame から呼ぶ想定。
@@ -558,23 +561,26 @@ function renderScheduleConnectorOverlays(): void {
     if (container) {
       container.style.height = heightPx;
     }
+    // レイアウト確定を1フレーム待ってから getBoundingClientRect を読む（Forced reflow 軽減）
     requestAnimationFrame(() => {
       const containerRect = container.getBoundingClientRect();
       if (containerRect.width === 0 || containerRect.height === 0) return;
 
-      // 実績アイコンが2列以上にある行ごとに、アイコン間を結ぶ線を1本描画
+      // 全行の getBoundingClientRect を先に読み取り、その後まとめて DOM に書き込む
       const dataRows = tbody.querySelectorAll("tr[data-actual-icon-cols]");
-      dataRows.forEach((tr) => {
+      const lineStyles: { left: number; top: number; width: number; height: number }[] = [];
+      for (let i = 0; i < dataRows.length; i++) {
+        const tr = dataRows[i];
         const attr = tr.getAttribute("data-actual-icon-cols");
-        if (!attr) return;
+        if (!attr) continue;
         const indices = attr.split(",").map((s) => parseInt(s.trim(), 10)).filter((n) => !Number.isNaN(n));
-        if (indices.length < 2) return;
+        if (indices.length < 2) continue;
 
         const firstCol = indices[0];
         const lastCol = indices[indices.length - 1];
         const firstCell = tr.children[SCHEDULE_FIXED_COL_COUNT + firstCol] as HTMLElement | undefined;
         const lastCell = tr.children[SCHEDULE_FIXED_COL_COUNT + lastCol] as HTMLElement | undefined;
-        if (!firstCell || !lastCell) return;
+        if (!firstCell || !lastCell) continue;
 
         const firstIcon = firstCell.querySelector(".schedule-view-date-cell-actual-icon") as HTMLElement | null;
         const lastIcon = lastCell.querySelector(".schedule-view-date-cell-actual-icon") as HTMLElement | null;
@@ -589,14 +595,15 @@ function renderScheduleConnectorOverlays(): void {
         }
         lineWidth = Math.max(0, Math.min(lineWidth, containerRect.width - lineLeft));
         const top = firstRect.top - containerRect.top + firstRect.height / 2 - 1;
-        const height = 2;
-
+        lineStyles.push({ left: lineLeft, top, width: lineWidth, height: 2 });
+      }
+      for (const s of lineStyles) {
         const line = document.createElement("div");
         line.className = "schedule-connector-line";
         line.setAttribute("aria-hidden", "true");
-        line.style.cssText = `left:${lineLeft}px;top:${top}px;width:${lineWidth}px;height:${height}px;`;
+        line.style.cssText = `left:${s.left}px;top:${s.top}px;width:${s.width}px;height:${s.height}px;`;
         container.appendChild(line);
-      });
+      }
     });
   });
 }
@@ -1068,9 +1075,62 @@ function renderScheduleGrid(): void {
   });
 
   tbody.innerHTML = "";
-  // 予定行の描画: 1予定1行。固定列（種類・カテゴリ・取引名・金額・取引日・状況）＋日付列セル
-  rows.forEach((row) => {
-    const cat = getCategoryById(row.CATEGORY_ID);
+  // 予定行の描画: チャンク単位で rAF に分け、1ハンドラの負荷を下げて Violation を防ぐ
+  let rowChunkIndex = 0;
+  function appendRowChunk(): void {
+    const chunkEnd = Math.min(rowChunkIndex + SCHEDULE_ROW_CHUNK_SIZE, rows.length);
+    for (let i = rowChunkIndex; i < chunkEnd; i++) {
+      const tr = buildOneScheduleDataRow(rows[i], columns, unit, todayYMD);
+      tbody.appendChild(tr);
+    }
+    rowChunkIndex = chunkEnd;
+    if (rowChunkIndex < rows.length) {
+      requestAnimationFrame(appendRowChunk);
+      return;
+    }
+    // 全行追加済み: 次フレームで挿入・オーバーレイ・集計・スクロールを行い、この rAF の負荷を下げる
+    requestAnimationFrame(() => {
+      const connectorRow = document.createElement("tr");
+      connectorRow.className = "schedule-connector-overlays-row";
+      connectorRow.setAttribute("aria-hidden", "true");
+      const connectorTd = document.createElement("td");
+      connectorTd.colSpan = SCHEDULE_FIXED_COL_COUNT + columns.length;
+      connectorTd.className = "schedule-connector-overlays-td";
+      const wrapper = document.createElement("div");
+      wrapper.className = "schedule-connector-overlays-wrapper";
+      wrapper.id = "schedule-connector-overlays-wrapper";
+      const container = document.createElement("div");
+      container.className = "schedule-connector-overlays";
+      container.id = "schedule-connector-overlays";
+      container.style.left = "0";
+      container.style.width = "100%";
+      wrapper.appendChild(container);
+      connectorTd.appendChild(wrapper);
+      connectorRow.appendChild(connectorTd);
+      tbody.insertBefore(connectorRow, tbody.firstChild);
+
+      requestAnimationFrame(() => renderScheduleConnectorOverlays());
+      renderScheduleSummary(rows, getPlanRowsForMonthSummary());
+      if (unit === "day" || unit === "week" || unit === "month") {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => scrollScheduleGridToStartDate());
+        });
+      }
+    });
+  }
+  requestAnimationFrame(appendRowChunk);
+}
+
+/**
+ * 予定1行分の tr を組み立てて返す（チャンク描画用）。
+ */
+function buildOneScheduleDataRow(
+  row: TransactionRow,
+  columns: DateColumn[],
+  unit: ScheduleUnit,
+  todayYMD: string
+): HTMLTableRowElement {
+  const cat = getCategoryById(row.CATEGORY_ID);
     const from = (row.TRANDATE_FROM || "").slice(0, 10);
     const to = (row.TRANDATE_TO || "").slice(0, 10) || from;
 
@@ -1273,42 +1333,7 @@ function renderScheduleGrid(): void {
       }
       tr.appendChild(td);
     });
-    tbody.appendChild(tr);
-  });
-
-  // --- 実績つなぎ線用の行を tbody 先頭に挿入（z-index: 1 で日付列の上・固定列の下に描画） ---
-  const connectorRow = document.createElement("tr");
-  connectorRow.className = "schedule-connector-overlays-row";
-  connectorRow.setAttribute("aria-hidden", "true");
-  const connectorTd = document.createElement("td");
-  connectorTd.colSpan = SCHEDULE_FIXED_COL_COUNT + columns.length;
-  connectorTd.className = "schedule-connector-overlays-td";
-  const wrapper = document.createElement("div");
-  wrapper.className = "schedule-connector-overlays-wrapper";
-  wrapper.id = "schedule-connector-overlays-wrapper";
-  const container = document.createElement("div");
-  container.className = "schedule-connector-overlays";
-  container.id = "schedule-connector-overlays";
-  container.style.left = "0";
-  container.style.width = "100%";
-  wrapper.appendChild(container);
-  connectorTd.appendChild(wrapper);
-  connectorRow.appendChild(connectorTd);
-  tbody.insertBefore(connectorRow, tbody.firstChild);
-
-  // 実績つなぎ線の位置はレイアウト確定後に計算するため rAF で遅延実行
-  requestAnimationFrame(() => {
-    renderScheduleConnectorOverlays();
-  });
-
-  renderScheduleSummary(rows, getPlanRowsForMonthSummary());
-
-  // 開始日列が固定列の右に来るよう横スクロール位置を調整
-  if (unit === "day" || unit === "week" || unit === "month") {
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => scrollScheduleGridToStartDate());
-    });
-  }
+  return tr;
 }
 
 /**
@@ -1561,7 +1586,8 @@ export function initScheduleView(): void {
         if (startInput && !startInput.value) {
           startInput.value = getTodayYMD();
         }
-        renderScheduleGrid();
+        // 重い描画は次のタスクにずらし、rAF ハンドラを軽くして Violation を防ぐ
+        setTimeout(() => renderScheduleGrid(), 0);
       });
     });
     setDisplayedKeys("schedule", ["TRANSACTION.csv", "CATEGORY.csv", "TRANSACTION_MANAGEMENT.csv"]);
@@ -1593,9 +1619,9 @@ export function initScheduleView(): void {
       });
       btn.classList.add("is-active");
       btn.setAttribute("aria-pressed", "true");
-      // ボタンの色を先に描画させるため、重いグリッド再描画は次フレームに遅延（日単位は列数が多くブロックしやすい）
+      // ボタンの色を先に描画させるため、重いグリッド再描画は次のタスクに遅延（rAF ハンドラを軽くして Violation を防ぐ）
       requestAnimationFrame(() => {
-        renderScheduleGrid();
+        setTimeout(() => renderScheduleGrid(), 0);
       });
     });
   });
