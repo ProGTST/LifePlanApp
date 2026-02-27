@@ -6,7 +6,7 @@ import { userListToCsv } from "../utils/csvExport.ts";
 import { PROFILE_ICON_DEFAULT_COLOR } from "../constants/colorPresets.ts";
 import { openColorIconPicker } from "../utils/colorIconPicker.ts";
 import { setUserDirty, clearUserDirty } from "../utils/csvDirty.ts";
-import { saveCsvViaApi } from "../utils/dataApi";
+import { saveCsvViaApi, VersionConflictError } from "../utils/dataApi";
 import { setUpdateAudit } from "../utils/auditFields.ts";
 import {
   checkVersionBeforeUpdate,
@@ -170,8 +170,17 @@ async function saveProfileForm(): Promise<void> {
   setUpdateAudit(user as unknown as Record<string, string>, currentUserId ?? "");
 
   const csv = userListToCsv(userList as unknown as Record<string, string>[]);
-  await saveCsvViaApi("USER.csv", csv, getLastCsvVersion("USER.csv"));
-  clearUserDirty();
+  try {
+    await saveCsvViaApi("USER.csv", csv, getLastCsvVersion("USER.csv"));
+    clearUserDirty();
+  } catch (e) {
+    if (e instanceof VersionConflictError) {
+      alert(e.message);
+      await loadAndRenderProfile(true);
+    } else {
+      throw e;
+    }
+  }
 }
 
 /**
@@ -254,9 +263,15 @@ export function saveUserCsvOnNavigate(): Promise<void> {
     setUpdateAudit(user as unknown as Record<string, string>, currentUserId ?? "");
   }
   const csv = userListToCsv(userList as unknown as Record<string, string>[]);
-  return saveCsvViaApi("USER.csv", csv, getLastCsvVersion("USER.csv")).then(() =>
-    clearUserDirty()
-  );
+  return saveCsvViaApi("USER.csv", csv, getLastCsvVersion("USER.csv"))
+    .then(() => clearUserDirty())
+    .catch((e) => {
+      if (e instanceof VersionConflictError) {
+        alert(e.message);
+        return loadAndRenderProfile(true);
+      }
+      throw e;
+    });
 }
 
 /**

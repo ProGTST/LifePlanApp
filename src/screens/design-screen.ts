@@ -1,4 +1,10 @@
-import { currentUserId, currentView, setLastCsvVersion, getLastCsvVersion } from "../state";
+import {
+  currentUserId,
+  currentView,
+  setLastCsvVersion,
+  getLastCsvVersion,
+} from "../state";
+import { VersionConflictError } from "../utils/dataApi";
 import { fetchCsv, rowToObject } from "../utils/csv";
 import { registerViewHandler, registerRefreshHandler } from "../app/screen";
 import { colorPaletteListToCsv } from "../utils/csvExport.ts";
@@ -270,7 +276,16 @@ async function saveDesignForm(): Promise<void> {
   // CSV を先に保存し、成功した場合のみ localStorage を更新（整合性リスク対策）
   const { saveCsvViaApi } = await import("../utils/dataApi");
   const csv = colorPaletteListToCsv(paletteList);
-  await saveCsvViaApi("COLOR_PALETTE.csv", csv, getLastCsvVersion("COLOR_PALETTE.csv"));
+  try {
+    await saveCsvViaApi("COLOR_PALETTE.csv", csv, getLastCsvVersion("COLOR_PALETTE.csv"));
+  } catch (e) {
+    if (e instanceof VersionConflictError) {
+      alert(e.message);
+      await loadAndRenderDesign(true);
+      return;
+    }
+    throw e;
+  }
 
   if (currentUserId) {
     const toStore: Record<string, string> = {};
@@ -320,7 +335,16 @@ export function saveColorPaletteCsvOnNavigate(): Promise<void> {
     setUpdateAudit(palette, currentUserId ?? "");
     const csv = colorPaletteListToCsv(paletteList);
     const { saveCsvViaApi } = await import("../utils/dataApi");
-    await saveCsvViaApi("COLOR_PALETTE.csv", csv, getLastCsvVersion("COLOR_PALETTE.csv"));
+    try {
+      await saveCsvViaApi("COLOR_PALETTE.csv", csv, getLastCsvVersion("COLOR_PALETTE.csv"));
+    } catch (e) {
+      if (e instanceof VersionConflictError) {
+        alert(e.message);
+        await loadAndRenderDesign(true);
+        return;
+      }
+      throw e;
+    }
     if (currentUserId) {
       const toStore: Record<string, string> = {};
       PALETTE_KEYS.forEach((key) => {

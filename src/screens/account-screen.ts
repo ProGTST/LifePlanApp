@@ -27,6 +27,7 @@ import {
 } from "../utils/tableCells.ts";
 import { setAccountDirty } from "../utils/csvDirty.ts";
 import { saveAccountCsvOnly } from "../utils/saveMasterCsv.ts";
+import { VersionConflictError } from "../utils/dataApi.ts";
 import { setNewRowAudit, setUpdateAudit } from "../utils/auditFields.ts";
 import {
   checkVersionBeforeUpdate,
@@ -116,7 +117,14 @@ async function fetchAccountPermissionList(): Promise<AccountPermissionRow[]> {
  */
 function persistAccount(): void {
   setAccountDirty();
-  saveAccountCsvOnly().catch((e) => console.error("saveAccountCsvOnly", e));
+  saveAccountCsvOnly().catch((e) => {
+    if (e instanceof VersionConflictError) {
+      alert(e.message);
+      loadAndRenderAccountList(true);
+    } else {
+      console.error("saveAccountCsvOnly", e);
+    }
+  });
 }
 
 /**
@@ -427,7 +435,14 @@ async function deleteAccountRow(accountId: string): Promise<void> {
     (p) => p.ACCOUNT_ID !== accountId
   );
   setAccountPermissionListFull(permissionWithoutAccount);
-  saveAccountCsvOnly().catch((e) => console.error("saveAccountCsvOnly", e));
+  saveAccountCsvOnly().catch((e) => {
+    if (e instanceof VersionConflictError) {
+      alert(e.message);
+      loadAndRenderAccountList(true);
+    } else {
+      console.error("saveAccountCsvOnly", e);
+    }
+  });
   let next = currentUserId
     ? accountListFull.filter((r) => r.USER_ID === currentUserId)
     : [...accountListFull];
@@ -661,7 +676,14 @@ function applyAccountFormUserPicker(): void {
     const merged = existing.filter((p) => p.ACCOUNT_ID !== targetAccountId).concat(keepRows).concat(newRows);
     setAccountPermissionListFull(merged);
     setAccountDirty();
-    saveAccountCsvOnly().catch((e) => console.error("saveAccountCsvOnly", e));
+    saveAccountCsvOnly().catch((e) => {
+      if (e instanceof VersionConflictError) {
+        alert(e.message);
+        loadAndRenderAccountList(true);
+      } else {
+        console.error("saveAccountCsvOnly", e);
+      }
+    });
     accountPermissionAddTargetId = null;
     renderAccountTable();
     if (accountPermissionEditTargetId) renderAccountPermissionUsersModal();
@@ -764,7 +786,14 @@ function renderAccountPermissionUsersModal(): void {
           });
           setAccountPermissionListFull(next);
           setAccountDirty();
-          saveAccountCsvOnly().catch((e) => console.error("saveAccountCsvOnly", e));
+          saveAccountCsvOnly().catch((e) => {
+            if (e instanceof VersionConflictError) {
+              alert(e.message);
+              loadAndRenderAccountList(true);
+            } else {
+              console.error("saveAccountCsvOnly", e);
+            }
+          });
           renderAccountPermissionUsersModal();
         });
         const removeBtn = document.createElement("button");
@@ -794,7 +823,14 @@ function renderAccountPermissionUsersModal(): void {
           );
           setAccountPermissionListFull(next);
           setAccountDirty();
-          saveAccountCsvOnly().catch((e) => console.error("saveAccountCsvOnly", e));
+          saveAccountCsvOnly().catch((e) => {
+            if (e instanceof VersionConflictError) {
+              alert(e.message);
+              loadAndRenderAccountList(true);
+            } else {
+              console.error("saveAccountCsvOnly", e);
+            }
+          });
           renderAccountPermissionUsersModal();
         });
         div.appendChild(nameSpan);

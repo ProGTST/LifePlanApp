@@ -15,7 +15,7 @@ import { openOverlay, closeOverlay } from "../utils/overlay";
 import { ICON_DEFAULT_COLOR } from "../constants/colorPresets";
 import { fetchCsv, rowToObject } from "../utils/csv";
 import { transactionListToCsv, transactionTagListToCsv, transactionManagementListToCsv, accountListToCsv, accountHistoryListToCsv } from "../utils/csvExport";
-import { saveCsvViaApi } from "../utils/dataApi";
+import { saveCsvViaApi, VersionConflictError } from "../utils/dataApi";
 import { registerViewHandler, showMainView } from "../app/screen";
 import { updateCurrentMenuItem } from "../app/sidebar";
 import { setNewRowAudit, setUpdateAudit } from "../utils/auditFields";
@@ -2491,6 +2491,13 @@ export function initTransactionEntryView(): void {
         }
       }
     } catch (err) {
+      if (err instanceof VersionConflictError) {
+        alert(err.message);
+        invalidateTransactionDataCache();
+        await loadTransactionData(true);
+        if (editingTransactionId) await loadFormForEdit(editingTransactionId);
+        return;
+      }
       console.error(err);
       alert("保存に失敗しました。");
     }
@@ -2582,6 +2589,13 @@ export function initTransactionEntryView(): void {
       showMainView(returnView);
       updateCurrentMenuItem();
     } catch (err) {
+      if (err instanceof VersionConflictError) {
+        alert(err.message);
+        invalidateTransactionDataCache();
+        await loadTransactionData(true);
+        if (editingTransactionId) await loadFormForEdit(editingTransactionId);
+        return;
+      }
       console.error(err);
       alert("削除に失敗しました。");
     }
@@ -2651,6 +2665,13 @@ export function initTransactionEntryView(): void {
       showMainView(returnView);
       updateCurrentMenuItem();
     } catch (err) {
+      if (err instanceof VersionConflictError) {
+        alert(err.message);
+        invalidateTransactionDataCache();
+        await loadTransactionData(true);
+        if (editingTransactionId) await loadFormForEdit(editingTransactionId);
+        return;
+      }
       console.error(err);
       alert("参照登録に失敗しました。");
     }

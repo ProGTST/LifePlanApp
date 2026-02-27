@@ -5,6 +5,15 @@ import { registerViewHandler } from "../app/screen";
 import { runMonthlyAggregation } from "../utils/transactionMonthlyAggregate";
 import { runPhysicalDelete } from "../utils/physicalDelete";
 import { runAccountBalanceRecalculate } from "../utils/accountBalanceRecalculate";
+import { VersionConflictError } from "../utils/dataApi";
+
+function alertError(e: unknown): void {
+  if (e instanceof VersionConflictError) {
+    alert(e.message);
+    return;
+  }
+  alert(`エラー: ${e instanceof Error ? e.message : String(e)}`);
+}
 
 export function initSystemView(): void {
   registerViewHandler("system", () => {});
@@ -17,7 +26,7 @@ export function initSystemView(): void {
       const result = await runPhysicalDelete();
       alert(`物理削除しました。削除件数：${result.deletedCount}`);
     } catch (e) {
-      alert(`エラー: ${e instanceof Error ? e.message : String(e)}`);
+      alertError(e);
     } finally {
       if (btn) btn.disabled = false;
     }
@@ -30,7 +39,7 @@ export function initSystemView(): void {
       const result = await runAccountBalanceRecalculate();
       alert(`勘定集計しました。実績取引：${result.transactionCount}件、更新勘定：${result.accountCount}件`);
     } catch (e) {
-      alert(`エラー: ${e instanceof Error ? e.message : String(e)}`);
+      alertError(e);
     } finally {
       if (btn) btn.disabled = false;
     }
@@ -43,7 +52,7 @@ export function initSystemView(): void {
       const result = await runMonthlyAggregation();
       alert(`集計しました。集計対象：${result.eligibleCount} 集計結果：${result.resultCount}`);
     } catch (e) {
-      alert(`エラー: ${e instanceof Error ? e.message : String(e)}`);
+      alertError(e);
     } finally {
       if (btn) btn.disabled = false;
     }

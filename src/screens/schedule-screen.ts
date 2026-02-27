@@ -25,7 +25,7 @@ import { getPlanOccurrenceDates, getPlanOccurrenceDatesForDisplay, getDelayedPla
 import { openOverlay, closeOverlay } from "../utils/overlay";
 import { fetchCsv, rowToObject } from "../utils/csv";
 import { transactionListToCsv } from "../utils/csvExport";
-import { saveCsvViaApi } from "../utils/dataApi";
+import { saveCsvViaApi, VersionConflictError } from "../utils/dataApi";
 import { registerViewHandler, registerRefreshHandler, showMainView } from "../app/screen";
 import { updateCurrentMenuItem } from "../app/sidebar";
 import { setDisplayedKeys } from "../utils/csvWatch";
@@ -1680,9 +1680,14 @@ export function initScheduleView(): void {
       closeScheduleOccurrenceOverlay();
       await loadTransactionData(true);
       renderScheduleGrid();
-    } catch {
+    } catch (e) {
       occurrencePopupPlanRow = null;
       closeScheduleOccurrenceOverlay();
+      if (e instanceof VersionConflictError) {
+        alert(e.message);
+        await loadTransactionData(true);
+        renderScheduleGrid();
+      }
     }
   });
   document.getElementById("schedule-occurrence-overlay")?.addEventListener("click", (e) => {

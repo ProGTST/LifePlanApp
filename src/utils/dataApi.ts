@@ -58,13 +58,24 @@ export async function fetchCsvMetaFromApi(
   };
 }
 
+/** 楽観ロックで 409 が返ったときに throw する専用エラー。メッセージは日本語。 */
+export class VersionConflictError extends Error {
+  constructor(
+    message = "他のユーザーが更新したため保存できませんでした。最新のデータを再取得してから再度お試しください。"
+  ) {
+    super(message);
+    this.name = "VersionConflictError";
+    Object.setPrototypeOf(this, VersionConflictError.prototype);
+  }
+}
+
 /**
  * 指定 CSV を API で保存する（POST /api/data/:name）。
- * 楽観ロック: expectedVersion を送り、サーバー側の version と一致しない場合は 409 で throw。
+ * 楽観ロック: expectedVersion を送り、サーバー側の version と一致しない場合は 409 で VersionConflictError を throw。
  * @param name - CSV ファイル名（例: "USER.csv"）
  * @param csv - 保存する CSV 全文
  * @param expectedVersion - 取得時の X-Data-Version。省略時はサーバー側で検証しない
- * @returns 完了時に resolve。409 時は "Version conflict" を含む Error を throw
+ * @returns 完了時に resolve。409 時は VersionConflictError を throw
  */
 export async function saveCsvViaApi(
   name: string,
@@ -81,10 +92,7 @@ export async function saveCsvViaApi(
     body: JSON.stringify(body),
   });
   if (res.status === 409) {
-    const data = (await res.json().catch(() => ({}))) as { error?: string; currentVersion?: number };
-    throw new Error(
-      data.error ?? "Version conflict. Please reload and try again."
-    );
+    throw new VersionConflictError();
   }
   if (!res.ok) {
     const err = await res.text();
