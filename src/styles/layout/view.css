@@ -482,7 +482,7 @@
 .view-body {
   background: var(--color-view-bg, #ffffff);
   border-radius: var(--radius-lg);
-  padding: 1.25rem;
+  padding: 0.75rem;
   box-shadow: var(--shadow-sm);
   color: var(--color-view-fg, #1a1a1a);
 }
@@ -876,7 +876,7 @@
   box-shadow: var(--focus-ring);
 }
 
-/* カテゴリー種別タブ：追加ボタンと同じ形・サイズ（文字色・背景色のみメニューに合わせる） */
+/* カテゴリー種別タブ・勘定種別タブ：非選択は BASE_BG/BASE_FG、選択時は ACCENT_BG/ACCENT_FG で強調 */
 #app .category-tab {
   margin: 0.25rem 0.075rem;
   padding: 0 1rem;
@@ -891,15 +891,16 @@
   border: 1px solid var(--gray-400);
   border-radius: var(--radius-md);
   cursor: pointer;
-  transition: filter 0.15s;
+  transition: filter 0.15s, background 0.15s, color 0.15s, border-color 0.15s;
   background: var(--color-base-bg);
   color: var(--color-base-fg);
 }
 
 #app .category-tab:hover:not(.category-tab.is-active) {
-  filter: brightness(0.95);
-  background: var(--gray-200);
+  filter: brightness(0.96);
+  background: var(--color-base-bg);
   color: var(--color-base-fg);
+  border-color: var(--gray-500);
 }
 
 #app .category-tab.is-active {
@@ -911,5 +912,8 @@
 
 #app .category-tab.is-active:hover {
   filter: none;
+  background: var(--color-accent-bg);
+  color: var(--color-accent-fg);
+  border-color: var(--color-accent-bg);
 }
 }

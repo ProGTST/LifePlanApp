@@ -18,45 +18,122 @@
   max-width: 400px;
 }
 .data-form#transaction-entry-form {
-  max-width: 520px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  overflow-x: hidden;
+  contain: layout;
+}
+#transaction-entry-form .form-row,
+#transaction-entry-form [class*="-row"] {
+  margin-bottom: 0;
+  min-width: 0;
+}
+#app #transaction-entry-form input,
+#app #transaction-entry-form select,
+#app #transaction-entry-form textarea,
+#app #transaction-entry-form label {
+  margin: 0;
 }
 
-/* 収支記録：メイン用 view-body と予定取引オプション用 view-body を横並びに */
-#view-transaction-entry:not(.main-view--hidden) {
-  display: flex;
-  flex-direction: row;
-  align-items: flex-start;
-  gap: 1.5rem;
-  flex-wrap: wrap;
+/* 収支記録：メイン用 view-body と予定取引オプション用 view-body を横並びに（grid で列幅を固定）。
+ * 幅が広がる場合の切り分け：開発者ツールでチップを増やし、Computed で width が変わる要素を特定する。
+ * 原因候補：(1)ビューに width:100% がない (2)列が minmax(0,24rem) でない (3)グリッド子の min-width:auto (4)予定オプション側の min-width:24rem など。 */
+#app #view-transaction-entry.main-view:not(.main-view--hidden) {
+  display: grid;
+  grid-template-columns: minmax(0, 32rem) minmax(0, 24rem);
+  align-items: start;
+  gap: 0.5rem;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  overflow-x: hidden !important;
+  box-sizing: border-box;
+  position: relative;
 }
-#view-transaction-entry > .transaction-entry-view-body {
-  flex: 1;
-  min-width: 0;
+/* グリッド子はすべて min-width: 0 にし、列幅で伸びないようにする（オーバーレイラッパーは除く） */
+#app #view-transaction-entry.main-view:not(.main-view--hidden) > .transaction-entry-view-body,
+#app #view-transaction-entry.main-view:not(.main-view--hidden) > .transaction-entry-plan-options-view-body {
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+/* 収支記録モーダルオーバーレイ用ラッパー：レイアウトに参加させずビュー全体に重ねる。子の position:fixed がビューポート全体を覆う */
+#app #view-transaction-entry.main-view:not(.main-view--hidden) > .transaction-entry-overlays {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+#app #view-transaction-entry .transaction-entry-overlays .modal-overlay {
+  pointer-events: auto;
+}
+#app #view-transaction-entry > .transaction-entry-view-body.view-body {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 32rem !important;
+  overflow-x: hidden !important;
+  box-sizing: border-box;
+  contain: layout;
+}
+#app #view-transaction-entry > .transaction-entry-plan-options-view-body.transaction-entry-plan-options-view {
+  min-width: 0 !important;
+  max-width: 100% !important;
+  width: 24rem !important;
+  overflow-x: hidden !important;
+  box-sizing: border-box;
+}
+#app #view-transaction-entry .transaction-entry-main.view-body--form {
+  width: 100%;
   max-width: 32rem;
+  min-width: 0;
+  overflow-x: hidden;
+  box-sizing: border-box;
+  contain: layout;
 }
-.transaction-entry-main {
-  max-width: 100%;
-}
-.transaction-entry-plan-options-view-body.transaction-entry-plan-options-view {
+/* 予定オプション欄：min-width: 0 にしないとチップ/選択が増えたときに内容で幅が広がりビュー全体が伸びる */
+#app .transaction-entry-plan-options-view-body.transaction-entry-plan-options-view.view-body {
   flex: 0 0 auto;
-  width: 24rem;
-  min-width: 24rem;
+  width: 24rem !important;
+  min-width: 0 !important;
+  max-width: 24rem !important;
+  overflow-x: hidden !important;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
+  gap: 0.25rem;
+  box-sizing: border-box;
 }
+/* 計画が「実績」のときは予定取引オプションを非表示。display:flex より詳細度を上げて確実に効かせる */
+#app .transaction-entry-plan-options-view-body.transaction-entry-plan-options-view.view-body[hidden],
 #app .transaction-entry-plan-options-view[hidden] {
-  display: none;
+  display: none !important;
+}
+.transaction-entry-plan-options-view .transaction-entry-plan-options-inner *,
+.transaction-entry-plan-options-view .transaction-entry-plan-options-title {
+  margin: 0;
+}
+/* 予定オプション内側：width:100% で親の内容幅に合わせ、actual-chosen が広がっても monthly-chips / completed-dates-chips が同じ幅で伸びないようにする */
+#app .transaction-entry-plan-options-view .transaction-entry-plan-options-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  overflow-x: hidden;
+  box-sizing: border-box;
 }
 .transaction-entry-plan-options-title {
-  margin: 0 0 1rem;
   font-size: 1.125rem;
   font-weight: 600;
   color: var(--color-view-fg, #1a1a1a);
   align-self: flex-start;
 }
 .transaction-entry-plan-options-inner .form-row {
-  margin-bottom: 1rem;
+  margin-bottom: 0;
 }
 .transaction-entry-plan-options-inner .form-row:last-child {
   margin-bottom: 0;
@@ -66,11 +143,12 @@
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0;
 }
 .transaction-entry-plan-options-inner .transaction-entry-frequency-block {
   display: flex;
   flex-direction: column;
+  gap: 0.25rem;
 }
 .transaction-entry-plan-options-inner .transaction-entry-frequency-line {
   display: flex;
@@ -97,7 +175,7 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0;
 }
 .transaction-entry-plan-options-inner .transaction-entry-inline-row .transaction-entry-inline-label {
   flex: 0 0 5rem;
@@ -123,12 +201,13 @@
   border: 1px solid var(--gray-500);
   border-radius: var(--radius-md);
   box-sizing: border-box;
+  margin: 0;
 }
 .transaction-entry-plan-options-inner .transaction-entry-cycle-row {
   display: flex;
   align-items: flex-start;
   gap: 0.5rem;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0;
 }
 .transaction-entry-plan-options-inner .transaction-entry-cycle-label-block {
   flex: 0 0 5rem;
@@ -142,17 +221,20 @@
   font-weight: 500;
   font-size: 0.9375rem;
 }
-.transaction-entry-plan-options-inner .transaction-entry-cycle-input-block {
+#app .transaction-entry-plan-options-inner .transaction-entry-cycle-input-block {
   flex: 1;
   min-width: 0;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
   max-height: 14rem;
 }
 /* 繰り返し欄：週/月/年ごとのコンテンツ（予定取引オプション内でも同一レイアウト） */
-.transaction-entry-plan-options-inner .transaction-entry-cycle-content {
+#app .transaction-entry-plan-options-inner .transaction-entry-cycle-content {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  gap: 0.25rem;
+  min-width: 0;
 }
 .transaction-entry-plan-options-inner .transaction-entry-cycle-content .transaction-history-filter-btn {
   margin: 0;
@@ -160,7 +242,8 @@
 .transaction-entry-plan-options-inner .transaction-entry-cycle-month-wrap {
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
+  gap: 0.25rem;
+  min-width: 0;
 }
 .transaction-entry-plan-options-inner .transaction-entry-cycle-month-days-grid {
   display: grid;
@@ -194,12 +277,12 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.25rem;
 }
 .transaction-entry-plan-options-inner .transaction-entry-cycle-monthly-open-btn {
   align-self: flex-start;
 }
-.transaction-entry-plan-options-inner .transaction-entry-cycle-monthly-chips {
+#app .transaction-entry-plan-options-inner .transaction-entry-cycle-monthly-chips {
   display: flex;
   flex-wrap: wrap;
   gap: 0.375rem;
@@ -208,6 +291,7 @@
   border-radius: var(--radius-md);
   padding: 0.375rem;
   min-height: 2rem;
+  min-width: 0 !important;
   box-sizing: border-box;
 }
 .transaction-entry-plan-options-inner .transaction-entry-cycle-monthly-chips-empty {
@@ -253,7 +337,7 @@
 }
 
 /* 取引予定日：完了日選択エリア（月の対象日チップと同様のレイアウト） */
-.transaction-entry-plan-options-inner .transaction-entry-completed-dates-chips {
+#app .transaction-entry-plan-options-inner .transaction-entry-completed-dates-chips {
   display: flex;
   flex-wrap: wrap;
   gap: 0.375rem;
@@ -262,6 +346,7 @@
   border-radius: var(--radius-md);
   padding: 0.375rem;
   min-height: 2rem;
+  min-width: 0 !important;
   box-sizing: border-box;
 }
 .transaction-entry-plan-options-inner .transaction-entry-completed-dates-chips-empty {
@@ -308,6 +393,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
+  min-width: 0;
 }
 .transaction-entry-plan-options-inner .transaction-entry-cycle-yearly-add {
   display: flex;
@@ -324,7 +410,7 @@
   min-height: 36px;
   box-sizing: border-box;
   padding: 0.35rem 0.5rem;
-  margin: 0.25rem;
+  margin: 0;
   border: 1px solid var(--gray-500);
   border-radius: var(--radius-md);
   font-size: 0.9375rem;
@@ -333,29 +419,53 @@
   cursor: pointer;
   text-align: right;
 }
-.transaction-entry-plan-options-inner .transaction-entry-cycle-yearly-list {
+#app .transaction-entry-plan-options-inner .transaction-entry-cycle-yearly-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.35rem;
+  gap: 0.375rem;
+  align-items: center;
+  border: 1px solid var(--gray-500);
+  border-radius: var(--radius-md);
+  padding: 0.375rem;
+  min-height: 2rem;
+  min-width: 0;
+  box-sizing: border-box;
+}
+.transaction-entry-plan-options-inner .transaction-entry-cycle-yearly-list-empty {
+  flex: 1;
+  min-width: 0;
 }
 .transaction-entry-plan-options-inner .transaction-entry-cycle-yearly-chip {
   display: inline-flex;
   align-items: center;
-  gap: 0.2rem;
-  padding: 0.2rem 0.4rem;
-  font-size: 0.875rem;
+  gap: 0.15rem;
+  height: 25px;
+  min-height: 25px;
+  padding: 0 0.3rem;
+  font-size: 11px;
+  line-height: 11px;
   background: var(--gray-200);
   border-radius: var(--radius-sm);
+  box-sizing: border-box;
 }
-.transaction-entry-plan-options-inner .transaction-entry-cycle-yearly-remove {
-  padding: 0 0.2rem;
+#app .transaction-entry-plan-options-inner .transaction-entry-cycle-yearly-remove {
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  min-height: 22px;
+  margin: 0;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font-size: 1rem;
   line-height: 1;
   border: none;
+  border-radius: 50%;
   background: var(--color-button-bg);
   color: var(--color-button-fg);
   cursor: pointer;
-  border-radius: var(--radius-sm);
+  box-sizing: border-box;
 }
 .transaction-entry-plan-options-inner .transaction-entry-cycle-yearly-remove:hover {
   background: var(--color-button-hover, var(--color-button-bg));
@@ -366,7 +476,7 @@
   display: flex;
   align-items: flex-start;
   gap: 0.5rem;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0;
 }
 #app .transaction-entry-plan-options-inner #transaction-entry-interval-row[hidden],
 #app .transaction-entry-plan-options-inner #transaction-entry-cycle-row[hidden],
@@ -385,12 +495,13 @@
   font-weight: 500;
   font-size: 0.9375rem;
 }
-.transaction-entry-plan-options-inner .transaction-entry-actual-right {
+#app .transaction-entry-plan-options-inner .transaction-entry-actual-right {
   flex: 1;
   min-width: 0;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.25rem;
 }
 .transaction-entry-plan-options-inner .transaction-entry-actual-area {
   flex-shrink: 0;
@@ -398,8 +509,9 @@
 .transaction-entry-plan-options-inner .transaction-entry-actual-open-btn {
   flex-shrink: 0;
 }
-.transaction-entry-plan-options-inner .transaction-entry-actual-row #transaction-entry-actual-chosen {
-  min-width: 0;
+#app .transaction-entry-plan-options-inner .transaction-entry-actual-row .transaction-entry-actual-chosen-list {
+  flex: 1;
+  min-width: 0 !important;
   display: flex;
   flex-wrap: wrap;
   gap: 0.375rem;
@@ -456,6 +568,7 @@
 .data-form .transaction-entry-frequency-block {
   display: flex;
   flex-direction: column;
+  gap: 0.25rem;
 }
 .data-form .transaction-entry-frequency-line {
   display: flex;
@@ -495,7 +608,7 @@
   position: relative;
   flex: 1;
   min-width: 0;
-  max-width: 20rem;
+  max-width: 16rem;
 }
 
 /* 収支記録：取引名・取引日はラベル横に入力 */
@@ -603,6 +716,7 @@
   min-width: 5rem;
   max-width: 5rem;
   text-align: right;
+  margin: 0;
 }
 .data-form .transaction-entry-interval-frequency-label {
   flex-shrink: 0;
@@ -630,11 +744,14 @@
 .data-form .transaction-entry-cycle-row .transaction-entry-cycle-input-block {
   flex: 1;
   min-width: 0;
+  overflow-x: hidden;
 }
 .data-form .transaction-entry-cycle-content {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  gap: 0.25rem;
+  min-width: 0;
 }
 .data-form .transaction-entry-cycle-content .transaction-history-filter-btn {
   margin: 0;
@@ -643,7 +760,8 @@
 .data-form .transaction-entry-cycle-month-wrap {
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
+  gap: 0.25rem;
+  min-width: 0;
 }
 .data-form .transaction-entry-cycle-month-days-grid {
   display: grid;
@@ -673,6 +791,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
+  min-width: 0;
 }
 .data-form .transaction-entry-cycle-yearly-add {
   display: flex;
@@ -689,7 +808,7 @@
   min-height: 36px;
   box-sizing: border-box;
   padding: 0.35rem 0.5rem;
-  margin: 0.25rem;
+  margin: 0;
   border: 1px solid var(--gray-500);
   border-radius: var(--radius-md);
   font-size: 0.9375rem;
@@ -701,26 +820,50 @@
 .data-form .transaction-entry-cycle-yearly-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.35rem;
+  gap: 0.375rem;
+  align-items: center;
+  border: 1px solid var(--gray-500);
+  border-radius: var(--radius-md);
+  padding: 0.375rem;
+  min-height: 2rem;
+  min-width: 0;
+  box-sizing: border-box;
+}
+.data-form .transaction-entry-cycle-yearly-list-empty {
+  flex: 1;
+  min-width: 0;
 }
 .data-form .transaction-entry-cycle-yearly-chip {
   display: inline-flex;
   align-items: center;
-  gap: 0.2rem;
-  padding: 0.2rem 0.4rem;
-  font-size: 0.875rem;
+  gap: 0.15rem;
+  height: 25px;
+  min-height: 25px;
+  padding: 0 0.3rem;
+  font-size: 11px;
+  line-height: 11px;
   background: var(--gray-200);
   border-radius: var(--radius-sm);
+  box-sizing: border-box;
 }
-.data-form .transaction-entry-cycle-yearly-remove {
-  padding: 0 0.2rem;
+#app .data-form .transaction-entry-cycle-yearly-remove {
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  min-height: 22px;
+  margin: 0;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font-size: 1rem;
   line-height: 1;
   border: none;
+  border-radius: 50%;
   background: var(--color-button-bg);
   color: var(--color-button-fg);
   cursor: pointer;
-  border-radius: var(--radius-sm);
+  box-sizing: border-box;
 }
 .data-form .transaction-entry-cycle-yearly-remove:hover {
   background: var(--color-button-hover, var(--color-button-bg));
@@ -931,7 +1074,7 @@
 .data-form .transaction-entry-tag-row {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.25rem;
   flex-wrap: wrap;
   margin-bottom: 0.5rem;
 }
@@ -945,13 +1088,6 @@
   flex: 1;
   min-width: 0;
 }
-.data-form .transaction-entry-tag-area {
-  flex-shrink: 0;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem;
-}
 .data-form .transaction-entry-tag-chosen {
   display: flex;
   flex-wrap: wrap;
@@ -961,6 +1097,7 @@
   border-radius: var(--radius-md);
   padding: 0.375rem;
   min-height: 2rem;
+  min-width: 0;
   box-sizing: border-box;
 }
 .data-form .transaction-entry-tag-chip {
@@ -999,9 +1136,18 @@
   font-size: 0.9375rem;
   flex: 0 0 4.5rem;
 }
-.data-form .transaction-entry-actual-row #transaction-entry-actual-chosen {
+.data-form .transaction-entry-actual-row .transaction-entry-actual-chosen-list {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  align-items: center;
+  border: 1px solid var(--gray-500);
+  border-radius: var(--radius-md);
+  padding: 0.375rem;
+  min-height: 2rem;
+  box-sizing: border-box;
 }
 .data-form .transaction-entry-actual-area {
   flex-shrink: 0;
@@ -1468,6 +1614,9 @@
   border: 1px solid var(--gray-500);
   border-radius: var(--radius-md);
 }
+#app #transaction-entry-interval {
+  margin: 0;
+}
 
 #app button {
   margin: 0;
@@ -1475,6 +1624,28 @@
   color: var(--color-button-fg);
   border: none;
   cursor: pointer;
+}
+
+/* カテゴリー種別タブ・勘定種別タブ：#app button より優先。非選択は BASE_BG/BASE_FG、選択時は ACCENT_BG/ACCENT_FG（@layer 外で指定しパレットを確実に反映） */
+#app .category-tab {
+  background: var(--color-base-bg);
+  color: var(--color-base-fg);
+  border: 1px solid var(--gray-400);
+}
+#app .category-tab:hover:not(.category-tab.is-active) {
+  background: var(--color-base-bg);
+  color: var(--color-base-fg);
+  border-color: var(--gray-500);
+}
+#app .category-tab.is-active {
+  background: var(--color-accent-bg);
+  color: var(--color-accent-fg);
+  border-color: var(--color-accent-bg);
+}
+#app .category-tab.is-active:hover {
+  background: var(--color-accent-bg);
+  color: var(--color-accent-fg);
+  border-color: var(--color-accent-bg);
 }
 
 /* サイドバーメニュー・設定項目：#app button より優先（components 層内で詳細度で上書き） */
@@ -1520,15 +1691,6 @@
 }
 
 /* ----- 収支履歴 ----- */
-/* 検索条件と収支履歴・カレンダー画面の view-body の間に余白 */
-#view-transaction-history > .view-body,
-#view-transaction-calendar > .view-body {
-  margin-top: 1rem;
-}
-#view-transaction-history .view-body + .view-body {
-  margin-top: 1rem;
-}
-
 /* 収支履歴一覧：ページネーション位置を固定するため flex でテーブル領域を可変に */
 #view-transaction-history:not(.main-view--hidden) {
   display: flex;
@@ -1552,6 +1714,7 @@
 #transaction-history-list-panel {
   display: flex;
   flex-direction: column;
+  gap: 0.5rem;
   flex: 1;
   min-height: 0;
   overflow: hidden;
@@ -1562,7 +1725,7 @@
   justify-content: flex-end;
   align-items: center;
   min-height: 2rem;
-  margin-bottom: 0.5rem;
+  margin: 0;
 }
 /* テーブルを包むスクロール領域（件数に応じて伸縮し、ページネーションは常に下に固定） */
 .transaction-history-table-wrap {
@@ -1584,11 +1747,23 @@
   gap: 0.75rem;
   width: 100%;
   text-align: center;
-  margin-top: 0.75rem;
+  margin: 0;
 }
 .transaction-history-pagination-page-info {
   font-size: 0.875rem;
   color: var(--gray-700, #444);
+}
+/* 収支履歴：ページネーションの前へ・次へボタンの高さ・文字サイズ */
+#app .transaction-history-pagination .transaction-history-pagination-prev,
+#app .transaction-history-pagination .transaction-history-pagination-next {
+  height: 30px;
+  min-height: 30px;
+  font-size: 0.75rem;
+  line-height: 1;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 /* ページングの前へ・次へ：遷移先がないときは無効＋グレー背景で表示 */
 #app .pagination-btn--disabled,
@@ -1757,6 +1932,9 @@
 }
 
 .transaction-history-search-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
   padding: 1rem 0.75rem;
   border-top: 1px solid var(--gray-300);
 }
@@ -1769,8 +1947,8 @@
 .transaction-history-search-row-group {
   display: flex;
   flex-wrap: wrap;
-  gap: 1rem 1.5rem;
-  margin-bottom: 0.75rem;
+  gap: 1rem;
+  margin: 0;
 }
 
 .transaction-history-search-row-group .transaction-history-search-row {
@@ -1781,8 +1959,8 @@
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-bottom: 0.75rem;
+  gap: 0.25rem;
+  margin: 0;
 }
 
 .transaction-history-search-label {
@@ -1819,7 +1997,7 @@
 
 .transaction-history-search-buttons {
   display: flex;
-  gap: 0.35rem;
+  gap: 0.25rem;
 }
 
 /* 検索エリアの計画・収支種別ボタン: 未選択は控えめ、選択時のみ強調 */
@@ -1884,6 +2062,11 @@
 
 .transaction-history-date-input {
   font-size: 0.75rem;
+}
+
+/* 検索条件内の input（日付・金額・任意テキスト）：#app input の margin を打ち消す */
+#app .transaction-history-search-body input {
+  margin: 0;
 }
 
 .transaction-history-amount-input {
@@ -2013,7 +2196,7 @@
   gap: 1rem;
   margin-bottom: 0.75rem;
   flex-wrap: wrap;
-  min-height: 40px;
+  min-height: 30px;
 }
 
 .transaction-history-tabs-row-left {
@@ -2021,7 +2204,7 @@
   align-items: center;
   flex: 1;
   min-width: 0;
-  min-height: 40px;
+  min-height: 30px;
 }
 
 .transaction-history-tabs-row-center {
@@ -2030,7 +2213,7 @@
   justify-content: center;
   align-items: center;
   min-width: 0;
-  min-height: 40px;
+  min-height: 30px;
 }
 
 .transaction-history-tabs-row-right {
@@ -2039,15 +2222,24 @@
   justify-content: flex-end;
   flex: 1;
   min-width: 0;
-  min-height: 40px;
-  font-size: 1.25rem;
+  min-height: 30px;
+  font-size: 1rem;
   line-height: 1.5;
   color: var(--color-view-fg, #1a1a1a);
-  gap: 1rem;
+  gap: 0.25rem;
+  overflow: hidden;
 }
 
 .transaction-history-summary-right-item {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
+}
+/* 前月繰越のみ少し広く */
+.transaction-history-tabs-row-right .transaction-history-summary-right-item:first-child {
+  flex: 1.5 1 0;
 }
 
 .transaction-history-summary-right-value {
@@ -2077,34 +2269,37 @@
   gap: 0.25rem;
 }
 
-/* タブ行中央の年月切替（◀ 年月ピッカー ▶）。タブボタンと同じ40pxで高さを揃え中央に表示 */
+/* タブ行中央の年月切替（◀ 年月ピッカー ▶）。タブボタンと同じ30pxで高さを揃え中央に表示 */
 .transaction-history-tabs-row .transaction-history-calendar-header {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
+  gap: 0.25rem;
   flex-shrink: 0;
-  height: 40px;
+  height: 30px;
 }
 
-.transaction-history-tabs-row .transaction-history-calendar-header .btn-secondary,
-.transaction-history-tabs-row .transaction-history-calendar-prev,
-.transaction-history-tabs-row .transaction-history-calendar-next {
-  height: 40px;
-  min-height: 40px;
+#app .transaction-history-tabs-row .transaction-history-calendar-header .btn-secondary,
+#app .transaction-history-tabs-row .transaction-history-calendar-prev,
+#app .transaction-history-tabs-row .transaction-history-calendar-next {
+  height: 30px;
+  min-height: 30px;
+  margin: 0;
   padding: 0 1rem;
   box-sizing: border-box;
+  font-size: 0.75rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
 }
 
-.transaction-history-tabs-row .transaction-history-calendar-ym {
+#app .transaction-history-tabs-row .transaction-history-calendar-ym {
   min-width: 8rem;
-  height: 40px;
+  height: 30px;
+  margin: 0;
   padding: 0 0.5rem;
   box-sizing: border-box;
-  font-size: 1rem;
+  font-size: 0.75rem;
   font-weight: 600;
   border: 1px solid var(--gray-500);
   border-radius: var(--radius-md);
@@ -2123,10 +2318,12 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 40px;
+  height: 30px;
+  margin: 0;
   padding: 0 1rem;
   box-sizing: border-box;
-  font-size: 0.875rem;
+  font-size: 0.75rem;
+  font-weight: 500;
   background: var(--color-base-bg);
   color: var(--color-base-fg);
   border: 1px solid var(--gray-500);
@@ -3444,13 +3641,13 @@
 .schedule-view-toolbar-left {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.25rem;
   flex-wrap: wrap;
 }
 .schedule-view-toolbar-day-range {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.25rem;
   margin-left: auto;
 }
 .schedule-view-toolbar-day-range.is-hidden {
@@ -3560,6 +3757,8 @@
   border: 1px solid var(--gray-300);
   border-radius: var(--radius-md);
   background: var(--gray-50);
+  min-width: 0;
+  overflow: hidden;
 }
 .schedule-view-summary--left {
   flex: 1 1 0;
@@ -3570,7 +3769,6 @@
 }
 .schedule-view-summary--right {
   flex: 1 1 0;
-  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
@@ -3587,12 +3785,15 @@
   flex-wrap: wrap;
   gap: 0 1.5rem;
   align-items: flex-start;
+  min-width: 0;
+  overflow: hidden;
 }
 /* 各ブロック（予定・実績・進捗率）を1行で横並びに表示。区切りは線のみ（左余白なし） */
 .schedule-view-summary-list.schedule-view-summary-row {
   display: flex;
   flex-wrap: nowrap;
-  flex: 0 0 auto;
+  flex: 1 1 auto;
+  min-width: 0;
   gap: 0 1rem;
   margin: 0;
   border-left: 1px solid var(--gray-200);
@@ -3609,19 +3810,28 @@
   display: flex;
   align-items: baseline;
   gap: 0.5rem;
+  min-width: 0;
+  flex: 1 1 0;
 }
 .schedule-view-summary-item dt {
   margin: 0;
-  min-width: 6.5em;
+  min-width: 0;
+  flex-shrink: 1;
   font-size: 0.875rem;
   color: var(--gray-600);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .schedule-view-summary-item dd {
-  margin: 0;
-  min-width: 6.5em;
+  margin: 0 0 0 auto;
+  min-width: 0;
   font-size: 1rem;
   font-weight: 600;
   text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .schedule-view-summary--left .schedule-summary-value--red,
 .schedule-view-summary--right .schedule-summary-value--red {
@@ -4468,6 +4678,17 @@
   display: flex;
   justify-content: center;
   gap: 0.5rem;
+}
+/* 取引予定日・取引実績ポップアップ：設定・閉じるボタン（高さ・フォントサイズ統一） */
+#app #schedule-occurrence-apply,
+#app #schedule-actual-list-close {
+  height: 30px;
+  font-size: 0.75rem;
+  box-sizing: border-box;
+  padding: 0 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 } /* @layer components */

@@ -751,6 +751,7 @@ function renderCategoryRatioCharts(
         cutout: "55%",
         plugins: {
           legend: { position: "bottom" },
+          tooltip: { enabled: false },
           centerLabel: { label: "合計", total },
           datalabels: {
             formatter: (value: number) => {

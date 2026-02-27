@@ -530,6 +530,7 @@ function renderSummaryPieCharts(
         cutout: "55%",
         plugins: {
           legend: { display: false },
+          tooltip: { enabled: false },
           centerLabel: { label: "合計", total },
           datalabels: {
             formatter: (value: number) => {

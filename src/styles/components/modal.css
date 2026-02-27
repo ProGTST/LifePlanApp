@@ -152,6 +152,38 @@
   flex-shrink: 0;
 }
 
+/* タグ選択（収支記録フォーム）：アクションボタン間の間隔・高さ・フォントサイズ */
+#transaction-entry-tag-select-overlay .transaction-history-select-actions {
+  gap: 0.25rem;
+}
+#transaction-entry-tag-select-overlay .transaction-history-select-actions .btn-secondary,
+#transaction-entry-tag-select-overlay .transaction-history-select-actions .btn-primary {
+  height: 30px;
+  min-height: 30px;
+  font-size: 0.75rem;
+  line-height: 1;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* タグ選択（収支履歴検索）：アクションボタン間の間隔・高さ・フォントサイズ */
+#transaction-history-tag-select-overlay .transaction-history-select-actions {
+  gap: 0.25rem;
+}
+#transaction-history-tag-select-overlay .transaction-history-select-actions .btn-secondary,
+#transaction-history-tag-select-overlay .transaction-history-select-actions .btn-primary {
+  height: 30px;
+  min-height: 30px;
+  font-size: 0.75rem;
+  line-height: 1;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .transaction-history-category-select-tabs-row {
   margin-bottom: 0.75rem;
 }
@@ -161,6 +193,34 @@
   gap: 0;
 }
 
+/* カテゴリー選択：タブ間・アクションボタン間の間隔 */
+#transaction-history-category-select-overlay .transaction-history-category-select-tabs {
+  gap: 0.25rem;
+}
+#transaction-history-category-select-overlay .transaction-history-select-actions {
+  gap: 0.25rem;
+}
+
+/* カテゴリー選択：タブボタン・アクションボタンの高さ・フォントサイズ */
+#transaction-history-category-select-overlay .category-tab.transaction-history-category-select-tab {
+  height: 30px;
+  min-height: 30px;
+  font-size: 0.75rem;
+  line-height: 1;
+  box-sizing: border-box;
+}
+#transaction-history-category-select-overlay .transaction-history-select-actions .btn-secondary,
+#transaction-history-category-select-overlay .transaction-history-select-actions .btn-primary {
+  height: 30px;
+  min-height: 30px;
+  font-size: 0.75rem;
+  line-height: 1;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .transaction-history-account-select-tabs-row {
   margin-bottom: 0.75rem;
 }
@@ -168,6 +228,34 @@
 .transaction-history-account-select-tabs {
   display: flex;
   gap: 0;
+}
+
+/* 勘定項目選択：タブ間・アクションボタン間の間隔 */
+#transaction-history-account-select-overlay .transaction-history-account-select-tabs {
+  gap: 0.25rem;
+}
+#transaction-history-account-select-overlay .transaction-history-select-actions {
+  gap: 0.25rem;
+}
+
+/* 勘定項目選択：タブボタン・アクションボタンの高さ・フォントサイズ */
+#transaction-history-account-select-overlay .category-tab.transaction-history-account-select-tab {
+  height: 30px;
+  min-height: 30px;
+  font-size: 0.75rem;
+  line-height: 1;
+  box-sizing: border-box;
+}
+#transaction-history-account-select-overlay .transaction-history-select-actions .btn-secondary,
+#transaction-history-account-select-overlay .transaction-history-select-actions .btn-primary {
+  height: 30px;
+  min-height: 30px;
+  font-size: 0.75rem;
+  line-height: 1;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .transaction-history-select-list {

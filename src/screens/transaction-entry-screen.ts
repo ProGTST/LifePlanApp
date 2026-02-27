@@ -1241,11 +1241,30 @@ function setCycleUnit(cycleUnit: string): void {
         rm.textContent = "×";
         rm.addEventListener("click", () => {
           li.remove();
+          updateYearlyListEmptyState();
         });
         li.appendChild(rm);
         listEl.appendChild(li);
       }
     });
+    updateYearlyListEmptyState();
+  }
+}
+
+function updateYearlyListEmptyState(): void {
+  const listEl = document.getElementById("transaction-entry-cycle-yearly-list");
+  if (!listEl) return;
+  const hasChips = listEl.querySelectorAll("[data-mmdd]").length > 0;
+  const emptyEl = listEl.querySelector(".transaction-entry-cycle-yearly-list-empty");
+  if (hasChips) {
+    if (emptyEl) emptyEl.remove();
+  } else {
+    if (!emptyEl) {
+      const span = document.createElement("span");
+      span.className = "transaction-entry-cycle-yearly-list-empty";
+      span.textContent = "繰り返し日なし";
+      listEl.appendChild(span);
+    }
   }
 }
 
@@ -1472,11 +1491,15 @@ function renderCycleContent(frequency: string): void {
       rm.className = "transaction-entry-cycle-yearly-remove";
       rm.setAttribute("aria-label", "削除");
       rm.textContent = "×";
-      rm.addEventListener("click", () => li.remove());
+      rm.addEventListener("click", () => {
+        li.remove();
+        updateYearlyListEmptyState();
+      });
       li.appendChild(rm);
       listEl.appendChild(li);
       monthSelect.value = "";
       daySelect.value = "";
+      updateYearlyListEmptyState();
     });
     addRow.appendChild(monthSelect);
     addRow.appendChild(daySelect);
@@ -1487,6 +1510,7 @@ function renderCycleContent(frequency: string): void {
     listEl.className = "transaction-entry-cycle-yearly-list";
     wrap.appendChild(listEl);
     container.appendChild(wrap);
+    updateYearlyListEmptyState();
   }
 }
 

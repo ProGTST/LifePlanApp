@@ -887,6 +887,7 @@ async function renderCharts(ym: string): Promise<void> {
     cutout: "55%",
     plugins: {
       legend: { position: "bottom" as const },
+      tooltip: { enabled: false },
       datalabels: {
         formatter: (value: number, ctx: { chart: Chart; dataIndex: number }) => {
           const ds = ctx.chart.data.datasets[0];
