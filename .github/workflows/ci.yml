@@ -18,6 +18,15 @@ jobs:
         with:
           components: clippy, rustfmt
 
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libglib2.0-dev \
+            libgobject-2.0-dev \
+            libgio-2.0-dev \
+            pkg-config
+
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
         with:
