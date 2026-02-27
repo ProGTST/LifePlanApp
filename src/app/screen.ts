@@ -126,6 +126,16 @@ export function showMainView(viewId: string): void {
       transactionHistoryCommon.classList.remove("main-view--hidden");
       transactionHistoryCommon.classList.add("search-conditions-panel", "search-conditions-panel--closed");
       transactionHistoryCommon.classList.remove("search-conditions-panel--open");
+      // aria-hidden を付ける前にフォーカスをパネル外へ移す
+      const active = document.activeElement;
+      if (active && transactionHistoryCommon.contains(active)) {
+        const showBtn = document.getElementById("transaction-history-show-conditions-btn");
+        if (showBtn && typeof (showBtn as HTMLElement).focus === "function") {
+          (showBtn as HTMLElement).focus();
+        } else {
+          (active as HTMLElement).blur();
+        }
+      }
       transactionHistoryCommon.setAttribute("aria-hidden", "true");
       transactionHistoryCommon.classList.toggle("is-schedule-search", viewId === "schedule");
     } else {

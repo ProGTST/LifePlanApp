@@ -461,14 +461,31 @@ function fillCategoryFormParentSelect(type: CategoryType): void {
  * カテゴリー追加モーダルを開く。フォームを初期化し、オーバーレイを表示する。
  * @returns なし
  */
+/**
+ * カテゴリー追加フォームの種別ボタンの表示を、hidden の値に合わせて更新する。
+ * @param type - 選択中の種別
+ * @returns なし
+ */
+function syncCategoryFormTypeButtons(type: CategoryType): void {
+  const formTypeInput = document.getElementById("category-form-type") as HTMLInputElement;
+  if (formTypeInput) formTypeInput.value = type;
+  document.querySelectorAll(".category-form-type-btn").forEach((btn) => {
+    const t = (btn as HTMLButtonElement).dataset.type as CategoryType | undefined;
+    const active = t === type;
+    btn.classList.toggle("is-active", active);
+    btn.setAttribute("aria-pressed", String(active));
+  });
+}
+
 function openCategoryModal(): void {
   const formName = document.getElementById("category-form-name") as HTMLInputElement;
-  const formType = document.getElementById("category-form-type") as HTMLSelectElement;
+  const formType = document.getElementById("category-form-type") as HTMLInputElement;
   const formParent = document.getElementById("category-form-parent") as HTMLSelectElement;
   const formColor = document.getElementById("category-form-color") as HTMLInputElement;
   const formIconPath = document.getElementById("category-form-icon-path") as HTMLInputElement;
   if (formName) formName.value = "";
   if (formType) formType.value = selectedCategoryType;
+  syncCategoryFormTypeButtons(selectedCategoryType);
   fillCategoryFormParentSelect(selectedCategoryType);
   if (formParent) formParent.value = "";
   if (formColor) formColor.value = ICON_DEFAULT_COLOR;
@@ -502,7 +519,7 @@ function updateCategoryFormColorIconPreview(): void {
  */
 function saveCategoryFormFromModal(): void {
   const formName = document.getElementById("category-form-name") as HTMLInputElement;
-  const formType = document.getElementById("category-form-type") as HTMLSelectElement;
+  const formType = document.getElementById("category-form-type") as HTMLInputElement;
   const formParent = document.getElementById("category-form-parent") as HTMLSelectElement;
   if (!formName) return;
   const name = formName.value.trim();
@@ -637,15 +654,15 @@ export function initCategoryView(): void {
       updateCategoryFormColorIconPreview();
     });
   });
-  document.getElementById("category-form-type")?.addEventListener("change", () => {
-    const formType = document.getElementById("category-form-type") as HTMLSelectElement;
+  document.querySelector(".category-form-type-buttons")?.addEventListener("click", (e) => {
+    const btn = (e.target as HTMLElement).closest(".category-form-type-btn");
+    if (!btn) return;
+    const type = (btn as HTMLButtonElement).dataset.type as CategoryType | undefined;
+    if (type !== "income" && type !== "expense" && type !== "transfer") return;
     const formParent = document.getElementById("category-form-parent") as HTMLSelectElement;
-    if (formType && formParent) {
-      const type: CategoryType =
-        formType.value === "income" ? "income" : formType.value === "transfer" ? "transfer" : "expense";
-      fillCategoryFormParentSelect(type);
-      formParent.value = "";
-    }
+    syncCategoryFormTypeButtons(type);
+    fillCategoryFormParentSelect(type);
+    if (formParent) formParent.value = "";
   });
   document.getElementById("category-form")?.addEventListener("submit", (e) => {
     e.preventDefault();

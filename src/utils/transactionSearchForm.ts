@@ -629,6 +629,16 @@ export function initTransactionSearchForm(): void {
   const closeConditionsPanel = (): void => {
     if (!conditionsPanel?.classList.contains("search-conditions-panel")) return;
     if (!conditionsPanel.classList.contains("search-conditions-panel--open")) return;
+    // aria-hidden を付ける前にフォーカスをパネル外へ移す（フォーカスが隠れた要素にあると a11y エラーになる）
+    const active = document.activeElement;
+    if (active && conditionsPanel.contains(active)) {
+      const showBtn = document.getElementById("transaction-history-show-conditions-btn");
+      if (showBtn && typeof (showBtn as HTMLElement).focus === "function") {
+        (showBtn as HTMLElement).focus();
+      } else {
+        (active as HTMLElement).blur();
+      }
+    }
     conditionsPanel.classList.add("search-conditions-panel--closed");
     conditionsPanel.classList.remove("search-conditions-panel--open");
     conditionsPanel.setAttribute("aria-hidden", "true");

@@ -937,10 +937,12 @@
                 <div class="form-row account-form-permissions-row">
                   <label for="account-form-permission-list">権限ユーザー</label>
                   <div id="account-form-permission-list" class="account-form-permission-list"></div>
+                  <div class="account-form-permission-add-wrap">
+                    <button type="button" class="btn-secondary" id="account-form-permission-add">権限追加</button>
+                  </div>
                 </div>
                 <div class="form-actions">
                   <button type="submit" class="btn-primary">追加</button>
-                  <button type="button" class="btn-secondary" id="account-form-permission-add">権限追加</button>
                   <button type="button" class="btn-secondary" id="account-form-cancel">キャンセル</button>
                 </div>
               </form>
@@ -983,12 +985,13 @@
                   </div>
                 </div>
                 <div class="form-row">
-                  <label for="category-form-type">種別</label>
-                  <select id="category-form-type">
-                    <option value="expense">支出</option>
-                    <option value="income">収入</option>
-                    <option value="transfer">振替</option>
-                  </select>
+                  <label id="category-form-type-label">種別</label>
+                  <div class="category-form-type-buttons" role="group" aria-labelledby="category-form-type-label">
+                    <input type="hidden" id="category-form-type" value="expense" />
+                    <button type="button" class="category-form-type-btn is-active" data-type="expense" aria-pressed="true">支出</button>
+                    <button type="button" class="category-form-type-btn" data-type="income" aria-pressed="false">収入</button>
+                    <button type="button" class="category-form-type-btn" data-type="transfer" aria-pressed="false">振替</button>
+                  </div>
                 </div>
                 <div class="form-row">
                   <label for="category-form-name">カテゴリー名</label>
@@ -1161,12 +1164,17 @@
               </details>
             </div>
             <div class="sidebar-menu-footer">
-              <button type="button" class="sidebar-settings-entry-btn app-menubar__icon" id="sidebar-menu-to-settings" aria-label="設定" title="設定">
-                <span class="app-menubar__icon-inner" style="--icon: url(/icon/gear-solid-full.svg);" aria-hidden="true"></span>
+              <button type="button" class="sidebar-close-btn app-menubar__icon" id="sidebar-menu-close-btn" aria-label="メニューを閉じる" title="メニューを閉じる">
+                <span class="app-menubar__icon-inner" style="--icon: url(/icon/arrow-right-solid-full.svg);" aria-hidden="true"></span>
               </button>
-              <button type="button" class="sidebar-settings-entry-btn app-menubar__icon" id="menubar-logout" aria-label="ログアウト" title="ログアウト">
-                <span class="app-menubar__icon-inner" style="--icon: url(/icon/right-from-bracket-solid-full.svg);" aria-hidden="true"></span>
-              </button>
+              <div class="sidebar-menu-footer-right">
+                <button type="button" class="sidebar-settings-entry-btn app-menubar__icon" id="sidebar-menu-to-settings" aria-label="設定" title="設定">
+                  <span class="app-menubar__icon-inner" style="--icon: url(/icon/gear-solid-full.svg);" aria-hidden="true"></span>
+                </button>
+                <button type="button" class="sidebar-settings-entry-btn app-menubar__icon" id="menubar-logout" aria-label="ログアウト" title="ログアウト">
+                  <span class="app-menubar__icon-inner" style="--icon: url(/icon/right-from-bracket-solid-full.svg);" aria-hidden="true"></span>
+                </button>
+              </div>
             </div>
           </div>
           <div class="sidebar-panel sidebar-panel-settings" id="sidebar-panel-settings">
@@ -1175,6 +1183,14 @@
               <li><button type="button" class="sidebar-settings-item" data-view="design">デザイン</button></li>
               <li><button type="button" class="sidebar-settings-item" data-view="system">システム</button></li>
             </ul>
+            <div class="sidebar-settings-footer">
+              <button type="button" class="sidebar-close-btn app-menubar__icon" id="sidebar-settings-close-btn" aria-label="メニューを閉じる" title="メニューを閉じる">
+                <span class="app-menubar__icon-inner" style="--icon: url(/icon/arrow-right-solid-full.svg);" aria-hidden="true"></span>
+              </button>
+              <button type="button" class="sidebar-menu-entry-btn app-menubar__icon" id="sidebar-settings-to-menu" aria-label="メニュー" title="メニュー">
+                <span class="app-menubar__icon-inner" style="--icon: url(/icon/bars-solid-full.svg);" aria-hidden="true"></span>
+              </button>
+            </div>
           </div>
         </aside>
       </div>

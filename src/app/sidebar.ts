@@ -109,6 +109,17 @@ export function initSidebarToggle(): void {
 
   menuBtn.addEventListener("click", () => openSidebar(SIDEBAR_PANEL_MENU));
 
+  const menuCloseBtn = document.getElementById("sidebar-menu-close-btn");
+  menuCloseBtn?.addEventListener("click", closeSidebar);
+
+  const settingsCloseBtn = document.getElementById("sidebar-settings-close-btn");
+  settingsCloseBtn?.addEventListener("click", closeSidebar);
+
+  const settingsToMenuBtn = document.getElementById("sidebar-settings-to-menu");
+  settingsToMenuBtn?.addEventListener("click", () => {
+    showPanel(SIDEBAR_PANEL_MENU);
+  });
+
   const menuToSettingsBtn = document.getElementById("sidebar-menu-to-settings");
   menuToSettingsBtn?.addEventListener("click", () => {
     showPanel(SIDEBAR_PANEL_SETTINGS);

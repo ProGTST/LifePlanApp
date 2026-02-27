@@ -2,7 +2,7 @@
   app.css - アプリ画面スタイル
   tokens / Tailwind は main.css で読み込み済み。
   セマンティック変数は tokens.css の #app で定義（パレットで上書き可能）。
-  レイヤー: layout → components → utilities → overrides
+  レイヤー: layout → components → utilities → overrides（STYLE_CODING_RULES.md 準拠）
 */
 @import "./layout/app-shell.css";
 @import "./layout/view.css";
@@ -1193,9 +1193,340 @@
   margin-top: 1.25rem;
 }
 
+/* 勘定項目追加画面：margin 0・gap 0.5rem */
+#account-form {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+#account-form .form-row,
+#account-form .form-actions,
+#account-form .account-form-permissions-row,
+#account-form label,
+#account-form input,
+#account-form .account-form-permission-list {
+  margin: 0;
+}
+/* #app input の margin: 0.25rem より優先 */
+#app #account-form-name {
+  margin: 0;
+}
+#account-form-permission-list {
+  gap: 0.15rem;
+}
+#account-form .form-actions {
+  margin-top: 0;
+}
+
+/* カテゴリー追加画面：margin 0・gap 0.5rem */
+#category-form {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+#category-form .form-row,
+#category-form .form-actions,
+#category-form label,
+#category-form input,
+#category-form select {
+  margin: 0;
+}
+#category-form .form-actions {
+  margin-top: 0;
+}
+#app #category-form-name {
+  margin: 0;
+}
+
+/* カテゴリー追加画面：種別を横並びボタン（タブと同じ見た目・色分け） */
+#category-modal-overlay .category-form-type-buttons {
+  display: flex;
+  gap: 0.25rem;
+}
+#category-modal-overlay .category-form-type-btn {
+  height: 30px;
+  min-height: 30px;
+  padding: 0 0.75rem;
+  font-size: 0.75rem;
+  line-height: 1;
+  box-sizing: border-box;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--gray-400);
+  background: var(--color-base-bg);
+  color: var(--color-base-fg);
+  cursor: pointer;
+  font-weight: 500;
+}
+#category-modal-overlay .category-form-type-btn:hover:not(.is-active) {
+  border-color: var(--gray-500);
+}
+#category-modal-overlay .category-form-type-btn[data-type="income"].is-active {
+  background: var(--color-success-dark);
+  color: var(--color-button-fg);
+  border-color: var(--color-success-dark);
+}
+#category-modal-overlay .category-form-type-btn[data-type="expense"].is-active {
+  background: var(--danger-solid);
+  color: var(--color-button-fg);
+  border-color: var(--danger-solid);
+}
+#category-modal-overlay .category-form-type-btn[data-type="transfer"].is-active {
+  background: #455a64;
+  color: var(--color-button-fg);
+  border-color: #455a64;
+}
+
+/* 勘定項目追加画面：ボタン高さ30px・フォント0.75rem・間隔0.25rem */
+#account-modal-overlay .form-actions {
+  gap: 0.25rem;
+}
+#account-modal-overlay .form-actions .btn-primary,
+#account-modal-overlay .form-actions .btn-secondary {
+  height: 30px;
+  min-height: 30px;
+  font-size: 0.75rem;
+  line-height: 1;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+#account-modal-overlay .account-form-permission-add-wrap #account-form-permission-add {
+  height: 30px;
+  min-height: 30px;
+  font-size: 0.75rem;
+  line-height: 1;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+#account-modal-overlay .profile-icon-color-inputs {
+  gap: 0.25rem;
+}
+#account-modal-overlay #account-form-color-icon-btn {
+  height: 30px;
+  min-height: 30px;
+  font-size: 0.75rem;
+  line-height: 1;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+/* 勘定追加・権限確認の権限ボタン：参照可能な勘定の権限バッジと同じレイアウト（高さ27px・padding 0 0.5rem・radius-sm） */
+#account-modal-overlay .account-form-permission-toggle {
+  height: 27px;
+  min-height: 27px;
+  padding: 0 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+}
+#account-modal-overlay #account-form-permission-list .account-row-delete-btn {
+  width: 27px;
+  height: 27px;
+  min-width: 27px;
+  min-height: 27px;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* カテゴリー画面：内の gap を 0.25rem に統一 */
+#view-category-list .view-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+#view-category-list .category-tabs-row {
+  gap: 0.25rem;
+}
+#view-category-list .category-tabs {
+  gap: 0.25rem;
+}
+#view-category-list .category-tab,
+#view-category-list .btn-category-tree-view {
+  height: 30px;
+  min-height: 30px;
+  font-size: 0.75rem;
+  line-height: 1;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.75rem;
+}
+/* フラットビュー／ツリービュー切替：青（flat）・緑（tree） */
+#view-category-list .btn-category-tree-view {
+  margin: 0;
+  border: none;
+  background: var(--color-info-dark);
+  color: var(--color-button-fg);
+}
+#view-category-list .btn-category-tree-view:hover {
+  filter: brightness(1.05);
+}
+#view-category-list .btn-category-tree-view.is-tree-mode {
+  background: var(--color-success-dark);
+  color: var(--color-button-fg);
+}
+#view-category-list .btn-category-tree-view.is-tree-mode:hover {
+  filter: brightness(1.05);
+}
+
+/* カテゴリー追加画面：ボタン高さ30px・フォント0.75rem・間隔0.25rem */
+#category-modal-overlay .form-actions {
+  gap: 0.25rem;
+}
+#category-modal-overlay .form-actions .btn-primary,
+#category-modal-overlay .form-actions .btn-secondary {
+  height: 30px;
+  min-height: 30px;
+  font-size: 0.75rem;
+  line-height: 1;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+#category-modal-overlay .profile-icon-color-inputs {
+  gap: 0.25rem;
+}
+#category-modal-overlay #category-form-color-icon-btn {
+  height: 30px;
+  min-height: 30px;
+  font-size: 0.75rem;
+  line-height: 1;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* タグ追加画面：ボタン高さ30px・フォント0.75rem・間隔0.25rem */
+#tag-modal-overlay .form-actions {
+  gap: 0.25rem;
+}
+#tag-modal-overlay .form-actions .btn-primary,
+#tag-modal-overlay .form-actions .btn-secondary {
+  height: 30px;
+  min-height: 30px;
+  font-size: 0.75rem;
+  line-height: 1;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+#tag-modal-overlay .profile-icon-color-inputs {
+  gap: 0.25rem;
+}
+#tag-modal-overlay #tag-form-color-icon-btn {
+  height: 30px;
+  min-height: 30px;
+  font-size: 0.75rem;
+  line-height: 1;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 色・アイコン選択画面：ボタン高さ30px・フォント0.75rem・間隔0.25rem */
+#color-icon-picker-overlay .picker-actions {
+  gap: 0.25rem;
+}
+#color-icon-picker-overlay .picker-actions .btn-primary,
+#color-icon-picker-overlay .picker-actions .btn-secondary {
+  height: 30px;
+  min-height: 30px;
+  font-size: 0.75rem;
+  line-height: 1;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+#color-icon-picker-overlay .picker-custom-color {
+  gap: 0.25rem;
+}
+#color-icon-picker-overlay .picker-custom-btn {
+  height: 30px;
+  min-height: 30px;
+  font-size: 0.75rem;
+  line-height: 1;
+  box-sizing: border-box;
+}
+
+/* ユーザー選択画面（権限追加時）：ボタン高さ30px・フォント0.75rem・間隔0.25rem */
+#account-form-user-picker-overlay .form-actions {
+  gap: 0.25rem;
+}
+#account-form-user-picker-overlay .form-actions .btn-primary,
+#account-form-user-picker-overlay .form-actions .btn-secondary {
+  height: 30px;
+  min-height: 30px;
+  font-size: 0.75rem;
+  line-height: 1;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 権限ユーザー確認画面：ボタン高さ30px・フォント0.75rem・間隔0.25rem */
+#account-permission-users-overlay .account-permission-users-actions {
+  gap: 0.25rem;
+}
+#account-permission-users-overlay .account-permission-users-actions .btn-primary,
+#account-permission-users-overlay .account-permission-users-actions .btn-secondary {
+  height: 30px;
+  min-height: 30px;
+  font-size: 0.75rem;
+  line-height: 1;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+/* 権限ユーザー確認の権限ボタン：参照可能な勘定の権限バッジと同じレイアウト */
+#account-permission-users-overlay .account-permission-users-toggle {
+  height: 27px;
+  min-height: 27px;
+  padding: 0 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+}
+#account-permission-users-overlay #account-permission-users-list .account-row-delete-btn {
+  width: 27px;
+  height: 27px;
+  min-width: 27px;
+  min-height: 27px;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.account-form-permissions-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
 .account-form-permissions-row label {
   display: block;
-  margin-bottom: 0.35rem;
+  margin-bottom: 0;
 }
 
 .account-form-permission-list {
@@ -1205,6 +1536,10 @@
   margin-top: 0.5rem;
   max-height: 12rem;
   overflow-y: auto;
+}
+
+.account-form-permission-add-wrap {
+  text-align: right;
 }
 
 .account-form-permission-empty {
@@ -1234,19 +1569,18 @@
   font-weight: 500;
 }
 
-/* #app button より優先：参照は BASE_BG / BASE_FG、枠線あり */
+/* 参照可能な勘定の権限バッジと同じ色：参照は薄黄・編集は薄緑 */
 #account-form-permission-list .account-form-permission-toggle--view,
 #account-permission-users-list .account-permission-users-toggle--view {
-  background: var(--color-base-bg);
+  background: var(--color-permission-view-bg);
   color: var(--color-base-fg);
-  border: 1px solid var(--color-base-fg);
+  border: 1px solid color-mix(in srgb, var(--color-base-fg) 35%, transparent);
 }
-
-/* #app button より優先：編集は ACCENT_BG / ACCENT_FG */
 #account-form-permission-list .account-form-permission-toggle--edit,
 #account-permission-users-list .account-permission-users-toggle--edit {
-  background: var(--color-accent-bg);
-  color: var(--color-accent-fg);
+  background: var(--color-permission-edit-bg);
+  color: var(--color-base-fg);
+  border: 1px solid color-mix(in srgb, var(--color-base-fg) 25%, transparent);
 }
 
 .account-form-permission-toggle:not(:disabled) {
@@ -1646,6 +1980,37 @@
   background: var(--color-accent-bg);
   color: var(--color-accent-fg);
   border-color: var(--color-accent-bg);
+}
+/* カテゴリー画面のタブ：強調時は収支記録の収支種別ボタンと同じ色（収入=緑・支出=赤・振替=青灰） */
+#view-category-list .category-tab[data-type="income"].is-active {
+  background: var(--color-success-dark);
+  color: var(--color-button-fg);
+  border-color: var(--color-success-dark);
+}
+#view-category-list .category-tab[data-type="income"].is-active:hover {
+  background: var(--color-success-dark);
+  color: var(--color-button-fg);
+  border-color: var(--color-success-dark);
+}
+#view-category-list .category-tab[data-type="expense"].is-active {
+  background: var(--danger-solid);
+  color: var(--color-button-fg);
+  border-color: var(--danger-solid);
+}
+#view-category-list .category-tab[data-type="expense"].is-active:hover {
+  background: var(--danger-solid);
+  color: var(--color-button-fg);
+  border-color: var(--danger-solid);
+}
+#view-category-list .category-tab[data-type="transfer"].is-active {
+  background: #455a64;
+  color: var(--color-button-fg);
+  border-color: #455a64;
+}
+#view-category-list .category-tab[data-type="transfer"].is-active:hover {
+  background: #455a64;
+  color: var(--color-button-fg);
+  border-color: #455a64;
 }
 
 /* サイドバーメニュー・設定項目：#app button より優先（components 層内で詳細度で上書き） */
@@ -2368,15 +2733,14 @@
 }
 
 .transaction-history-week-block {
-  flex: 0 0 auto;
-  width: var(--transaction-history-week-column-width);
-  min-width: var(--transaction-history-week-column-width);
-  max-width: var(--transaction-history-week-column-width);
+  flex: 0 1 calc((100% - 2.5rem) / 6);
+  min-width: 0;
   box-sizing: border-box;
   border: 1px solid var(--gray-400);
   border-radius: var(--radius-md);
   padding: 0;
   background: var(--color-view-bg, #ffffff);
+  overflow: hidden;
 }
 
 /* transaction-history-weekly-blocks の下に配置。週ブロックと同順・同幅で週フッターを横並び */
@@ -2390,10 +2754,8 @@
 }
 
 .transaction-history-week-footer {
-  flex: 0 0 auto;
-  width: var(--transaction-history-week-column-width);
-  min-width: var(--transaction-history-week-column-width);
-  max-width: var(--transaction-history-week-column-width);
+  flex: 0 1 calc((100% - 2.5rem) / 6);
+  min-width: 0;
   box-sizing: border-box;
   padding: 0.5rem;
   border: 1px solid var(--gray-400);
@@ -2412,6 +2774,8 @@
   color: var(--color-view-fg, #1a1a1a);
   background: #f8f8f8;
   text-align: center;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .transaction-history-week-block-title--current {
@@ -2424,6 +2788,9 @@
 .transaction-history-week-block-title-line {
   display: block;
   line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .transaction-history-week-block-title-line:first-child {
@@ -2435,6 +2802,7 @@
   list-style: none;
   margin: 0;
   padding: 0.25rem 0.5rem 0.5rem 0.5rem;
+  min-width: 0;
 }
 
 .transaction-history-week-day-group {
@@ -2504,19 +2872,19 @@
 
 .transaction-history-week-block-item .transaction-history-week-block-name {
   flex: 1;
-  min-width: 76px;
-  max-width: 76px;
-  overflow-wrap: break-word;
-  word-break: break-word;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: var(--gray-700);
 }
 
 .transaction-history-week-block-item .transaction-history-week-block-amount {
   flex-shrink: 0;
-  min-width: 60px;
-  max-width: 60px;
-  overflow-wrap: break-word;
-  word-break: break-word;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-weight: 500;
   font-size: 0.875rem;
   color: var(--color-view-fg, #1a1a1a);
@@ -2529,6 +2897,8 @@
   border-top: 1px solid var(--gray-300);
   font-size: 0.875rem;
   color: var(--color-view-fg, #1a1a1a);
+  min-width: 0;
+  overflow: hidden;
 }
 
 .transaction-history-week-block-footer-section-title {
@@ -2557,17 +2927,26 @@
   display: flex;
   justify-content: space-between;
   align-items: baseline;
+  min-width: 0;
+  gap: 0.25rem;
   gap: 0.5rem;
 }
 
 .transaction-history-week-block-footer-label {
   flex: 0 0 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .transaction-history-week-block-footer-amount {
   flex: 0 0 auto;
   text-align: right;
-  min-width: 3.5rem;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .transaction-history-week-block-footer-cell--balance {
@@ -3220,17 +3599,20 @@
 }
 
 /* ----- 収支分析（#app 付きで詳細度を上げ、確実に適用） ----- */
-#app .transaction-analysis-view-body {
+#app #view-transaction-analysis .transaction-analysis-view-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
   max-width: none;
   padding-top: 0;
   padding-bottom: 2rem;
 }
-#app .transaction-analysis-year-nav {
+#app #view-transaction-analysis .transaction-analysis-year-nav {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 0.75rem;
-  margin-bottom: 1.5rem;
+  margin: 0;
   position: sticky;
   top: 0;
   z-index: 10;
@@ -3257,24 +3639,27 @@
   text-align: center;
   color: var(--color-view-fg, #1a1a1a);
 }
-#app .transaction-analysis-page-title {
+#app #view-transaction-analysis .transaction-analysis-page-title {
   font-size: 1.5rem;
   font-weight: 600;
-  margin: 0 0 1.5rem;
+  margin: 0;
   color: var(--color-view-fg, #1a1a1a);
 }
-#app .transaction-analysis-section {
-  margin: 0 0 1.25rem;
+#app #view-transaction-analysis .transaction-analysis-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin: 0;
   padding: 0;
 }
-#app .transaction-analysis-heading {
+#app #view-transaction-analysis .transaction-analysis-heading {
   font-size: 1.125rem;
   font-weight: 600;
-  margin: 0 0 0.75rem;
+  margin: 0;
   color: var(--color-view-fg, #1a1a1a);
 }
-#app .transaction-analysis-funds-overflow-summary {
-  margin: 0.75rem 0 0;
+#app #view-transaction-analysis .transaction-analysis-funds-overflow-summary {
+  margin: 0;
   font-size: 0.9375rem;
   color: var(--color-view-fg, #1a1a1a);
 }
@@ -3282,6 +3667,11 @@
   max-width: 100%;
   margin-bottom: 0;
   line-height: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--gray-400);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-sizing: border-box;
 }
 #app .transaction-analysis-chart-wrap canvas {
   display: block;
@@ -3291,26 +3681,28 @@
 }
 #app .transaction-analysis-charts-row {
   display: flex;
-  flex-wrap: wrap;
-  gap: 1rem 1.5rem;
+  flex-wrap: nowrap;
+  gap: 0.5rem;
 }
-#app .transaction-analysis-chart-figure {
-  flex: 1 1 25rem;
-  min-width: 25rem;
-  margin: 0 0 0.5rem;
+#app #view-transaction-analysis .transaction-analysis-chart-figure {
+  flex: 1 1 0;
+  min-width: 0;
+  margin: 0;
 }
-#app .transaction-analysis-figcaption {
+#app #view-transaction-analysis .transaction-analysis-figcaption {
   font-size: 0.9375rem;
   font-weight: 600;
-  margin: 0 0 0.5rem;
+  margin: 0;
   color: var(--gray-700, #444);
 }
-#app .transaction-analysis-table-wrap {
+#app #view-transaction-analysis .transaction-analysis-table-wrap {
   overflow-x: auto;
-  margin-bottom: 0.5rem;
+  margin: 0;
   width: fit-content;
   max-width: 100%;
   box-sizing: border-box;
+  border: 1px solid var(--gray-400);
+  border-radius: var(--radius-lg);
 }
 /* 運転資金超過となる支出予定表：縦スクロール可能・最大高さを設定 */
 #app .transaction-analysis-table-wrap:has(#transaction-analysis-funds-overflow-table) {
@@ -3383,6 +3775,10 @@
   border-radius: var(--radius-md);
   overflow: hidden;
   font-size: 0.875rem;
+}
+/* 固定列テーブルは overflow: visible にし、横スクロール時に position:sticky の第1列が固定されるようにする（.transaction-analysis-table の overflow:hidden を上書き） */
+#app .transaction-analysis-table--fixed-cols {
+  overflow: visible;
 }
 #app .transaction-analysis-table th,
 #app .transaction-analysis-table td {
@@ -3538,8 +3934,8 @@
 #app #transaction-analysis-ratio-income-table td:nth-child(2),
 #app #transaction-analysis-ratio-transfer-table th:nth-child(2),
 #app #transaction-analysis-ratio-transfer-table td:nth-child(2) {
-  width: 8rem;
-  min-width: 8rem;
+  width: 7.5rem;
+  min-width: 7.5rem;
   box-sizing: border-box;
 }
 /* カテゴリーごとの割合表：割合列の幅を広めに */
@@ -3575,14 +3971,21 @@
   height: 22px;
   min-height: 22px;
 }
-#app .transaction-analysis-tabs {
+#app #view-transaction-analysis .transaction-analysis-tabs {
   display: flex;
-  gap: 0.5rem;
-  margin-bottom: 0.75rem;
+  gap: 0.25rem;
+  margin: 0;
 }
 #app .transaction-analysis-tab {
-  padding: 0.35rem 0.75rem;
-  font-size: 0.875rem;
+  height: 30px;
+  min-height: 30px;
+  padding: 0 0.75rem;
+  font-size: 0.75rem;
+  line-height: 1;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border: 1px solid var(--gray-400);
   border-radius: var(--radius-sm);
   background: var(--gray-100);
@@ -3597,19 +4000,22 @@
 #app .transaction-analysis-ratio-tables {
   display: flex;
   flex-wrap: wrap;
-  gap: 1.5rem;
+  gap: 0.25rem;
   max-height: 40vh;
   overflow: auto;
   box-sizing: border-box;
+  min-width: 0;
 }
 #app .transaction-analysis-ratio-block {
   flex: 1 1 16rem;
   min-width: 0;
+  overflow-x: auto;
+  box-sizing: border-box;
 }
-#app .transaction-analysis-ratio-subheading {
+#app #view-transaction-analysis .transaction-analysis-ratio-subheading {
   font-size: 1rem;
   font-weight: 600;
-  margin: 0 0 0.5rem;
+  margin: 0;
   color: var(--gray-700, #444);
 }
 
@@ -4692,3 +5098,198 @@
 }
 
 } /* @layer components */
+
+/* @layer overrides: 詳細度を上げずに components を上書き（!important を使わない） */
+@layer overrides {
+  /* レイアウト構造：components に負けないよう overrides で再指定（STYLE_CODING_RULES.md 5.3） */
+  .app-layout {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    height: 100vh;
+    padding: 0;
+    align-items: stretch;
+    justify-content: flex-start;
+  }
+  .app-body-with-sidebar {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    position: relative;
+  }
+  .app-body {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+  }
+  .main-view {
+    display: block;
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 0;
+    overflow: auto;
+    height: 100%;
+  }
+  #app .main-view--hidden {
+    display: none;
+  }
+  .view-body {
+    background: var(--color-view-bg, #ffffff);
+    border-radius: var(--radius-lg);
+    padding: 0.75rem;
+    box-shadow: var(--shadow-sm);
+    color: var(--color-view-fg, #1a1a1a);
+  }
+
+  /* 参照可能な勘定：権限バッジの色（取引一覧と同様・参照は薄黄・編集は薄緑） */
+  #app #account-shared-table .account-shared-permission-badge--view,
+  #app #account-shared-tbody .account-shared-permission-badge--view {
+    background: var(--color-permission-view-bg);
+    color: var(--color-base-fg);
+    border: 1px solid color-mix(in srgb, var(--color-base-fg) 35%, transparent);
+  }
+  #app #account-shared-table .account-shared-permission-badge--edit,
+  #app #account-shared-tbody .account-shared-permission-badge--edit {
+    background: var(--color-permission-edit-bg);
+    color: var(--color-base-fg);
+    border: 1px solid color-mix(in srgb, var(--color-base-fg) 25%, transparent);
+  }
+  /* 勘定追加・権限確認：権限ボタンを参照可能な勘定のバッジと同じレイアウトに（#app button より詳細度で優先） */
+  #app #account-modal-overlay .account-form-permission-toggle {
+    margin: 0;
+    height: 27px;
+    min-height: 27px;
+    padding: 0 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    line-height: 1;
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-sm);
+  }
+  #app #account-modal-overlay #account-form-permission-list .account-form-permission-toggle--view {
+    background: var(--color-permission-view-bg);
+    color: var(--color-base-fg);
+    border: 1px solid color-mix(in srgb, var(--color-base-fg) 35%, transparent);
+  }
+  #app #account-modal-overlay #account-form-permission-list .account-form-permission-toggle--edit {
+    background: var(--color-permission-edit-bg);
+    color: var(--color-base-fg);
+    border: 1px solid color-mix(in srgb, var(--color-base-fg) 25%, transparent);
+  }
+  #app #account-modal-overlay #account-form-permission-list .account-row-delete-btn {
+    width: 27px;
+    height: 27px;
+    min-width: 27px;
+    min-height: 27px;
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
+  }
+  #app #account-permission-users-overlay .account-permission-users-toggle {
+    margin: 0;
+    height: 27px;
+    min-height: 27px;
+    padding: 0 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    line-height: 1;
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-sm);
+  }
+  #app #account-permission-users-overlay #account-permission-users-list .account-permission-users-toggle--view {
+    background: var(--color-permission-view-bg);
+    color: var(--color-base-fg);
+    border: 1px solid color-mix(in srgb, var(--color-base-fg) 35%, transparent);
+  }
+  #app #account-permission-users-overlay #account-permission-users-list .account-permission-users-toggle--edit {
+    background: var(--color-permission-edit-bg);
+    color: var(--color-base-fg);
+    border: 1px solid color-mix(in srgb, var(--color-base-fg) 25%, transparent);
+  }
+  #app #account-permission-users-overlay #account-permission-users-list .account-row-delete-btn {
+    width: 27px;
+    height: 27px;
+    min-width: 27px;
+    min-height: 27px;
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
+  }
+}
+
+/* レイヤー外：権限ボタンのレイアウトを #app input, #app button より確実に適用（unlayered で全レイヤーより優先） */
+#app #account-modal-overlay .account-form-permission-toggle {
+  margin: 0;
+  padding: 0 0.5rem;
+  font-size: 0.75rem;
+  height: 27px;
+  min-height: 27px;
+  font-weight: 500;
+  line-height: 1;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+}
+#app #account-modal-overlay #account-form-permission-list .account-form-permission-toggle--view {
+  background: var(--color-permission-view-bg);
+  color: var(--color-base-fg);
+  border: 1px solid color-mix(in srgb, var(--color-base-fg) 35%, transparent);
+}
+#app #account-modal-overlay #account-form-permission-list .account-form-permission-toggle--edit {
+  background: var(--color-permission-edit-bg);
+  color: var(--color-base-fg);
+  border: 1px solid color-mix(in srgb, var(--color-base-fg) 25%, transparent);
+}
+#app #account-modal-overlay #account-form-permission-list .account-row-delete-btn {
+  width: 27px;
+  height: 27px;
+  min-width: 27px;
+  min-height: 27px;
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+}
+#app #account-permission-users-overlay .account-permission-users-toggle {
+  margin: 0;
+  padding: 0 0.5rem;
+  font-size: 0.75rem;
+  height: 27px;
+  min-height: 27px;
+  font-weight: 500;
+  line-height: 1;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+}
+#app #account-permission-users-overlay #account-permission-users-list .account-permission-users-toggle--view {
+  background: var(--color-permission-view-bg);
+  color: var(--color-base-fg);
+  border: 1px solid color-mix(in srgb, var(--color-base-fg) 35%, transparent);
+}
+#app #account-permission-users-overlay #account-permission-users-list .account-permission-users-toggle--edit {
+  background: var(--color-permission-edit-bg);
+  color: var(--color-base-fg);
+  border: 1px solid color-mix(in srgb, var(--color-base-fg) 25%, transparent);
+}
+#app #account-permission-users-overlay #account-permission-users-list .account-row-delete-btn {
+  width: 27px;
+  height: 27px;
+  min-width: 27px;
+  min-height: 27px;
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+}

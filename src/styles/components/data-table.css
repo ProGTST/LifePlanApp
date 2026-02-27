@@ -206,14 +206,16 @@
   font-weight: 500;
   border-radius: var(--radius-sm);
 }
+/* 取引一覧と同様：参照は薄黄、編集は薄緑 */
 .account-shared-permission-badge--view {
-  background: var(--color-base-bg);
+  background: var(--color-permission-view-bg);
   color: var(--color-base-fg);
-  border: 1px solid var(--color-base-fg);
+  border: 1px solid color-mix(in srgb, var(--color-base-fg) 35%, transparent);
 }
 .account-shared-permission-badge--edit {
-  background: var(--color-accent-bg);
-  color: var(--color-accent-fg);
+  background: var(--color-permission-edit-bg);
+  color: var(--color-base-fg);
+  border: 1px solid color-mix(in srgb, var(--color-base-fg) 25%, transparent);
 }
 
 #app .account-table-delete-col {
