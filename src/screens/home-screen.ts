@@ -7,7 +7,7 @@ import { updateCurrentMenuItem } from "../app/sidebar";
 import { PROFILE_ICON_DEFAULT_COLOR } from "../constants/colorPresets.ts";
 import { loadTransactionData, getAccountRows, getActualTransactionsForPlan, getCategoryById, getPermissionRows, getActualIdsForPlanId, getRowPermissionType } from "../utils/transactionDataSync";
 import { createIconWrap } from "../utils/iconWrap";
-import { getPlanOccurrenceDates, hasDelayedPlanDates } from "../utils/planOccurrence";
+import { getPlanOccurrenceDates, getDelayedPlanDates } from "../utils/planOccurrence";
 import { Chart, registerables } from "chart.js";
 import type { ChartOptions } from "chart.js";
 import ChartDataLabels from "chartjs-plugin-datalabels";
@@ -223,6 +223,8 @@ function getMonthDailyCumulative(): {
   labels: string[];
   cumulativeIncome: number[];
   cumulativeExpense: number[];
+  dailyIncome: number[];
+  dailyExpense: number[];
 } {
   const ownAccountIds = getOwnAccountIds();
   const { start: monthStart, end: monthEnd } = getMonthRange();
@@ -256,7 +258,7 @@ function getMonthDailyCumulative(): {
     cumulativeIncome.push(sumI);
     cumulativeExpense.push(sumE);
   }
-  return { labels, cumulativeIncome, cumulativeExpense };
+  return { labels, cumulativeIncome, cumulativeExpense, dailyIncome, dailyExpense };
 }
 
 /**
@@ -445,19 +447,19 @@ function renderSummaryGauges(summary: RangeSummary): HTMLDivElement {
     fill.className = "home-summary-gauge-fill";
     fill.style.width = `${pct}%`;
     track.appendChild(fill);
-    const rateInGauge = document.createElement("span");
-    rateInGauge.className = "home-summary-gauge-rate-inner";
-    rateInGauge.textContent = rateText;
-    track.appendChild(rateInGauge);
-    const amountEl = document.createElement("span");
-    amountEl.className = "home-summary-gauge-amount";
-    amountEl.textContent =
+    const amountInGauge = document.createElement("span");
+    amountInGauge.className = "home-summary-gauge-amount-inner";
+    amountInGauge.textContent =
       planned > 0
         ? `${actual.toLocaleString()}/${planned.toLocaleString()}`
         : "—";
+    track.appendChild(amountInGauge);
+    const rateEl = document.createElement("span");
+    rateEl.className = "home-summary-gauge-rate";
+    rateEl.textContent = rateText;
     row.appendChild(labelEl);
     row.appendChild(track);
-    row.appendChild(amountEl);
+    row.appendChild(rateEl);
     wrap.appendChild(row);
   });
 
@@ -467,7 +469,7 @@ function renderSummaryGauges(summary: RangeSummary): HTMLDivElement {
 /** 破棄可能な Chart インスタンスの配列（型の互換のため unknown[]）。 */
 const homeMonthChartInstances: unknown[] = [];
 const homeWeekChartInstances: unknown[] = [];
-let homeTrendChartInstance: { destroy(): void } | null = null;
+const homeTrendChartInstances: { destroy(): void }[] = [];
 
 function getCategoryName(id: string): string {
   return id === "—" ? "—" : (getCategoryById(id)?.CATEGORY_NAME ?? id);
@@ -676,9 +678,10 @@ function renderMonthPlanSection(container: HTMLElement): void {
     const actualTargetDates = new Set(
       getActualTransactionsForPlan(row.ID).map((a) => getActualTargetDate(a).slice(0, 10)).filter((s) => /^\d{4}-\d{2}-\d{2}$/.test(s))
     );
-    const isDelayed = hasDelayedPlanDates(row, todayYMD, actualTargetDates);
-    // 遅れでなければ計画中/実績あり/完了/中止のアイコン、遅れなら炎アイコン
-    if (!isDelayed) {
+    const delayedDates = new Set(getDelayedPlanDates(row, todayYMD, actualTargetDates));
+    const isThisDateDelayed = delayedDates.has(date);
+    // この発生日が遅れでなければ計画中/実績あり/完了/中止のアイコン、遅れなら炎アイコン
+    if (!isThisDateDelayed) {
       let statusClass =
         planStatus === "complete" ? "complete" : planStatus === "canceled" ? "canceled" : "planning";
       const hasActual = getActualIdsForPlanId(row.ID).length > 0;
@@ -745,10 +748,8 @@ function renderMonthTrendChart(): void {
   const container = document.getElementById("home-below-balance-right");
   if (!container) return;
 
-  if (homeTrendChartInstance) {
-    homeTrendChartInstance.destroy();
-    homeTrendChartInstance = null;
-  }
+  homeTrendChartInstances.forEach((ch) => ch.destroy());
+  homeTrendChartInstances.length = 0;
 
   if (!homeChartJsRegistered) {
     Chart.register(...registerables, ChartDataLabels, centerLabelAndHolePlugin);
@@ -756,83 +757,161 @@ function renderMonthTrendChart(): void {
   }
 
   container.innerHTML = "";
-  const section = document.createElement("section");
-  section.className = "home-trend-section";
-  section.setAttribute("aria-labelledby", "home-trend-heading");
+  const trendSection = document.createElement("section");
+  trendSection.className = "home-trend-section";
+  trendSection.setAttribute("aria-labelledby", "home-trend-heading");
   const heading = document.createElement("h3");
   heading.id = "home-trend-heading";
   heading.className = "home-trend-chart-heading";
   heading.textContent = "今月の収支推移";
-  section.appendChild(heading);
+  trendSection.appendChild(heading);
   const wrap = document.createElement("div");
   wrap.className = "home-trend-chart-wrap";
-  const canvas = document.createElement("canvas");
-  wrap.appendChild(canvas);
-  section.appendChild(wrap);
-  container.appendChild(section);
+  const chartLineWrap = document.createElement("div");
+  chartLineWrap.className = "home-trend-chart-item";
+  const canvasLine = document.createElement("canvas");
+  chartLineWrap.appendChild(canvasLine);
+  wrap.appendChild(chartLineWrap);
+  const chartExpenseWrap = document.createElement("div");
+  chartExpenseWrap.className = "home-trend-chart-item";
+  const canvasExpense = document.createElement("canvas");
+  chartExpenseWrap.appendChild(canvasExpense);
+  wrap.appendChild(chartExpenseWrap);
+  const chartIncomeWrap = document.createElement("div");
+  chartIncomeWrap.className = "home-trend-chart-item";
+  const canvasIncome = document.createElement("canvas");
+  chartIncomeWrap.appendChild(canvasIncome);
+  wrap.appendChild(chartIncomeWrap);
+  trendSection.appendChild(wrap);
+  container.appendChild(trendSection);
 
   renderMonthPlanSection(container);
 
-  // 今月の日別累計で折れ線グラフを描画
-  const { labels, cumulativeIncome, cumulativeExpense } = getMonthDailyCumulative();
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return;
+  const { labels, cumulativeIncome, cumulativeExpense, dailyIncome, dailyExpense } = getMonthDailyCumulative();
 
-  homeTrendChartInstance = new Chart(ctx, {
-    type: "line",
-    data: {
-      labels,
-      datasets: [
-        {
-          label: "収入",
-          data: cumulativeIncome,
-          borderColor: "rgba(46, 125, 50, 0.9)",
-          backgroundColor: "rgba(46, 125, 50, 0.1)",
-          fill: true,
-          tension: 0.2,
-        },
-        {
-          label: "支出",
-          data: cumulativeExpense,
-          borderColor: "rgba(198, 40, 40, 0.9)",
-          backgroundColor: "rgba(198, 40, 40, 0.1)",
-          fill: true,
-          tension: 0.2,
-        },
-      ],
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: true,
-      aspectRatio: 2.9,
-      layout: {
-        padding: { top: 24, right: 24, left: 8, bottom: 8 },
-      },
-      scales: {
-        x: {
-          title: { display: false },
-        },
-        y: {
-          beginAtZero: true,
-          title: { display: false },
-        },
-      },
-      plugins: {
-        legend: { position: "top" },
-        datalabels: {
-          display: (context) => {
-            const i = context.dataIndex;
-            const data = context.dataset.data as number[];
-            const prev = i > 0 ? data[i - 1] : null;
-            return prev === null || prev !== data[i];
+  // 1. 折れ線グラフ（累計収支）
+  const ctxLine = canvasLine.getContext("2d");
+  if (ctxLine) {
+    const lineChart = new Chart(ctxLine, {
+      type: "line",
+      data: {
+        labels,
+        datasets: [
+          {
+            label: "収入",
+            data: cumulativeIncome,
+            borderColor: "rgba(46, 125, 50, 0.9)",
+            backgroundColor: "rgba(46, 125, 50, 0.1)",
+            fill: true,
+            tension: 0.2,
           },
-          formatter: (value: number) => value.toLocaleString(),
-          align: "top",
-          anchor: "end",
-        },
+          {
+            label: "支出",
+            data: cumulativeExpense,
+            borderColor: "rgba(198, 40, 40, 0.9)",
+            backgroundColor: "rgba(198, 40, 40, 0.1)",
+            fill: true,
+            tension: 0.2,
+          },
+        ],
       },
-    } as ChartOptions<"line">,
-  });
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        aspectRatio: 1.5,
+        layout: { padding: { top: 8, right: 8, left: 4, bottom: 4 } },
+        scales: { x: { title: { display: false } }, y: { beginAtZero: true, title: { display: false } } },
+        plugins: {
+          legend: { position: "top", labels: { boxWidth: 12, font: { size: 10 } } },
+          datalabels: {
+            display: (ctx: { dataIndex: number; dataset: { data: number[] } }) => {
+              const i = ctx.dataIndex;
+              const data = ctx.dataset.data;
+              const prev = i > 0 ? data[i - 1] : null;
+              return prev === null || prev !== data[i];
+            },
+            formatter: (v: number) => v.toLocaleString(),
+            align: "top" as const,
+            anchor: "end" as const,
+            font: { size: 9 },
+          },
+        },
+      } as ChartOptions<"line">,
+    });
+    homeTrendChartInstances.push(lineChart);
+  }
+
+  // 2. 支出グラフ（日別）
+  const ctxExpense = canvasExpense.getContext("2d");
+  if (ctxExpense) {
+    const expenseChart = new Chart(ctxExpense, {
+      type: "bar",
+      data: {
+        labels,
+        datasets: [{
+          label: "支出",
+          data: dailyExpense,
+          backgroundColor: "rgba(198, 40, 40, 0.7)",
+          borderColor: "rgba(198, 40, 40, 0.9)",
+          borderWidth: 1,
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        aspectRatio: 1.5,
+        layout: { padding: { top: 8, right: 8, left: 4, bottom: 4 } },
+        scales: { x: { title: { display: false } }, y: { beginAtZero: true, title: { display: false } } },
+        plugins: {
+          legend: { position: "top", labels: { boxWidth: 12, font: { size: 10 } } },
+          datalabels: {
+            display: true,
+            formatter: (value: number) => value > 0 ? value.toLocaleString() : "",
+            anchor: "end" as const,
+            align: "top" as const,
+            font: { size: 10 },
+          },
+        },
+      } as ChartOptions<"bar">,
+    });
+    homeTrendChartInstances.push(expenseChart);
+  }
+
+  // 3. 収入グラフ（日別）
+  const ctxIncome = canvasIncome.getContext("2d");
+  if (ctxIncome) {
+    const incomeChart = new Chart(ctxIncome, {
+      type: "bar",
+      data: {
+        labels,
+        datasets: [{
+          label: "収入",
+          data: dailyIncome,
+          backgroundColor: "rgba(46, 125, 50, 0.7)",
+          borderColor: "rgba(46, 125, 50, 0.9)",
+          borderWidth: 1,
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        aspectRatio: 1.5,
+        layout: { padding: { top: 8, right: 8, left: 4, bottom: 4 } },
+        scales: { x: { title: { display: false } }, y: { beginAtZero: true, title: { display: false } } },
+        plugins: {
+          legend: { position: "top", labels: { boxWidth: 12, font: { size: 10 } } },
+          datalabels: {
+            display: true,
+            formatter: (value: number) => value > 0 ? value.toLocaleString() : "",
+            anchor: "end" as const,
+            align: "top" as const,
+            font: { size: 10 },
+          },
+        },
+      } as ChartOptions<"bar">,
+    });
+    homeTrendChartInstances.push(incomeChart);
+  }
 }
 
 function renderHomeSummary(): void {
@@ -876,13 +955,12 @@ function renderHomeSummary(): void {
   );
 
   monthContent.innerHTML = "";
-  monthContent.appendChild(renderSummaryGauges(monthSummary));
   renderSummaryPieCharts(monthContent, monthActualByCategory, "home-month", homeMonthChartInstances);
+  monthContent.appendChild(renderSummaryGauges(monthSummary));
 
   weekContent.innerHTML = "";
-  weekContent.appendChild(renderSummaryGauges(weekSummary));
   renderSummaryPieCharts(weekContent, weekActualByCategory, "home-week", homeWeekChartInstances);
-  // 今月・今週それぞれにゲージと円グラフを描画
+  weekContent.appendChild(renderSummaryGauges(weekSummary));
 }
 
 export function initHomeScreen(): void {
@@ -890,16 +968,16 @@ export function initHomeScreen(): void {
     loadTransactionData().then(() => {
       renderHeaderProfile();
       renderBalanceSection();
-      renderHomeSummary();
       renderMonthTrendChart();
+      renderHomeSummary();
     });
   });
   registerRefreshHandler("home", () => {
     loadTransactionData(true).then(() => {
       renderHeaderProfile(true);
       renderBalanceSection();
-      renderHomeSummary();
       renderMonthTrendChart();
+      renderHomeSummary();
     });
   });
 }

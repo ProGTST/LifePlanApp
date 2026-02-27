@@ -64,6 +64,7 @@ export default {
   },
   plugins: [],
   corePlugins: {
-    /* 既存 app.css と競合しにくくするため preflight は有効のまま（必要なら false に変更可能） */
+    /* ホームの枠線付き角丸ブロックが preflight の border-width: 0 で消えるため無効化 */
+    preflight: false,
   },
 };

@@ -1,30 +1,35 @@
 @layer layout {
 #view-home .home-view-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
   min-height: 100%;
   box-sizing: border-box;
+  padding: 0.5rem;
 }
 
 /* ホーム: 勘定残高の下エリア（左: 今月・今週、右: 予備） */
 .home-below-balance {
   display: flex;
-  gap: 1.5rem;
+  gap: var(--space-3);
   align-items: flex-start;
-  padding-top: 1rem;
 }
 .home-below-balance-left {
-  flex: 0 1 36rem;
+  flex: 4 1 0;
   min-width: 0;
-  max-width: 36rem;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: var(--space-3);
 }
 .home-below-balance-right {
-  flex: 0 0 44.8rem;
+  flex: 6 1 0;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: var(--space-3);
+}
+.home-trend-section {
+  min-width: 0;
 }
 .home-trend-chart-heading {
   font-size: 0.9rem;
@@ -32,37 +37,64 @@
   margin: 0 0 0.25rem;
   color: var(--color-view-fg, #1a1a1a);
 }
-.home-trend-chart-wrap {
+#app .home-trend-chart-wrap {
   position: relative;
   width: 100%;
-  min-height: 250px;
-  padding: 0.75rem 1rem;
+  max-width: 100%;
+  min-width: 0;
+  height: 10rem;
+  min-height: 10rem;
+  padding: var(--space-2) var(--space-3);
   border: 1px solid var(--gray-300);
   border-radius: var(--radius-md);
   background: var(--color-view-bg);
   overflow: visible;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: row;
+  gap: var(--space-3);
+  align-items: stretch;
+}
+.home-trend-chart-item {
+  flex: 1 1 0;
+  min-width: 0;
+  position: relative;
+  height: 100%;
 }
 .home-trend-chart-wrap canvas {
   max-width: 100%;
+  max-height: 100%;
   display: block;
 }
 
 /* ホーム: 今月の予定 */
+.home-plan-section {
+  min-width: 0;
+}
 .home-plan-heading {
   font-size: 0.9rem;
   font-weight: 600;
   margin: 0 0 0.25rem;
   color: var(--color-view-fg, #1a1a1a);
 }
-.home-plan-block {
-  min-width: 44.3rem;
-  padding: 1rem 1.25rem;
+#app .home-plan-block {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  height: 16rem;
+  min-height: 16rem;
+  padding: var(--space-2) var(--space-3);
   border: 1px solid var(--gray-300);
   border-radius: var(--radius-md);
   background: var(--color-view-bg);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 .home-plan-table-wrap {
-  max-height: 245px;
+  flex: 1;
+  min-height: 0;
   overflow-x: auto;
   overflow-y: auto;
 }
@@ -78,6 +110,7 @@
   top: 0;
   z-index: 1;
   background: var(--gray-100, #f0f0f0);
+  color: var(--color-view-fg, #1a1a1a);
   padding: 0.4rem 0.5rem;
   text-align: left;
   border-bottom: 1px solid var(--gray-300);
@@ -105,6 +138,7 @@
   padding: 0.35rem 0.5rem;
   border-bottom: 1px solid var(--gray-200);
   background: var(--color-view-bg);
+  color: var(--color-view-fg, #1a1a1a);
 }
 .home-plan-table tbody tr:last-child td {
   border-bottom: none;
@@ -114,11 +148,32 @@
 }
 .home-plan-cell-plan {
   white-space: nowrap;
+  vertical-align: middle;
+  text-align: center;
 }
 .home-plan-cell-plan .transaction-history-plan-cell-inner {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.25rem;
+  min-height: 1.5rem;
+}
+#app .home-plan-table .transaction-history-plan-status-icon--planning {
+  background: var(--color-base-bg);
+  color: var(--color-base-fg, #333333);
+}
+#app .home-plan-table .transaction-history-plan-status-icon--planning-with-actual,
+#app .home-plan-table .transaction-history-plan-status-icon--complete {
+  background: var(--color-accent-bg);
+  color: var(--color-accent-fg, #ffffff);
+}
+#app .home-plan-table .transaction-history-plan-status-icon--canceled {
+  background: var(--gray-500, #6b7280);
+  color: var(--color-button-fg, #ffffff);
+}
+#app .home-plan-table .transaction-history-plan-status-icon--delayed {
+  background: var(--color-delayed-bg);
+  color: var(--color-button-fg);
 }
 .home-plan-cell-name .transaction-history-name-cell-inner {
   display: inline-flex;
@@ -134,6 +189,7 @@
 }
 .home-plan-row-clickable:hover td {
   background: var(--gray-100, #f0f0f0);
+  color: var(--color-view-fg, #1a1a1a);
 }
 .home-plan-row-clickable:focus {
   outline: 2px solid var(--color-accent-bg);
@@ -150,12 +206,18 @@
 .home-summary-section:last-of-type {
   margin-bottom: 0;
 }
-#home-month-content,
-#home-week-content {
-  padding: 0.75rem 1rem;
+#app #home-month-content,
+#app #home-week-content {
+  padding: var(--space-2) var(--space-3);
   border: 1px solid var(--gray-300);
   border-radius: var(--radius-md);
   background: var(--color-view-bg);
+  height: 13rem;
+  min-height: 13rem;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 .home-summary-heading {
   font-size: 0.9rem;
@@ -163,11 +225,11 @@
   margin: 0 0 0.25rem;
   color: var(--color-view-fg, #1a1a1a);
 }
-.home-balance-totals {
+#app .home-balance-totals {
   display: flex;
   gap: 1.5rem;
   margin-bottom: 0;
-  padding: 0.75rem 1rem;
+  padding: var(--space-2) var(--space-3);
   font-size: 0.9rem;
   color: var(--color-view-fg, #1a1a1a);
   border: 1px solid var(--gray-300);
@@ -188,11 +250,11 @@
   max-height: 4.4rem;
   overflow-y: auto;
 }
-.home-balance-account-block {
+#app .home-balance-account-block {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.35rem 0.5rem;
+  padding: var(--space-1) var(--space-2);
   border: 1px solid var(--gray-200);
   border-radius: var(--radius-sm);
   background: var(--color-view-bg);
@@ -222,10 +284,10 @@
   margin: 0.25rem 0;
 }
 .home-balance-total-line--personal {
-  font-size: 0.9rem;
+  font-size: 1.3rem;
   font-weight: 700;
 }
-.home-balance-table-wrap {
+#app .home-balance-table-wrap {
   max-height: 280px;
   overflow: auto;
   border: 1px solid var(--gray-300);
@@ -276,21 +338,24 @@
 }
 .home-summary-gauges {
   max-width: 32rem;
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
+  margin-top: 0.6rem;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 1rem;
 }
 .home-summary-gauge-row {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 0.5rem;
+  gap: var(--space-2);
   font-size: 0.9rem;
-}
-.home-summary-gauge-row:last-child {
-  margin-bottom: 0;
+  flex: 1 1 12rem;
+  min-width: 0;
 }
 .home-summary-gauge-label {
   flex-shrink: 0;
-  min-width: 5rem;
+  min-width: 3.5rem;
   color: var(--color-view-fg, #1a1a1a);
 }
 .home-summary-gauge-track {
@@ -308,21 +373,20 @@
   border-radius: inherit;
   transition: width 0.25s ease;
 }
-.home-summary-gauge-rate-inner {
+.home-summary-gauge-amount-inner {
   position: absolute;
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
   z-index: 1;
-  font-size: 0.9rem;
+  font-size: 0.6rem;
   font-weight: 600;
   color: var(--color-accent-fg, #ffffff);
-  text-shadow: 0 0 2px var(--color-view-bg), 0 0 2px var(--color-view-bg);
   pointer-events: none;
 }
-.home-summary-gauge-amount {
+.home-summary-gauge-rate {
   flex-shrink: 0;
-  min-width: 6rem;
+  min-width: 2rem;
   text-align: right;
   font-size: 0.9rem;
   color: var(--color-view-fg, #1a1a1a);
@@ -330,25 +394,24 @@
 .home-summary-pie-charts {
   display: flex;
   flex-wrap: wrap;
-  gap: 1rem;
+  gap: var(--space-3);
   margin-bottom: 0;
   max-width: 32rem;
 }
 .home-summary-pie-figure {
   margin: 0;
-  flex: 1 1 140px;
+  flex: 1 1 100px;
   min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
 }
 #app .home-summary-pie-figure canvas {
-  max-height: 180px;
   width: 100%;
-  max-width: 180px;
+  max-height: 126px;
+  max-width: 126px;
 }
 .home-summary-pie-caption {
-  margin-top: 0.35rem;
   font-size: 0.9rem;
   color: var(--color-view-fg, #1a1a1a);
 }
@@ -412,7 +475,7 @@
 
 .view-title {
   margin: 0;
-  font-size: 1.25rem;
+  font-size: 1rem;
   font-weight: 600;
 }
 

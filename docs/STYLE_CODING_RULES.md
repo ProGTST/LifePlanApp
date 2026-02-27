@@ -144,6 +144,35 @@ src/styles/
 
 新しい layout / コンポーネント用ファイルを追加するときも、**必ず同じレイヤーで囲む**。
 
+### 5.3 レイヤー起因のデグレ（layout が components に負ける）
+
+#### 原因
+
+CSS レイヤーでは **後続のレイヤーが勝つ**。そのため、**詳細度に関係なく** components 層のルールが layout 層のルールを上書きする。
+
+- layout 層: サイドバーメニューなどに `background` / `color` を指定
+- components 層: `#app button` で全ボタンに `background` / `color` を指定
+→ **layout のスタイルが components に上書きされ、見た目が効かなくなる**
+
+#### デグレの典型例
+
+| 症状 | 該当箇所 |
+|------|----------|
+| サイドバーメニューで `.is-current` の強調表示が効かない | `.sidebar-menu-item`, `.sidebar-settings-item` |
+| ホバー時の背景色・非強調時の見た目が反映されない | `:hover:not(.is-current)` など |
+| layout 内の `<button>` が、意図と違う色・背景で表示される | `#app button` より前のレイヤーに書いたスタイル |
+
+#### 改善方法
+
+1. **components 層に上書きルールを追記**（詳細度で勝たせる）  
+   - `#app button` と同じレイヤー内に、`#app .app-sidebar .sidebar-menu-item` など、より詳細なセレクタで追記する。同一レイヤー内では詳細度が効く。
+
+2. **@layer overrides に移す**  
+   - 上書きしたいルールだけ `@layer overrides { ... }` に移す。レイヤー順で components より後ろになり、詳細度を上げずに解決できる。
+
+3. **責務の見直し**  
+   - layout 内の「コンポーネント的な」見た目（ボタンの色・状態）は、本来 components に書くのが望ましい。layout は構造（配置・余白）に寄せる。
+
 ---
 
 ## 6. !important 禁止
@@ -182,6 +211,14 @@ src/styles/
 - 既存の BEM クラス（例: `.app-menubar__icon`）はそのままコンポーネント用として維持してよい。
 - レイアウトや余白だけ Tailwind に寄せる場合は、`class="flex gap-4 p-2"` のように HTML にユーティリティを足す形でよい。
 - 新しい専用クラスを app.css に足す場合は、**トークン（`var(--space-4)` など）を使い、レイヤー（通常は `@layer components`）を守る。**
+
+### 8.3 Tailwind preflight の無効化
+
+Tailwind の preflight を無効にしている（`tailwind.config.js` で `corePlugins: { preflight: false }`）。
+
+- **理由**: preflight の `* { border-width: 0 }` により、ホームのセクション（`.home-balance-totals` など）で指定した枠線と角丸が表示されなかったため。
+- **結果**: preflight 無効化により `* { border-width: 0 }` が適用されなくなり、ホームのセクションの枠線と角丸が正しく表示されるようになった。
+- **副作用**: preflight に依存していたボタン・フォーム要素などのブラウザデフォルトリセットは適用されなくなる。本プロジェクトでは `#app button` などで独自にスタイルを指定している。
 
 ---
 

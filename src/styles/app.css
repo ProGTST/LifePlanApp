@@ -22,7 +22,7 @@
 }
 
 /* 収支記録：メイン用 view-body と予定取引オプション用 view-body を横並びに */
-#view-transaction-entry {
+#view-transaction-entry:not(.main-view--hidden) {
   display: flex;
   flex-direction: row;
   align-items: flex-start;
@@ -1477,6 +1477,48 @@
   cursor: pointer;
 }
 
+/* サイドバーメニュー・設定項目：#app button より優先（components 層内で詳細度で上書き） */
+#app .app-sidebar .sidebar-menu-item {
+  background: var(--color-base-bg);
+  color: var(--color-base-fg);
+}
+#app .app-sidebar .sidebar-menu-item:hover:not(.is-current) {
+  background: var(--gray-200);
+}
+#app .app-sidebar .sidebar-menu-item.is-current {
+  background: var(--color-accent-bg);
+  color: var(--color-accent-fg);
+}
+#app .app-sidebar .sidebar-settings-item {
+  background: var(--color-base-bg);
+  color: var(--color-base-fg);
+}
+#app .app-sidebar .sidebar-settings-item:hover:not(.is-current) {
+  background: var(--gray-200);
+}
+#app .app-sidebar .sidebar-settings-item.is-current {
+  background: var(--color-accent-bg);
+  color: var(--color-accent-fg);
+}
+
+/* ヘッダー・フッターボタン：#app button の font-size を上書き（components 層内で詳細度を上げる） */
+#app .btn-header-add,
+#app .btn-header-delete,
+#app .btn-header-save,
+#app .btn-header-default,
+#app #header-entry-btn,
+#app #transaction-history-show-conditions-btn,
+#app #transaction-history-reset-conditions-btn,
+#app #header-transaction-entry-submit,
+#app #header-transaction-entry-copy-as-new,
+#app #header-transaction-entry-reset,
+#app #header-transaction-entry-continuous,
+#app #header-transaction-entry-delete,
+#app .btn-footer-nav,
+#app .btn-footer-back {
+  font-size: 0.75rem;
+}
+
 /* ----- 収支履歴 ----- */
 /* 検索条件と収支履歴・カレンダー画面の view-body の間に余白 */
 #view-transaction-history > .view-body,
@@ -1488,7 +1530,7 @@
 }
 
 /* 収支履歴一覧：ページネーション位置を固定するため flex でテーブル領域を可変に */
-#view-transaction-history {
+#view-transaction-history:not(.main-view--hidden) {
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -3377,7 +3419,7 @@
 /* ---------------------------------------------------------------------------
    スケジュール画面（ガント風）
    --------------------------------------------------------------------------- */
-#view-schedule.main-view {
+#view-schedule.main-view:not(.main-view--hidden) {
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -3418,7 +3460,8 @@
   display: none;
 }
 .schedule-view-month-select {
-  height: 40px;
+  height: 30px;
+  margin: 0;
   padding: 0 0.5rem;
   box-sizing: border-box;
   font-size: 0.875rem;
@@ -3430,8 +3473,12 @@
   font-weight: 500;
   font-size: 0.9375rem;
 }
-.schedule-view-date-input {
+/* #app input より優先：margin を打ち消す */
+#app .schedule-view-date-input {
+  height: 30px;
+  margin: 0;
   padding: 0.35rem 0.5rem;
+  box-sizing: border-box;
   font-size: 0.875rem;
   border: 1px solid var(--gray-500);
   border-radius: var(--radius-md);
@@ -3445,12 +3492,20 @@
 }
 /* #app button より優先：表示単位ボタン（高さ・padding は他ボタンと同一、未選択は BASE、選択中は ACCENT） */
 #app .schedule-view-unit-btn {
+  height: 30px;
+  margin: 0;
   padding: 0.5rem 1rem;
-  font-size: 1rem;
+  box-sizing: border-box;
+  font-size: 0.75rem;
+  font-weight: 500;
   border: 1px solid var(--gray-500);
   background: transparent;
   color: var(--color-base-fg);
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
 }
 #app .schedule-view-unit-btn:not(:last-child) {
   border-right-width: 1px;
@@ -3467,6 +3522,17 @@
   background: var(--color-accent-bg);
   color: var(--color-accent-fg);
   opacity: 0.95;
+}
+#app #schedule-scroll-reset-btn {
+  height: 30px;
+  margin: 0;
+  box-sizing: border-box;
+  padding: 0 1rem;
+  font-size: 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
 }
 .schedule-view-grid-wrap {
   flex: 1 1 0;
