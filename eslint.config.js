@@ -71,5 +71,14 @@ export default tseslint.config(
       },
     },
     files: ["src/**/*.ts"],
+  },
+  {
+    files: ["src/**/*.ts"],
+    rules: {
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
+      ],
+    },
   }
 );

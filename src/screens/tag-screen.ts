@@ -43,7 +43,7 @@ import { ICON_DEFAULT_COLOR } from "../constants/colorPresets.ts";
  * @param noCache - true のときキャッシュを使わず再取得する（最新化ボタン用）
  * @returns Promise。タグ行の配列
  */
-async function fetchTagList(noCache = false): Promise<TagRow[]> {
+async function fetchTagList(_noCache = false): Promise<TagRow[]> {
   const { header, rows, version } = await fetchCsv("/data/TAG.csv");
   setLastCsvVersion("TAG.csv", version);
   if (header.length === 0) return [];

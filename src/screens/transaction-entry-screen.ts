@@ -185,7 +185,7 @@ function getActualTargetDate(row: TransactionRow): string {
  * @param noCache - true のときキャッシュを使わない
  * @returns Promise。カテゴリー行の配列
  */
-async function fetchCategoryList(noCache = false): Promise<CategoryRow[]> {
+async function fetchCategoryList(_noCache = false): Promise<CategoryRow[]> {
   const { header, rows } = await fetchCsv("/data/CATEGORY.csv");
   if (header.length === 0) return [];
   return rows.map((cells) => rowToObject(header, cells) as unknown as CategoryRow);
@@ -196,7 +196,7 @@ async function fetchCategoryList(noCache = false): Promise<CategoryRow[]> {
  * @param noCache - true のときキャッシュを使わない
  * @returns Promise。勘定行の配列
  */
-async function fetchAccountList(noCache = false): Promise<AccountRow[]> {
+async function fetchAccountList(_noCache = false): Promise<AccountRow[]> {
   const { header, rows } = await fetchCsv("/data/ACCOUNT.csv");
   if (header.length === 0) return [];
   return rows.map((cells) => rowToObject(header, cells) as unknown as AccountRow);
@@ -207,7 +207,7 @@ async function fetchAccountList(noCache = false): Promise<AccountRow[]> {
  * @param noCache - true のときキャッシュを使わない
  * @returns Promise。権限行の配列
  */
-async function fetchAccountPermissionList(noCache = false): Promise<AccountPermissionRow[]> {
+async function fetchAccountPermissionList(_noCache = false): Promise<AccountPermissionRow[]> {
   const { header, rows } = await fetchCsv("/data/ACCOUNT_PERMISSION.csv");
   if (header.length === 0) return [];
   const list: AccountPermissionRow[] = [];
@@ -223,7 +223,7 @@ async function fetchAccountPermissionList(noCache = false): Promise<AccountPermi
  * @param noCache - true のときキャッシュを使わない
  * @returns Promise。nextId と取引行の配列（全件）
  */
-async function fetchTransactionRows(noCache = false): Promise<{ nextId: number; rows: TransactionRow[] }> {
+async function fetchTransactionRows(_noCache = false): Promise<{ nextId: number; rows: TransactionRow[] }> {
   const { header, rows } = await fetchCsv("/data/TRANSACTION.csv");
   const list: TransactionRow[] = [];
   let maxId = 0;
@@ -248,7 +248,7 @@ function getNonDeletedTransactionRows(rows: TransactionRow[]): TransactionRow[] 
  * @param noCache - true のときキャッシュを使わない
  * @returns Promise。タグ行の配列
  */
-async function fetchTagList(noCache = false): Promise<TagRow[]> {
+async function fetchTagList(_noCache = false): Promise<TagRow[]> {
   const { header, rows } = await fetchCsv("/data/TAG.csv");
   if (header.length === 0) return [];
   const list: TagRow[] = [];
@@ -264,7 +264,7 @@ async function fetchTagList(noCache = false): Promise<TagRow[]> {
  * @param noCache - true のときキャッシュを使わない
  * @returns Promise。nextId とタグ管理行の配列
  */
-async function fetchTransactionTagRows(noCache = false): Promise<{ nextId: number; rows: TransactionTagRow[] }> {
+async function fetchTransactionTagRows(_noCache = false): Promise<{ nextId: number; rows: TransactionTagRow[] }> {
   const { header, rows } = await fetchCsv("/data/TRANSACTION_TAG.csv");
   const list: TransactionTagRow[] = [];
   let maxId = 0;
@@ -283,7 +283,7 @@ async function fetchTransactionTagRows(noCache = false): Promise<{ nextId: numbe
  * @param noCache - true のときキャッシュを使わない
  * @returns Promise。nextId と紐付け行の配列
  */
-async function fetchTransactionManagementRows(noCache = false): Promise<{ nextId: number; rows: TransactionManagementRow[] }> {
+async function fetchTransactionManagementRows(_noCache = false): Promise<{ nextId: number; rows: TransactionManagementRow[] }> {
   const { header, rows } = await fetchCsv("/data/TRANSACTION_MANAGEMENT.csv");
   const list: TransactionManagementRow[] = [];
   let maxId = 0;
@@ -1607,7 +1607,6 @@ function resetForm(): void {
  * @param _which - "out" | "in"（未使用・呼び出し元でどちらの列か判別用）
  * @returns 勘定 ID または空文字
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- 呼び出し元で out/in 判別用の引数
 function getFirstEditableAccountId(_which: "out" | "in"): string {
   const sorted = accountRows
     .filter((a) => editableAccountIds.has(a.ID))

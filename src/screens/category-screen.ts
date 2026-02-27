@@ -147,7 +147,7 @@ function sortCategoryListByTypeAndOrder(list: CategoryRow[]): void {
  * @param noCache - true のときキャッシュを使わず再取得する（最新化ボタン用）
  * @returns Promise。カテゴリー行の配列
  */
-async function fetchCategoryList(noCache = false): Promise<CategoryRow[]> {
+async function fetchCategoryList(_noCache = false): Promise<CategoryRow[]> {
   const { header, rows, version } = await fetchCsv("/data/CATEGORY.csv");
   setLastCsvVersion("CATEGORY.csv", version);
   if (header.length === 0) return [];

@@ -64,7 +64,7 @@ function getAccountPermissionRows(): AccountPermissionRow[] {
  * @param noCache - true のときキャッシュを使わず再取得する（最新化ボタン用）
  * @returns Promise。勘定行の配列
  */
-async function fetchAccountList(noCache = false): Promise<AccountRow[]> {
+async function fetchAccountList(_noCache = false): Promise<AccountRow[]> {
   const { header, rows, version } = await fetchCsv("/data/ACCOUNT.csv");
   setLastCsvVersion("ACCOUNT.csv", version);
   if (header.length === 0) return [];

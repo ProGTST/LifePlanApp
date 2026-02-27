@@ -87,7 +87,7 @@ const LABELS: Record<string, string> = {
   ACCENT_FG: "強調文字色",
 };
 
-async function fetchPaletteList(noCache = false): Promise<PaletteRow[]> {
+async function fetchPaletteList(_noCache = false): Promise<PaletteRow[]> {
   const { header, rows, version } = await fetchCsv("/data/COLOR_PALETTE.csv");
   setLastCsvVersion("COLOR_PALETTE.csv", version);
   if (header.length === 0) return [];

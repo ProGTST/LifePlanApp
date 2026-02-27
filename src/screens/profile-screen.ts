@@ -23,7 +23,7 @@ let userList: UserRow[] = [];
  * @param noCache - true のときキャッシュを使わず再取得する（最新化ボタン用）
  * @returns Promise。ユーザー行の配列
  */
-async function fetchUserList(noCache = false): Promise<UserRow[]> {
+async function fetchUserList(_noCache = false): Promise<UserRow[]> {
   const { header, rows, version } = await fetchCsv("/data/USER.csv");
   setLastCsvVersion("USER.csv", version);
   if (header.length === 0) return [];

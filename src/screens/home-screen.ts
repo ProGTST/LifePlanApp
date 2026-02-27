@@ -99,7 +99,7 @@ function getDisplayNameAbbr(name: string): string {
   return t.slice(0, PROFILE_NAME_LENGTH);
 }
 
-async function fetchUserList(noCache = false): Promise<UserRow[]> {
+async function fetchUserList(_noCache = false): Promise<UserRow[]> {
   const { header, rows } = await fetchCsv("/data/USER.csv");
   if (header.length === 0) return [];
   const list: UserRow[] = [];
