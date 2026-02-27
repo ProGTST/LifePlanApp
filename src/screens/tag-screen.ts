@@ -9,6 +9,7 @@ import {
   setTagList,
   setTagListLoaded,
   toggleTagDeleteMode,
+  setLastCsvVersion,
 } from "../state";
 import { fetchCsv, rowToObject } from "../utils/csv";
 import {
@@ -42,7 +43,8 @@ import { ICON_DEFAULT_COLOR } from "../constants/colorPresets.ts";
  * @returns Promise。タグ行の配列
  */
 async function fetchTagList(noCache = false): Promise<TagRow[]> {
-  const { header, rows } = await fetchCsv("/data/TAG.csv");
+  const { header, rows, version } = await fetchCsv("/data/TAG.csv");
+  setLastCsvVersion("TAG.csv", version);
   if (header.length === 0) return [];
   const list: TagRow[] = [];
   for (const cells of rows) {

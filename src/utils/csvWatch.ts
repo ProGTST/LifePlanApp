@@ -8,7 +8,7 @@
  */
 
 import { triggerRefreshForView } from "../app/screen";
-import { fetchCsvFromApi } from "./dataApi";
+import { fetchCsvFromApi, fetchCsvMetaFromApi } from "./dataApi";
 import { parseCsvLine, rowToObject } from "./csv";
 
 const POLL_INTERVAL_MS = 15_000;
@@ -168,15 +168,6 @@ function getDisplayKeyForUpdate(
   }
 }
 
-/**
- * テキストの簡易ハッシュを返す。CSV の変更検知に使用。
- * @param text - 対象文字列
- * @returns 長さと末尾200文字からなるハッシュ文字列
- */
-function contentHash(text: string): string {
-  return `${text.length}:${text.slice(-200)}`;
-}
-
 type GetCurrentState = () => { view: string; userId: string };
 
 /**
@@ -201,42 +192,45 @@ function showUpdateNotifyDialog(viewId: string): void {
 }
 
 /**
- * 1ファイルを取得し、変更・更新者を判定する。更新データのキーが localStorage の表示キーに含まれるときのみ通知対象とする。
- * @param name - CSV ファイル名（例: "ACCOUNT.csv"）
- * @param getState - 現在の view と userId を返す関数
- * @param lastState - 前回のハッシュ等を保持するオブジェクト（破壊的に更新）
- * @returns 通知する場合は { viewId, shouldNotify: true }、しない場合は null
+ * 1ファイルを meta で監視し、version 変更時のみ本体取得して変更・更新者を判定する。表示キーに含まれるときのみ通知。
+ * ポーリング負荷を抑えるため GET /api/data/:name/meta を先に呼び、version が変わったときだけ本体を取得する。
  */
 async function checkFile(
   name: string,
   getState: GetCurrentState,
-  lastState: { hash: string; updateUser: string }
+  lastState: { version: number; updateUser: string }
 ): Promise<{ viewId: string; shouldNotify: boolean } | null> {
   const viewId = FILE_TO_VIEW[name];
   if (!viewId) return null;
 
-  let text: string;
+  let meta: { version: number; lastUpdatedUser: string };
   try {
-    text = await fetchCsvFromApi(name);
+    meta = await fetchCsvMetaFromApi(name);
   } catch {
     return null;
   }
 
-  const newHash = contentHash(text);
-  if (newHash === lastState.hash) return null;
+  if (meta.version === lastState.version) return null;
+  const isFirstPoll = lastState.version === 0;
+  lastState.version = meta.version;
+  lastState.updateUser = meta.lastUpdatedUser;
 
-  const isFirstPoll = lastState.hash === "";
-  lastState.hash = newHash;
-
-  const row = getLastUpdateRowFromCsvText(text);
-  if (!row) return null;
-
-  const updateUser = String(row.UPDATE_USER ?? "").trim();
   if (isFirstPoll) return null;
 
   const { view, userId } = getState();
   if (view !== viewId) return null;
-  if (userId && updateUser === userId) return null;
+  if (userId && meta.lastUpdatedUser === userId) return null;
+
+  let text: string;
+  try {
+    const res = await fetchCsvFromApi(name);
+    text = res.text;
+  } catch {
+    return null;
+  }
+
+  const row = getLastUpdateRowFromCsvText(text);
+  if (!row) return null;
 
   const displayKey = getDisplayKeyForUpdate(viewId, name, row);
   if (!displayKey) return null;
@@ -248,7 +242,7 @@ async function checkFile(
 }
 
 let pollTimer: ReturnType<typeof setInterval> | null = null;
-const lastKnown = new Map<string, { hash: string; updateUser: string }>();
+const lastKnown = new Map<string, { version: number; updateUser: string }>();
 
 /**
  * CSV 監視を開始する。ログイン後（currentUserId が設定済み）に呼ぶ。定期的にポーリングし、表示キーに含まれる更新があれば通知する。
@@ -266,7 +260,7 @@ export function startCsvWatch(getState: GetCurrentState): void {
       WATCHED_FILES.map(async (name) => {
         let state = lastKnown.get(name);
         if (!state) {
-          state = { hash: "", updateUser: "" };
+          state = { version: 0, updateUser: "" };
           lastKnown.set(name, state);
         }
         return checkFile(name, getState, state);

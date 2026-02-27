@@ -11,6 +11,7 @@ import {
   setAccountListLoaded,
   setAccountPermissionListFull,
   toggleAccountDeleteMode,
+  setLastCsvVersion,
 } from "../state";
 import { fetchCsv, rowToObject } from "../utils/csv";
 import {
@@ -63,12 +64,12 @@ function getAccountPermissionRows(): AccountPermissionRow[] {
  * @returns Promise。勘定行の配列
  */
 async function fetchAccountList(noCache = false): Promise<AccountRow[]> {
-  const { header, rows } = await fetchCsv("/data/ACCOUNT.csv");
+  const { header, rows, version } = await fetchCsv("/data/ACCOUNT.csv");
+  setLastCsvVersion("ACCOUNT.csv", version);
   if (header.length === 0) return [];
   const list: AccountRow[] = [];
   for (const cells of rows) {
     const row = rowToObject(header, cells) as unknown as AccountRow;
-    // 未設定フィールドに既定値を補う
     if (row.SORT_ORDER === undefined || row.SORT_ORDER === "") row.SORT_ORDER = String(list.length);
     if (row.COLOR === undefined) row.COLOR = "";
     if (row.ICON_PATH === undefined) row.ICON_PATH = "";
@@ -97,7 +98,8 @@ async function fetchUserList(): Promise<UserRow[]> {
  * @returns Promise。権限行の配列
  */
 async function fetchAccountPermissionList(): Promise<AccountPermissionRow[]> {
-  const { header, rows } = await fetchCsv("/data/ACCOUNT_PERMISSION.csv");
+  const { header, rows, version } = await fetchCsv("/data/ACCOUNT_PERMISSION.csv");
+  setLastCsvVersion("ACCOUNT_PERMISSION.csv", version);
   if (header.length === 0) return [];
   const list: AccountPermissionRow[] = [];
   for (const cells of rows) {

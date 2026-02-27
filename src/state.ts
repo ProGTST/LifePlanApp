@@ -129,6 +129,17 @@ export function setAccountPermissionListFull(list: AccountPermissionRow[]): void
   accountPermissionListFull = list;
 }
 
+/** 楽観ロック用: 取得した CSV のサーバー側 version（ファイル名 → version）。POST 時に expectedVersion として送る。 */
+const lastCsvVersions: Record<string, number> = {};
+
+export function setLastCsvVersion(name: string, version: number): void {
+  lastCsvVersions[name] = version;
+}
+
+export function getLastCsvVersion(name: string): number | undefined {
+  return lastCsvVersions[name];
+}
+
 /** 勘定項目：削除モードON/OFF */
 export let accountDeleteMode = false;
 

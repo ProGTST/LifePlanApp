@@ -1,5 +1,5 @@
 import type { UserRow } from "../types.ts";
-import { currentUserId, currentView } from "../state";
+import { currentUserId, currentView, setLastCsvVersion, getLastCsvVersion } from "../state";
 import { fetchCsv, rowToObject } from "../utils/csv";
 import { registerViewHandler, registerRefreshHandler } from "../app/screen";
 import { userListToCsv } from "../utils/csvExport.ts";
@@ -24,7 +24,8 @@ let userList: UserRow[] = [];
  * @returns Promise。ユーザー行の配列
  */
 async function fetchUserList(noCache = false): Promise<UserRow[]> {
-  const { header, rows } = await fetchCsv("/data/USER.csv");
+  const { header, rows, version } = await fetchCsv("/data/USER.csv");
+  setLastCsvVersion("USER.csv", version);
   if (header.length === 0) return [];
   const list: UserRow[] = [];
   for (const cells of rows) {
@@ -169,7 +170,7 @@ async function saveProfileForm(): Promise<void> {
   setUpdateAudit(user as unknown as Record<string, string>, currentUserId ?? "");
 
   const csv = userListToCsv(userList as unknown as Record<string, string>[]);
-  await saveCsvViaApi("USER.csv", csv);
+  await saveCsvViaApi("USER.csv", csv, getLastCsvVersion("USER.csv"));
   clearUserDirty();
 }
 
@@ -253,7 +254,9 @@ export function saveUserCsvOnNavigate(): Promise<void> {
     setUpdateAudit(user as unknown as Record<string, string>, currentUserId ?? "");
   }
   const csv = userListToCsv(userList as unknown as Record<string, string>[]);
-  return saveCsvViaApi("USER.csv", csv).then(() => clearUserDirty());
+  return saveCsvViaApi("USER.csv", csv, getLastCsvVersion("USER.csv")).then(() =>
+    clearUserDirty()
+  );
 }
 
 /**

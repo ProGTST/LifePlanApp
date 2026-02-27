@@ -1656,7 +1656,7 @@ export function initScheduleView(): void {
     const currentPlanStatus = (row.PLAN_STATUS || "planning").toLowerCase();
 
     try {
-      const { header, rows } = await fetchCsv("/data/TRANSACTION.csv");
+      const { header, rows, version } = await fetchCsv("/data/TRANSACTION.csv");
       if (header.length === 0 || !rows.length) {
         closeScheduleOccurrenceOverlay();
         return;
@@ -1675,7 +1675,7 @@ export function initScheduleView(): void {
       }
       target.VERSION = String((parseInt(target.VERSION ?? "0", 10) || 0) + 1);
       const csv = transactionListToCsv(allRows);
-      await saveCsvViaApi("TRANSACTION.csv", csv);
+      await saveCsvViaApi("TRANSACTION.csv", csv, version);
       occurrencePopupPlanRow = null;
       closeScheduleOccurrenceOverlay();
       await loadTransactionData(true);

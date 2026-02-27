@@ -61,22 +61,23 @@ function splitCsvLogicalRows(text: string): string[] {
 
 /**
  * CSV を API (GET /api/data/:filename) から取得し、ヘッダーと行の配列に分解する。
- * 取得は Node キャッシュ経由で行う。HTTP キャッシュは使用しない。
  * @param path - 例: "/data/USER.csv"
- * @returns { header, rows } ヘッダー列名の配列と、行ごとのセル配列の配列
+ * @returns { header, rows, version }。version はサーバーの X-Data-Version（楽観ロック・保存時に利用）
  */
-export async function fetchCsv(path: string): Promise<{ header: string[]; rows: string[][] }> {
+export async function fetchCsv(
+  path: string
+): Promise<{ header: string[]; rows: string[][]; version: number }> {
   const { fetchCsvFromApi } = await import("./dataApi");
   const name = path.replace(/^\/data\//, "").replace(/^\//, "") || path.split("/").pop() || "";
-  const text = await fetchCsvFromApi(name);
+  const { text, version } = await fetchCsvFromApi(name);
   const logicalRows = splitCsvLogicalRows(text);
-  if (logicalRows.length < 1) return { header: [], rows: [] };
+  if (logicalRows.length < 1) return { header: [], rows: [], version: 0 };
   const header = parseCsvLine(logicalRows[0]);
   const rows: string[][] = [];
   for (let i = 1; i < logicalRows.length; i++) {
     rows.push(parseCsvLine(logicalRows[i]));
   }
-  return { header, rows };
+  return { header, rows, version };
 }
 
 /**

@@ -24,6 +24,9 @@ export async function runPhysicalDelete(): Promise<PhysicalDeleteResult> {
     fetchCsv("/data/TRANSACTION_TAG.csv"),
     fetchCsv("/data/TRANSACTION_MANAGEMENT.csv"),
   ]);
+  const txVersion = txRes.version;
+  const txTagVersion = txTagRes.version;
+  const txMgmtVersion = txMgmtRes.version;
 
   const txRows: Record<string, string>[] = [];
   const deletedIds = new Set<string>();
@@ -39,7 +42,7 @@ export async function runPhysicalDelete(): Promise<PhysicalDeleteResult> {
   }
 
   const txCsv = transactionListToCsv(txRows);
-  await saveCsvViaApi("TRANSACTION.csv", txCsv);
+  await saveCsvViaApi("TRANSACTION.csv", txCsv, txVersion);
 
   if (txTagRes.header.length > 0 && txTagRes.rows.length > 0) {
     const txTagRows: Record<string, string>[] = [];
@@ -49,7 +52,7 @@ export async function runPhysicalDelete(): Promise<PhysicalDeleteResult> {
       txTagRows.push(row);
     }
     const txTagCsv = transactionTagListToCsv(txTagRows);
-    await saveCsvViaApi("TRANSACTION_TAG.csv", txTagCsv);
+    await saveCsvViaApi("TRANSACTION_TAG.csv", txTagCsv, txTagVersion);
   }
 
   if (txMgmtRes.header.length > 0 && txMgmtRes.rows.length > 0) {
@@ -62,7 +65,7 @@ export async function runPhysicalDelete(): Promise<PhysicalDeleteResult> {
       txMgmtRows.push(row);
     }
     const txMgmtCsv = transactionManagementListToCsv(txMgmtRows);
-    await saveCsvViaApi("TRANSACTION_MANAGEMENT.csv", txMgmtCsv);
+    await saveCsvViaApi("TRANSACTION_MANAGEMENT.csv", txMgmtCsv, txMgmtVersion);
   }
 
   return { deletedCount: deletedIds.size };

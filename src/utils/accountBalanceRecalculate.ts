@@ -45,6 +45,7 @@ export async function runAccountBalanceRecalculate(): Promise<AccountAggregateRe
     fetchCsv("/data/TRANSACTION.csv"),
     fetchCsv("/data/ACCOUNT.csv"),
   ]);
+  const accountVersion = accRes.version;
 
   const accountRows: AccountRow[] = [];
   for (const cells of accRes.rows) {
@@ -126,7 +127,7 @@ export async function runAccountBalanceRecalculate(): Promise<AccountAggregateRe
   });
 
   const csv = accountListToCsv(records);
-  await saveCsvViaApi("ACCOUNT.csv", csv);
+  await saveCsvViaApi("ACCOUNT.csv", csv, accountVersion);
 
   return {
     transactionCount: transactionRows.length,

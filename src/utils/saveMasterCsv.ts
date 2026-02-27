@@ -1,4 +1,10 @@
-import { accountListFull, accountPermissionListFull, categoryListFull, tagListFull } from "../state";
+import {
+  accountListFull,
+  accountPermissionListFull,
+  categoryListFull,
+  tagListFull,
+  getLastCsvVersion,
+} from "../state";
 import {
   accountListToCsv,
   accountPermissionListToCsv,
@@ -36,8 +42,14 @@ export function saveAccountCsvOnly(): Promise<void> {
       ? accountPermissionListToCsv(sortRowsById(accountPermissionListFull as unknown as Record<string, string>[]))
       : accountPermissionListToCsv([]);
   return Promise.all([
-    account ? saveCsvViaApi("ACCOUNT.csv", account) : Promise.resolve(),
-    saveCsvViaApi("ACCOUNT_PERMISSION.csv", account_permission),
+    account
+      ? saveCsvViaApi("ACCOUNT.csv", account, getLastCsvVersion("ACCOUNT.csv"))
+      : Promise.resolve(),
+    saveCsvViaApi(
+      "ACCOUNT_PERMISSION.csv",
+      account_permission,
+      getLastCsvVersion("ACCOUNT_PERMISSION.csv")
+    ),
   ]).then(() => clearAccountDirty());
 }
 
@@ -50,9 +62,10 @@ export function saveCategoryCsvOnly(): Promise<void> {
     categoryListFull.length > 0
       ? categoryListToCsv(sortRowsById(categoryListFull as unknown as Record<string, string>[]))
       : "";
-  return (category ? saveCsvViaApi("CATEGORY.csv", category) : Promise.resolve()).then(() =>
-    clearCategoryDirty()
-  );
+  return (category
+    ? saveCsvViaApi("CATEGORY.csv", category, getLastCsvVersion("CATEGORY.csv"))
+    : Promise.resolve()
+  ).then(() => clearCategoryDirty());
 }
 
 /**
@@ -64,5 +77,8 @@ export function saveTagCsvOnly(): Promise<void> {
     tagListFull.length > 0
       ? tagListToCsv(sortRowsById(tagListFull as unknown as Record<string, string>[]))
       : "";
-  return (tag ? saveCsvViaApi("TAG.csv", tag) : Promise.resolve()).then(() => clearTagDirty());
+  return (tag
+    ? saveCsvViaApi("TAG.csv", tag, getLastCsvVersion("TAG.csv"))
+    : Promise.resolve()
+  ).then(() => clearTagDirty());
 }

@@ -10,7 +10,13 @@ import type {
   TransactionTagRow,
   TransactionManagementRow,
 } from "../types";
-import { currentUserId, setTransactionList, setTransactionTagList, transactionList } from "../state";
+import {
+  currentUserId,
+  setTransactionList,
+  setTransactionTagList,
+  transactionList,
+  setLastCsvVersion,
+} from "../state";
 import { fetchCsv, rowToObject } from "./csv";
 import { sortOrderNum } from "./dragSort";
 
@@ -39,16 +45,17 @@ export function invalidateTransactionDataCache(): void {
  * @param noCache - true のときキャッシュを使わず再取得する
  * @returns 取引行の配列
  */
-async function fetchTransactionList(noCache = false): Promise<TransactionRow[]> {
-  const { header, rows } = await fetchCsv("/data/TRANSACTION.csv");
-  if (header.length === 0) return [];
+async function fetchTransactionList(
+  _noCache = false
+): Promise<{ list: TransactionRow[]; version: number }> {
+  const { header, rows, version } = await fetchCsv("/data/TRANSACTION.csv");
+  if (header.length === 0) return { list: [], version: 0 };
   const list: TransactionRow[] = [];
   for (const cells of rows) {
-    // 行をオブジェクト化して配列に追加
     const row = rowToObject(header, cells) as unknown as TransactionRow;
     list.push(row);
   }
-  return list;
+  return { list, version };
 }
 
 /**
@@ -56,16 +63,17 @@ async function fetchTransactionList(noCache = false): Promise<TransactionRow[]> 
  * @param noCache - true のときキャッシュを使わず再取得する
  * @returns 勘定権限行の配列
  */
-async function fetchAccountPermissionList(noCache = false): Promise<AccountPermissionRow[]> {
-  const { header, rows } = await fetchCsv("/data/ACCOUNT_PERMISSION.csv");
-  if (header.length === 0) return [];
+async function fetchAccountPermissionList(
+  _noCache = false
+): Promise<{ list: AccountPermissionRow[]; version: number }> {
+  const { header, rows, version } = await fetchCsv("/data/ACCOUNT_PERMISSION.csv");
+  if (header.length === 0) return { list: [], version: 0 };
   const list: AccountPermissionRow[] = [];
-  // 空行はスキップし、有効な行のみオブジェクトに変換
   for (const cells of rows) {
     if (cells.length === 0 || cells.every((c) => !c.trim())) continue;
     list.push(rowToObject(header, cells) as unknown as AccountPermissionRow);
   }
-  return list;
+  return { list, version };
 }
 
 /**
@@ -111,14 +119,16 @@ function filterTransactionsByVisibleAccounts(
  * @param noCache - true のときキャッシュを使わず再取得する
  * @returns カテゴリー行の配列
  */
-async function fetchCategoryList(noCache = false): Promise<CategoryRow[]> {
-  const { header, rows } = await fetchCsv("/data/CATEGORY.csv");
-  if (header.length === 0) return [];
+async function fetchCategoryList(
+  _noCache = false
+): Promise<{ list: CategoryRow[]; version: number }> {
+  const { header, rows, version } = await fetchCsv("/data/CATEGORY.csv");
+  if (header.length === 0) return { list: [], version: 0 };
   const list: CategoryRow[] = [];
   for (const cells of rows) {
     list.push(rowToObject(header, cells) as unknown as CategoryRow);
   }
-  return list;
+  return { list, version };
 }
 
 /**
@@ -126,14 +136,14 @@ async function fetchCategoryList(noCache = false): Promise<CategoryRow[]> {
  * @param noCache - true のときキャッシュを使わず再取得する
  * @returns 勘定行の配列
  */
-async function fetchAccountList(noCache = false): Promise<AccountRow[]> {
-  const { header, rows } = await fetchCsv("/data/ACCOUNT.csv");
-  if (header.length === 0) return [];
+async function fetchAccountList(_noCache = false): Promise<{ list: AccountRow[]; version: number }> {
+  const { header, rows, version } = await fetchCsv("/data/ACCOUNT.csv");
+  if (header.length === 0) return { list: [], version: 0 };
   const list: AccountRow[] = [];
   for (const cells of rows) {
     list.push(rowToObject(header, cells) as unknown as AccountRow);
   }
-  return list;
+  return { list, version };
 }
 
 /**
@@ -141,17 +151,18 @@ async function fetchAccountList(noCache = false): Promise<AccountRow[]> {
  * @param noCache - true のときキャッシュを使わず再取得する
  * @returns タグ行の配列
  */
-async function fetchTagList(noCache = false): Promise<TagRow[]> {
-  const { header, rows } = await fetchCsv("/data/TAG.csv");
-  if (header.length === 0) return [];
+async function fetchTagList(
+  _noCache = false
+): Promise<{ list: TagRow[]; version: number }> {
+  const { header, rows, version } = await fetchCsv("/data/TAG.csv");
+  if (header.length === 0) return { list: [], version: 0 };
   const list: TagRow[] = [];
   for (const cells of rows) {
     const row = rowToObject(header, cells) as unknown as TagRow;
-    // SORT_ORDER 未設定時は行番で補う
     if (row.SORT_ORDER === undefined || row.SORT_ORDER === "") row.SORT_ORDER = String(list.length);
     list.push(row);
   }
-  return list;
+  return { list, version };
 }
 
 /**
@@ -159,14 +170,16 @@ async function fetchTagList(noCache = false): Promise<TagRow[]> {
  * @param noCache - true のときキャッシュを使わず再取得する
  * @returns タグ紐付け行の配列
  */
-async function fetchTransactionTagList(noCache = false): Promise<TransactionTagRow[]> {
-  const { header, rows } = await fetchCsv("/data/TRANSACTION_TAG.csv");
-  if (header.length === 0) return [];
+async function fetchTransactionTagList(
+  _noCache = false
+): Promise<{ list: TransactionTagRow[]; version: number }> {
+  const { header, rows, version } = await fetchCsv("/data/TRANSACTION_TAG.csv");
+  if (header.length === 0) return { list: [], version: 0 };
   const list: TransactionTagRow[] = [];
   for (const cells of rows) {
     list.push(rowToObject(header, cells) as unknown as TransactionTagRow);
   }
-  return list;
+  return { list, version };
 }
 
 /**
@@ -174,15 +187,17 @@ async function fetchTransactionTagList(noCache = false): Promise<TransactionTagR
  * @param noCache - true のときキャッシュを使わず再取得する
  * @returns 紐付け行の配列
  */
-async function fetchTransactionManagementList(noCache = false): Promise<TransactionManagementRow[]> {
-  const { header, rows } = await fetchCsv("/data/TRANSACTION_MANAGEMENT.csv");
-  if (header.length === 0) return [];
+async function fetchTransactionManagementList(
+  _noCache = false
+): Promise<{ list: TransactionManagementRow[]; version: number }> {
+  const { header, rows, version } = await fetchCsv("/data/TRANSACTION_MANAGEMENT.csv");
+  if (header.length === 0) return { list: [], version: 0 };
   const list: TransactionManagementRow[] = [];
   for (const cells of rows) {
     if (cells.length === 0 || cells.every((c) => !c.trim())) continue;
     list.push(rowToObject(header, cells) as unknown as TransactionManagementRow);
   }
-  return list;
+  return { list, version };
 }
 
 /**
@@ -207,21 +222,35 @@ export function loadTransactionData(noCache = false): Promise<void> {
     fetchAccountPermissionList(noCache),
     fetchTransactionTagList(noCache),
     fetchTransactionManagementList(noCache),
-  ]).then(([txList, catList, tagList, accList, permList, txTag, txMgmt]) => {
-    // 参照可能な勘定 ID を算出し、削除フラグ未設定かつ参照可能な取引のみ state に設定
-    const visibleIds = getVisibleAccountIds(accList, permList);
-    const notDeleted = txList.filter((r) => (r.DLT_FLG || "0") !== "1");
-    const filteredTx = filterTransactionsByVisibleAccounts(notDeleted, visibleIds);
-    setTransactionList(filteredTx);
-    // マスタをメモリに保持（getCategoryById 等で参照）
-    categoryRows = catList;
-    tagRows = tagList;
-    accountRows = accList;
-    permissionRows = permList;
-    setTransactionTagList(txTag);
-    transactionManagementRows = txMgmt;
-    transactionDataVersion = Date.now();
-  });
+  ]).then(
+    ([txRes, catRes, tagRes, accRes, permRes, txTagRes, txMgmtRes]) => {
+      const txList = txRes.list;
+      const catList = catRes.list;
+      const tagList = tagRes.list;
+      const accList = accRes.list;
+      const permList = permRes.list;
+      const txTag = txTagRes.list;
+      const txMgmt = txMgmtRes.list;
+      setLastCsvVersion("TRANSACTION.csv", txRes.version);
+      setLastCsvVersion("CATEGORY.csv", catRes.version);
+      setLastCsvVersion("TAG.csv", tagRes.version);
+      setLastCsvVersion("ACCOUNT.csv", accRes.version);
+      setLastCsvVersion("ACCOUNT_PERMISSION.csv", permRes.version);
+      setLastCsvVersion("TRANSACTION_TAG.csv", txTagRes.version);
+      setLastCsvVersion("TRANSACTION_MANAGEMENT.csv", txMgmtRes.version);
+      const visibleIds = getVisibleAccountIds(accList, permList);
+      const notDeleted = txList.filter((r) => (r.DLT_FLG || "0") !== "1");
+      const filteredTx = filterTransactionsByVisibleAccounts(notDeleted, visibleIds);
+      setTransactionList(filteredTx);
+      categoryRows = catList;
+      tagRows = tagList;
+      accountRows = accList;
+      permissionRows = permList;
+      setTransactionTagList(txTag);
+      transactionManagementRows = txMgmt;
+      transactionDataVersion = txRes.version;
+    }
+  );
 }
 
 /**

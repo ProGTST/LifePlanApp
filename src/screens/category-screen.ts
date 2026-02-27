@@ -9,6 +9,7 @@ import {
   setCategoryList,
   setCategoryListLoaded,
   toggleCategoryDeleteMode,
+  setLastCsvVersion,
 } from "../state";
 import { fetchCsv, rowToObject } from "../utils/csv";
 import {
@@ -146,7 +147,8 @@ function sortCategoryListByTypeAndOrder(list: CategoryRow[]): void {
  * @returns Promise。カテゴリー行の配列
  */
 async function fetchCategoryList(noCache = false): Promise<CategoryRow[]> {
-  const { header, rows } = await fetchCsv("/data/CATEGORY.csv");
+  const { header, rows, version } = await fetchCsv("/data/CATEGORY.csv");
+  setLastCsvVersion("CATEGORY.csv", version);
   if (header.length === 0) return [];
   const list: CategoryRow[] = [];
   for (const cells of rows) {

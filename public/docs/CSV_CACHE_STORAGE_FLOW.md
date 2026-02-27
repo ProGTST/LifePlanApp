@@ -14,9 +14,9 @@
 
 ### 1.2 保存（POST）
 
-- **経路**: フロント → `saveCsvViaApi(name, csv)` → **POST `/api/data/:name`**（body: `{ csv }`）
-- **サーバー側**: ファイル書き込み後、**Node キャッシュを更新**し `version` をインクリメント。レスポンスに **`X-Data-Version`** を付与。
-- 保存後、画面によっては **dirty フラグのクリア**（`clearAccountDirty` 等）や **キャッシュ無効化**（`invalidateTransactionDataCache`）を行う。
+- **経路**: フロント → `saveCsvViaApi(name, csv, expectedVersion?)` → **POST `/api/data/:name`**（body: `{ csv, expectedVersion? }`）
+- **楽観ロック（改善①）**: サーバー側で `expectedVersion` とキャッシュの `version` を比較。不一致なら **409 Conflict** を返し保存しない。フロントは取得時の `X-Data-Version` を `lastCsvVersions` に保持し、保存時に `expectedVersion` として送る。
+- **サーバー側**: 検証通過後、ファイル書き込み → **Node キャッシュを更新**（mtime 含む）し `version` をインクリメント。レスポンスに **`X-Data-Version`** を付与。
 
 ### 1.3 楽観ロック（競合時挙動）
 
@@ -36,14 +36,16 @@
 | 種類 | 責務 | 本アプリでの方針 |
 |------|------|------------------|
 | **HTTP キャッシュ** | ネットワーク最適化 | ❌ **廃止**。Tauri + 同一プロセス API では効果が薄く、Node キャッシュと責務が競合するため使用しない。 |
-| **Node キャッシュ** | データ整合性・I/O 最適化 | ✅ **導入**。Fastify 側でメモリキャッシュ（ファイル名 → `{ text, version }`）を保持。GET はキャッシュ返却、POST でキャッシュ更新・version インクリメント。 |
+| **Node キャッシュ** | データ整合性・I/O 最適化 | ✅ **導入**。Fastify 側でメモリキャッシュ（ファイル名 → `{ text, version, mtimeMs }`）。GET は mtime 一致時キャッシュ返却・不一致時再読込。POST は expectedVersion で楽観ロック。meta エンドポイントでポーリング軽量化。 |
 | **フロントメモリ** | UI 再描画最適化 | ⚠ **最小限で維持**。画面遷移時の再取得抑制など、UI 体感のためだけに利用する。 |
 
 ### 2.1 Node キャッシュ（Fastify 側）✅
 
-- **場所**: `server/index.mjs` の `dataCache`（`Map<baseName, { text, version }>`）。
-- **GET `/api/data/:name`**: キャッシュにあればそれを返却。なければファイル読み込み → キャッシュ格納 → 返却。レスポンスヘッダ **`X-Data-Version`** で version を返す。
-- **POST `/api/data/:name`**: ファイル書き込み後、キャッシュを更新し `version` をインクリメント。将来フロントで「version 差分チェック」に利用可能。
+- **場所**: `server/index.mjs` の `dataCache`（`Map<baseName, { text, version, mtimeMs }>`）。
+- **version**: CSV には持たせない。サーバー起動時は 1、POST のたびにインクリメント（改善②）。
+- **GET `/api/data/:name`**: キャッシュの `mtimeMs` とファイルの mtime を比較。不一致ならファイル再読込してキャッシュ更新（**外部で CSV を直接編集された場合の耐性**）。レスポンスヘッダ **`X-Data-Version`** で version を返す。
+- **POST `/api/data/:name`**: `expectedVersion` が渡されていればキャッシュの version と照合。一致時のみファイル保存・キャッシュ更新・version インクリメント。
+- **GET `/api/data/:name/meta`（改善③）**: ポーリング用。`{ version, lastUpdatedUser }` のみ返却。ポーリングはまず meta のみ取得し、version が変わったときだけ本体 CSV を取得するため負荷を軽減。
 
 ### 2.2 フロントのメモリキャッシュ（UI 最適化用途のみ）⚠
 
@@ -57,7 +59,7 @@
 | タグ一覧 | `state.tagListFull` | 画面の `loadAndRenderTagList` で再取得したときに上書き |
 | デザイン（パレット） | `design-screen.ts` の `paletteList` | `loadAndRenderDesign` で再取得したときに上書き |
 
-- **収支履歴・カレンダー・スケジュール**: `loadTransactionData(noCache)` で、`noCache === false` かつ `transactionDataVersion !== 0` のときは **再取得せず即 resolve**（UI の体感速度のため）。実際のデータ取得は常に Node キャッシュ経由。
+- **収支履歴・カレンダー・スケジュール**: `loadTransactionData(noCache)` で、`noCache === false` かつ `transactionDataVersion !== 0` のときは **再取得せず即 resolve**（UI の体感速度のため）。**transactionDataVersion（改善④）**: サーバーの `X-Data-Version`（TRANSACTION.csv の version）と同期する。0 は未読み込み/無効化。将来 `if (serverVersion !== localVersion)` での再取得に拡張可能。
 - **マスタ画面**: 画面表示・データ最新化時はいずれも `fetchCsv(path)` のみ。HTTP キャッシュ指定は行わない。
 
 ---
@@ -66,16 +68,21 @@
 
 localStorage は **2 種類の用途** で使われる。
 
+**責務の原則（改善⑤）**:
+
+- **CSV が常に正**: データの正真性は常にサーバー側の CSV（Node キャッシュ）が持つ。localStorage は「真実」ではなく UI 用の補助に限定する。
+- **localStorage = UI キャッシュ**: 起動直後の**先出し表示**（読み込み中の表示や直近の表示値の先行表示）にのみ使い、**CSV 取得後は必ず CSV を正とする**。表示時は「CSV で取得 → 取得後はその値を正とし、localStorage はあくまでキャッシュ」とみなす。
+
 ### 3.1 カラーパレット（デザイン画面）
 
 | キー | 用途 | 読み書きタイミング |
 |------|------|--------------------|
-| `lifeplan_color_palette` | ユーザー別のカラーパレット（パレットキー → 6桁 hex） | **読む**: デザイン画面の `loadAndRenderDesign` 時、および `applyUserPalette`（ログイン後・アプリ起動時）。**書く**: デザイン画面で保存ボタン押下時（`setColorPalette(userId, toStore)`）。 |
+| `lifeplan_color_palette` | ユーザー別のカラーパレット（パレットキー → 6桁 hex） | **読む**: デザイン画面の `loadAndRenderDesign` 時、および `applyUserPalette`（ログイン後・アプリ起動時）。**書く**: デザイン画面で保存ボタン押下時（**CSV 保存成功後にのみ** `setColorPalette(userId, toStore)`）。 |
 
 **仕様**:
 
-- **表示**: `COLOR_PALETTE.csv` を API で取得したあと、**localStorage に同じユーザーのパレットがあればその値で上書き**してフォーム・プレビューに反映する（デザイン画面・`#app` の CSS 変数ともに）。
-- **保存**: 保存時は **CSV（API）と localStorage の両方** に書き、`clearColorPaletteDirty` で dirty をクリアする。
+- **表示**: `COLOR_PALETTE.csv` を API で取得したあと、同一ユーザーのパレットが localStorage にあれば**先出し・キャッシュとして**その値でフォーム・プレビューを補う。**正は CSV 取得結果**であり、localStorage は UI 用キャッシュである。
+- **保存**: **必ず CSV を先に保存し、成功した場合のみ** localStorage を更新する。CSV が失敗したら localStorage は更新しない（整合性のため）。
 - ログアウト・終了時に **dirty なら** `saveColorPaletteCsvOnNavigate` で CSV を保存する。localStorage はそのまま残る（上書きしない）。
 
 ### 3.2 CSV 監視用「表示キー」一覧
@@ -124,7 +131,7 @@ localStorage は **2 種類の用途** で使われる。
 
 - **開始**: ログイン後、`main.ts` の `initAppScreen()` 内で `startCsvWatch(getState)` を呼ぶ。`getState` は `{ view: currentView, userId: currentUserId }` を返す。
 - **間隔**: 15 秒ごと（`POLL_INTERVAL_MS`）。
-- **処理**: 監視対象 CSV を GET で取得（Node キャッシュから返却）→ 内容ハッシュで変更検知 → 最新更新行の `UPDATE_USER` を取得。**現在表示中の画面がその CSV の画面**かつ**更新者が自分でない**かつ**更新行の表示キーが localStorage の表示キー一覧に含まれる**場合のみ、「データが更新されました。最新のデータを取得しますか？」と通知。OK なら `triggerRefreshForView(viewId)` でその画面の refresh ハンドラ（＝CSV 再取得・再描画）を実行する。
+- **処理（改善③）**: 各ファイルについて **GET `/api/data/:name/meta`** で `version` と `lastUpdatedUser` のみ取得。`version` が前回と変わったときだけ **本体 CSV を GET** し、最新更新行の表示キーを取得。**現在表示中の画面がその CSV の画面**かつ**更新者が自分でない**かつ**更新行の表示キーが localStorage の表示キー一覧に含まれる**場合のみ、「データが更新されました。最新のデータを取得しますか？」と通知。OK なら `triggerRefreshForView(viewId)` でその画面の refresh ハンドラを実行する。meta のみのポーリングで負荷を軽減。
 - **停止**: ログアウト時などに `stopCsvWatch()` を呼ぶ。
 
 ---

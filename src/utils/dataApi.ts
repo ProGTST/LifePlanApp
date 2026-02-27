@@ -26,32 +26,66 @@ export function isTauri(): boolean {
 
 /**
  * 指定 CSV を API から取得する（GET /api/data/:name）。
- * HTTP キャッシュは使わない。サーバー側の Node キャッシュから返却される。
  * @param name - CSV ファイル名（例: "USER.csv"）
- * @returns CSV 本文の文字列。取得失敗時は空文字
+ * @returns { text, version }。取得失敗時は { text: "", version: 0 }
  */
-export async function fetchCsvFromApi(name: string): Promise<string> {
+export async function fetchCsvFromApi(name: string): Promise<{ text: string; version: number }> {
   const base = getDataApiBase();
   const url = `${base}/api/data/${name}`;
   const res = await fetch(url);
-  if (!res.ok) return "";
-  return res.text();
+  if (!res.ok) return { text: "", version: 0 };
+  const text = await res.text();
+  const version = Number(res.headers.get("X-Data-Version") ?? 0) || 0;
+  return { text, version };
+}
+
+/**
+ * 指定 CSV のメタ情報のみ取得（GET /api/data/:name/meta）。ポーリング用で軽量。
+ * @param name - CSV ファイル名（例: "TRANSACTION.csv"）
+ * @returns { version, lastUpdatedUser }。失敗時は { version: 0, lastUpdatedUser: "" }
+ */
+export async function fetchCsvMetaFromApi(
+  name: string
+): Promise<{ version: number; lastUpdatedUser: string }> {
+  const base = getDataApiBase();
+  const url = `${base}/api/data/${name}/meta`;
+  const res = await fetch(url);
+  if (!res.ok) return { version: 0, lastUpdatedUser: "" };
+  const json = (await res.json()) as { version?: number; lastUpdatedUser?: string };
+  return {
+    version: Number(json.version ?? 0) || 0,
+    lastUpdatedUser: String(json.lastUpdatedUser ?? "").trim(),
+  };
 }
 
 /**
  * 指定 CSV を API で保存する（POST /api/data/:name）。
+ * 楽観ロック: expectedVersion を送り、サーバー側の version と一致しない場合は 409 で throw。
  * @param name - CSV ファイル名（例: "USER.csv"）
  * @param csv - 保存する CSV 全文
- * @returns 完了時に resolve。失敗時は throw
+ * @param expectedVersion - 取得時の X-Data-Version。省略時はサーバー側で検証しない
+ * @returns 完了時に resolve。409 時は "Version conflict" を含む Error を throw
  */
-export async function saveCsvViaApi(name: string, csv: string): Promise<void> {
+export async function saveCsvViaApi(
+  name: string,
+  csv: string,
+  expectedVersion?: number
+): Promise<void> {
   const base = getDataApiBase();
   const url = `${base}/api/data/${name}`;
+  const body: { csv: string; expectedVersion?: number } = { csv };
+  if (expectedVersion !== undefined) body.expectedVersion = expectedVersion;
   const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ csv }),
+    body: JSON.stringify(body),
   });
+  if (res.status === 409) {
+    const data = (await res.json().catch(() => ({}))) as { error?: string; currentVersion?: number };
+    throw new Error(
+      data.error ?? "Version conflict. Please reload and try again."
+    );
+  }
   if (!res.ok) {
     const err = await res.text();
     throw new Error(err || `save ${name} failed: ${res.status}`);

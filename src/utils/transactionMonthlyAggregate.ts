@@ -2,7 +2,7 @@
  * 取引データの月別集計を行い、TRANSACTION_MONTHLY.csv を再計算・保存する。
  */
 import type { TransactionRow, AccountRow, AccountPermissionRow } from "../types";
-import { currentUserId } from "../state";
+import { currentUserId, setLastCsvVersion, getLastCsvVersion } from "../state";
 import { fetchCsv, rowToObject } from "./csv";
 import { getPlanOccurrenceDates } from "./planOccurrence";
 import { saveCsvViaApi } from "./dataApi";
@@ -241,6 +241,7 @@ type ExistingMonthlyRow = Record<string, string>;
 export async function getTransactionMonthlyRows(): Promise<ExistingMonthlyRow[]> {
   try {
     const res = await fetchCsv("/data/TRANSACTION_MONTHLY.csv");
+    setLastCsvVersion("TRANSACTION_MONTHLY.csv", res.version);
     if (!res.header.length || !res.rows.length) return [];
     const out: ExistingMonthlyRow[] = [];
     for (const cells of res.rows) {
@@ -325,7 +326,11 @@ export async function saveTransactionMonthlyCsv(
   rowsWithId.sort((a, b) => a.id - b.id);
   const lines = [TRANSACTION_MONTHLY_HEADER.join(","), ...rowsWithId.map((r) => r.line)];
   const csv = lines.join("\n");
-  await saveCsvViaApi("TRANSACTION_MONTHLY.csv", csv);
+  await saveCsvViaApi(
+    "TRANSACTION_MONTHLY.csv",
+    csv,
+    getLastCsvVersion("TRANSACTION_MONTHLY.csv")
+  );
   return kept.length + rows.length;
 }
 
@@ -608,7 +613,11 @@ export async function applyTransactionMonthlyDeltas(deltas: MonthlyDelta[]): Pro
   rowsWithId.sort((a, b) => a.id - b.id);
   const lines = [TRANSACTION_MONTHLY_HEADER.join(","), ...rowsWithId.map((r) => r.line)];
   const csv = lines.join("\n");
-  await saveCsvViaApi("TRANSACTION_MONTHLY.csv", csv);
+  await saveCsvViaApi(
+    "TRANSACTION_MONTHLY.csv",
+    csv,
+    getLastCsvVersion("TRANSACTION_MONTHLY.csv")
+  );
 }
 
 /**

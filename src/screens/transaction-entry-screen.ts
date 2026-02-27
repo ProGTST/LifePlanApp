@@ -1,5 +1,15 @@
 import type { TransactionRow, CategoryRow, AccountRow, AccountPermissionRow, TagRow, TransactionTagRow, TransactionManagementRow, AccountHistoryRow } from "../types";
-import { currentUserId, transactionEntryEditId, setTransactionEntryEditId, transactionEntryViewOnly, transactionEntryReturnView, setTransactionEntryReturnView, pushNavigation } from "../state";
+import {
+  currentUserId,
+  transactionEntryEditId,
+  setTransactionEntryEditId,
+  transactionEntryViewOnly,
+  transactionEntryReturnView,
+  setTransactionEntryReturnView,
+  pushNavigation,
+  getLastCsvVersion,
+  setLastCsvVersion,
+} from "../state";
 import { createIconWrap } from "../utils/iconWrap";
 import { openOverlay, closeOverlay } from "../utils/overlay";
 import { ICON_DEFAULT_COLOR } from "../constants/colorPresets";
@@ -292,8 +302,11 @@ async function fetchTransactionManagementRows(noCache = false): Promise<{ nextId
  * @param noCache - true のときキャッシュを使わない
  * @returns Promise。nextId と勘定項目履歴行の配列
  */
-async function fetchAccountHistoryRows(noCache = false): Promise<{ nextId: number; rows: AccountHistoryRow[] }> {
-  const { header, rows } = await fetchCsv("/data/ACCOUNT_HISTORY.csv");
+async function fetchAccountHistoryRows(
+  _noCache = false
+): Promise<{ nextId: number; rows: AccountHistoryRow[] }> {
+  const { header, rows, version } = await fetchCsv("/data/ACCOUNT_HISTORY.csv");
+  setLastCsvVersion("ACCOUNT_HISTORY.csv", version);
   const list: AccountHistoryRow[] = [];
   let maxId = 0;
   for (const cells of rows) {
@@ -2049,19 +2062,23 @@ function buildUpdatedRow(
 }
 
 async function saveTransactionCsv(csv: string): Promise<void> {
-  await saveCsvViaApi("TRANSACTION.csv", csv);
+  await saveCsvViaApi("TRANSACTION.csv", csv, getLastCsvVersion("TRANSACTION.csv"));
 }
 
 async function saveTransactionTagCsv(csv: string): Promise<void> {
-  await saveCsvViaApi("TRANSACTION_TAG.csv", csv);
+  await saveCsvViaApi("TRANSACTION_TAG.csv", csv, getLastCsvVersion("TRANSACTION_TAG.csv"));
 }
 
 async function saveTransactionManagementCsv(csv: string): Promise<void> {
-  await saveCsvViaApi("TRANSACTION_MANAGEMENT.csv", csv);
+  await saveCsvViaApi(
+    "TRANSACTION_MANAGEMENT.csv",
+    csv,
+    getLastCsvVersion("TRANSACTION_MANAGEMENT.csv")
+  );
 }
 
 async function saveAccountHistoryCsv(csv: string): Promise<void> {
-  await saveCsvViaApi("ACCOUNT_HISTORY.csv", csv);
+  await saveCsvViaApi("ACCOUNT_HISTORY.csv", csv, getLastCsvVersion("ACCOUNT_HISTORY.csv"));
 }
 
 /**
@@ -2178,7 +2195,7 @@ async function updateAccountBalancesForActual(
   }
 
   const csv = accountListToCsv(records);
-  await saveCsvViaApi("ACCOUNT.csv", csv);
+  await saveCsvViaApi("ACCOUNT.csv", csv, getLastCsvVersion("ACCOUNT.csv"));
 
   if (affectedAccountIds.length === 0) return;
   const statusForHistory = operation === "register" ? "regist" : operation;
