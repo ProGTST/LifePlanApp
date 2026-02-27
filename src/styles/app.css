@@ -1439,6 +1439,21 @@
   justify-content: center;
 }
 
+/* プロフィール画面：ボタン高さ30px・フォント0.75rem・間隔0.25rem */
+#view-profile .profile-icon-actions {
+  gap: 0.25rem;
+}
+#view-profile .profile-icon-actions .btn-secondary {
+  height: 30px;
+  min-height: 30px;
+  font-size: 0.75rem;
+  line-height: 1;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 /* 色・アイコン選択画面：ボタン高さ30px・フォント0.75rem・間隔0.25rem */
 #color-icon-picker-overlay .picker-actions {
   gap: 0.25rem;
@@ -5224,6 +5239,12 @@
     margin: 0;
     box-sizing: border-box;
   }
+}
+
+/* レイヤー外：デザイン画面のパレット入力の margin を #app input より確実に 0 にする */
+#app #design-form-fields .design-palette-hex,
+#app #design-form-fields .design-palette-color {
+  margin: 0;
 }
 
 /* レイヤー外：権限ボタンのレイアウトを #app input, #app button より確実に適用（unlayered で全レイヤーより優先） */

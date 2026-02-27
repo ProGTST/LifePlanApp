@@ -613,6 +613,21 @@
   border-radius: 4px;
 }
 
+/* design-form-fields：内側の margin 0・間隔 0.25rem */
+#design-form-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+#design-form-fields * {
+  margin: 0;
+}
+/* #app input の margin: 0.25rem より優先 */
+#design-form-fields .design-palette-hex,
+#design-form-fields .design-palette-color {
+  margin: 0;
+}
+
 .design-palette-row {
   display: flex;
   align-items: center;
@@ -650,7 +665,7 @@
   box-sizing: border-box;
 }
 
-/* デザイン画面：フォーム＋プレビュー（アプリと同一アスペクト比 4:3） */
+/* デザイン画面：フォーム＋プレビュー（アスペクト比 16:10） */
 .design-view-layout {
   display: flex;
   align-items: flex-start;
@@ -685,7 +700,7 @@
 }
 
 .design-preview {
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 16 / 10;
   max-width: 960px;
   min-width: 480px;
   border: 1px solid var(--gray-400);
@@ -699,12 +714,12 @@
   flex-direction: column;
   height: 100%;
   min-height: 0;
+  font-size: 0.75rem;
 }
 
 .design-preview__menubar {
   flex-shrink: 0;
   padding: 0.5rem 0.75rem;
-  font-size: 0.95rem;
   background: var(--color-menubar-bg, #2c2c2e);
   color: var(--color-menubar-fg, #ffffff);
 }
@@ -725,7 +740,6 @@
 .design-preview__header {
   flex-shrink: 0;
   padding: 0.5rem 0.75rem;
-  font-size: 0.95rem;
   background: var(--color-header-bg, #ffffff);
   color: var(--color-header-fg, #1a1a1a);
   border-bottom: 1px solid var(--gray-300);
@@ -735,7 +749,6 @@
   flex: 1;
   min-height: 0;
   padding: 0.55rem 0.75rem;
-  font-size: 0.9rem;
   background: var(--color-main-bg, #f0f2f5);
   color: var(--color-main-fg, #1a1a1a);
   display: flex;
@@ -745,7 +758,6 @@
 
 .design-preview__main-label {
   flex-shrink: 0;
-  font-size: 0.9rem;
 }
 
 .design-preview__view {
@@ -753,7 +765,6 @@
   min-height: 0;
   min-width: 0;
   padding: 0.5rem 0.75rem;
-  font-size: 0.85rem;
   background: var(--color-view-bg, #ffffff);
   color: var(--color-view-fg, #1a1a1a);
   border-radius: var(--radius-lg);
@@ -766,7 +777,6 @@
 .design-preview__footer {
   flex-shrink: 0;
   padding: 0.5rem 0.75rem;
-  font-size: 0.95rem;
   background: var(--color-footer-bg, #ffffff);
   color: var(--color-footer-fg, #666666);
 }
@@ -774,7 +784,6 @@
 .design-preview__btn {
   display: inline-block;
   padding: 0.25rem 0.75rem;
-  font-size: 0.9rem;
   border-radius: 2px;
   background: var(--color-button-bg, #646cff);
   color: var(--color-button-fg, #ffffff);
@@ -791,14 +800,12 @@
 
 .design-preview__menu-head {
   padding: 0.35rem 0.6rem;
-  font-size: 0.9rem;
   font-weight: 600;
   color: var(--color-base-fg, #333333);
 }
 
 .design-preview__menu-item {
   padding: 0.25rem 0.6rem;
-  font-size: 0.85rem;
   color: var(--color-base-fg, #333333);
 }
 

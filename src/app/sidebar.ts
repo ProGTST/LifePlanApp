@@ -107,7 +107,12 @@ export function initSidebarToggle(): void {
     }
   }
 
-  menuBtn.addEventListener("click", () => openSidebar(SIDEBAR_PANEL_MENU));
+  /** メニューボタン：現在表示中の画面が設定系なら設定パネル、それ以外はメニューパネルを開く */
+  const SETTINGS_VIEW_IDS = ["profile", "design", "system"];
+  menuBtn.addEventListener("click", () => {
+    const panel = SETTINGS_VIEW_IDS.includes(currentView) ? SIDEBAR_PANEL_SETTINGS : SIDEBAR_PANEL_MENU;
+    openSidebar(panel);
+  });
 
   const menuCloseBtn = document.getElementById("sidebar-menu-close-btn");
   menuCloseBtn?.addEventListener("click", closeSidebar);
