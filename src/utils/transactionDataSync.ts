@@ -14,23 +14,24 @@ import { currentUserId, setTransactionList, setTransactionTagList, transactionLi
 import { fetchCsv, rowToObject } from "./csv";
 import { sortOrderNum } from "./dragSort";
 
-const CSV_NO_CACHE: RequestInit = { cache: "reload" };
-
 let categoryRows: CategoryRow[] = [];
 let tagRows: TagRow[] = [];
 let accountRows: AccountRow[] = [];
 let permissionRows: AccountPermissionRow[] = [];
 let transactionManagementRows: TransactionManagementRow[] = [];
 
-/** 取引・マスタを一度でも読み込み済みか（メニューからスケジュール/カレンダーを再表示するときのキャッシュ判定に使用） */
-let transactionDataLoaded = false;
+/**
+ * 取引・マスタのキャッシュバージョン。0 は未読み込みまたは無効化済み。
+ * 将来 serverVersion と比較して再取得する設計に拡張しやすい。
+ */
+let transactionDataVersion = 0;
 
 /**
  * 取引データのキャッシュを無効化する。次回の loadTransactionData() で再取得される。
  * 収支記録の保存後や、取引関連 CSV の更新後に呼ぶと、スケジュール・カレンダーで最新が表示される。
  */
 export function invalidateTransactionDataCache(): void {
-  transactionDataLoaded = false;
+  transactionDataVersion = 0;
 }
 
 /**
@@ -39,8 +40,7 @@ export function invalidateTransactionDataCache(): void {
  * @returns 取引行の配列
  */
 async function fetchTransactionList(noCache = false): Promise<TransactionRow[]> {
-  const init = noCache ? CSV_NO_CACHE : undefined;
-  const { header, rows } = await fetchCsv("/data/TRANSACTION.csv", init);
+  const { header, rows } = await fetchCsv("/data/TRANSACTION.csv");
   if (header.length === 0) return [];
   const list: TransactionRow[] = [];
   for (const cells of rows) {
@@ -57,8 +57,7 @@ async function fetchTransactionList(noCache = false): Promise<TransactionRow[]> 
  * @returns 勘定権限行の配列
  */
 async function fetchAccountPermissionList(noCache = false): Promise<AccountPermissionRow[]> {
-  const init = noCache ? CSV_NO_CACHE : undefined;
-  const { header, rows } = await fetchCsv("/data/ACCOUNT_PERMISSION.csv", init);
+  const { header, rows } = await fetchCsv("/data/ACCOUNT_PERMISSION.csv");
   if (header.length === 0) return [];
   const list: AccountPermissionRow[] = [];
   // 空行はスキップし、有効な行のみオブジェクトに変換
@@ -113,8 +112,7 @@ function filterTransactionsByVisibleAccounts(
  * @returns カテゴリー行の配列
  */
 async function fetchCategoryList(noCache = false): Promise<CategoryRow[]> {
-  const init = noCache ? CSV_NO_CACHE : undefined;
-  const { header, rows } = await fetchCsv("/data/CATEGORY.csv", init);
+  const { header, rows } = await fetchCsv("/data/CATEGORY.csv");
   if (header.length === 0) return [];
   const list: CategoryRow[] = [];
   for (const cells of rows) {
@@ -129,8 +127,7 @@ async function fetchCategoryList(noCache = false): Promise<CategoryRow[]> {
  * @returns 勘定行の配列
  */
 async function fetchAccountList(noCache = false): Promise<AccountRow[]> {
-  const init = noCache ? CSV_NO_CACHE : undefined;
-  const { header, rows } = await fetchCsv("/data/ACCOUNT.csv", init);
+  const { header, rows } = await fetchCsv("/data/ACCOUNT.csv");
   if (header.length === 0) return [];
   const list: AccountRow[] = [];
   for (const cells of rows) {
@@ -145,8 +142,7 @@ async function fetchAccountList(noCache = false): Promise<AccountRow[]> {
  * @returns タグ行の配列
  */
 async function fetchTagList(noCache = false): Promise<TagRow[]> {
-  const init = noCache ? CSV_NO_CACHE : undefined;
-  const { header, rows } = await fetchCsv("/data/TAG.csv", init);
+  const { header, rows } = await fetchCsv("/data/TAG.csv");
   if (header.length === 0) return [];
   const list: TagRow[] = [];
   for (const cells of rows) {
@@ -164,8 +160,7 @@ async function fetchTagList(noCache = false): Promise<TagRow[]> {
  * @returns タグ紐付け行の配列
  */
 async function fetchTransactionTagList(noCache = false): Promise<TransactionTagRow[]> {
-  const init = noCache ? CSV_NO_CACHE : undefined;
-  const { header, rows } = await fetchCsv("/data/TRANSACTION_TAG.csv", init);
+  const { header, rows } = await fetchCsv("/data/TRANSACTION_TAG.csv");
   if (header.length === 0) return [];
   const list: TransactionTagRow[] = [];
   for (const cells of rows) {
@@ -180,8 +175,7 @@ async function fetchTransactionTagList(noCache = false): Promise<TransactionTagR
  * @returns 紐付け行の配列
  */
 async function fetchTransactionManagementList(noCache = false): Promise<TransactionManagementRow[]> {
-  const init = noCache ? CSV_NO_CACHE : undefined;
-  const { header, rows } = await fetchCsv("/data/TRANSACTION_MANAGEMENT.csv", init);
+  const { header, rows } = await fetchCsv("/data/TRANSACTION_MANAGEMENT.csv");
   if (header.length === 0) return [];
   const list: TransactionManagementRow[] = [];
   for (const cells of rows) {
@@ -199,11 +193,11 @@ async function fetchTransactionManagementList(noCache = false): Promise<Transact
  * @returns 完了する Promise
  */
 export function loadTransactionData(noCache = false): Promise<void> {
-  if (!noCache && transactionDataLoaded) {
+  if (!noCache && transactionDataVersion !== 0) {
     return Promise.resolve();
   }
   if (noCache) {
-    transactionDataLoaded = false;
+    transactionDataVersion = 0;
   }
   return Promise.all([
     fetchTransactionList(noCache),
@@ -226,7 +220,7 @@ export function loadTransactionData(noCache = false): Promise<void> {
     permissionRows = permList;
     setTransactionTagList(txTag);
     transactionManagementRows = txMgmt;
-    transactionDataLoaded = true;
+    transactionDataVersion = Date.now();
   });
 }
 

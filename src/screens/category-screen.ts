@@ -146,8 +146,7 @@ function sortCategoryListByTypeAndOrder(list: CategoryRow[]): void {
  * @returns Promise。カテゴリー行の配列
  */
 async function fetchCategoryList(noCache = false): Promise<CategoryRow[]> {
-  const init = noCache ? { cache: "reload" as RequestCache } : undefined;
-  const { header, rows } = await fetchCsv("/data/CATEGORY.csv", init);
+  const { header, rows } = await fetchCsv("/data/CATEGORY.csv");
   if (header.length === 0) return [];
   const list: CategoryRow[] = [];
   for (const cells of rows) {

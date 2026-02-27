@@ -42,8 +42,7 @@ import { ICON_DEFAULT_COLOR } from "../constants/colorPresets.ts";
  * @returns Promise。タグ行の配列
  */
 async function fetchTagList(noCache = false): Promise<TagRow[]> {
-  const init = noCache ? { cache: "reload" as RequestCache } : undefined;
-  const { header, rows } = await fetchCsv("/data/TAG.csv", init);
+  const { header, rows } = await fetchCsv("/data/TAG.csv");
   if (header.length === 0) return [];
   const list: TagRow[] = [];
   for (const cells of rows) {

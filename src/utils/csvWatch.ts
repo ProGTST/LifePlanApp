@@ -217,7 +217,7 @@ async function checkFile(
 
   let text: string;
   try {
-    text = await fetchCsvFromApi(name, { cache: "no-store" });
+    text = await fetchCsvFromApi(name);
   } catch {
     return null;
   }

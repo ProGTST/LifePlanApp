@@ -7,7 +7,6 @@ import { fetchCsv, rowToObject } from "./csv";
 import { getPlanOccurrenceDates } from "./planOccurrence";
 import { saveCsvViaApi } from "./dataApi";
 
-const CSV_NO_CACHE: RequestInit = { cache: "reload" };
 
 const TRANSACTION_MONTHLY_HEADER = [
   "ID",
@@ -92,9 +91,9 @@ export interface ComputeMonthlyResult {
  */
 export async function computeTransactionMonthlyRows(): Promise<ComputeMonthlyResult> {
   const [txRes, accRes, permRes] = await Promise.all([
-    fetchCsv("/data/TRANSACTION.csv", CSV_NO_CACHE),
-    fetchCsv("/data/ACCOUNT.csv", CSV_NO_CACHE),
-    fetchCsv("/data/ACCOUNT_PERMISSION.csv", CSV_NO_CACHE),
+    fetchCsv("/data/TRANSACTION.csv"),
+    fetchCsv("/data/ACCOUNT.csv"),
+    fetchCsv("/data/ACCOUNT_PERMISSION.csv"),
   ]);
 
   const accountRows: AccountRow[] = [];
@@ -241,7 +240,7 @@ type ExistingMonthlyRow = Record<string, string>;
  */
 export async function getTransactionMonthlyRows(): Promise<ExistingMonthlyRow[]> {
   try {
-    const res = await fetchCsv("/data/TRANSACTION_MONTHLY.csv", CSV_NO_CACHE);
+    const res = await fetchCsv("/data/TRANSACTION_MONTHLY.csv");
     if (!res.header.length || !res.rows.length) return [];
     const out: ExistingMonthlyRow[] = [];
     for (const cells of res.rows) {
@@ -481,9 +480,9 @@ export async function applyTransactionMonthlyDeltas(deltas: MonthlyDelta[]): Pro
 
   // 参照可能勘定のうち TRANSACTION に取引が無い勘定の月別行を削除（TRANSACTION に合わせて整合性を取る）
   const [txRes, accRes, permRes] = await Promise.all([
-    fetchCsv("/data/TRANSACTION.csv", CSV_NO_CACHE),
-    fetchCsv("/data/ACCOUNT.csv", CSV_NO_CACHE),
-    fetchCsv("/data/ACCOUNT_PERMISSION.csv", CSV_NO_CACHE),
+    fetchCsv("/data/TRANSACTION.csv"),
+    fetchCsv("/data/ACCOUNT.csv"),
+    fetchCsv("/data/ACCOUNT_PERMISSION.csv"),
   ]);
   const accountRows: AccountRow[] = [];
   for (const cells of accRes.rows) {

@@ -24,8 +24,7 @@ let userList: UserRow[] = [];
  * @returns Promise。ユーザー行の配列
  */
 async function fetchUserList(noCache = false): Promise<UserRow[]> {
-  const init = noCache ? { cache: "reload" as RequestCache } : undefined;
-  const { header, rows } = await fetchCsv("/data/USER.csv", init);
+  const { header, rows } = await fetchCsv("/data/USER.csv");
   if (header.length === 0) return [];
   const list: UserRow[] = [];
   for (const cells of rows) {

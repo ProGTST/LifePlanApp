@@ -9,8 +9,6 @@ import {
   transactionManagementListToCsv,
 } from "./csvExport";
 
-const CSV_NO_CACHE: RequestInit = { cache: "reload" };
-
 export interface PhysicalDeleteResult {
   /** 物理削除した取引行数（TRANSACTION.csv から削除した件数） */
   deletedCount: number;
@@ -22,9 +20,9 @@ export interface PhysicalDeleteResult {
  */
 export async function runPhysicalDelete(): Promise<PhysicalDeleteResult> {
   const [txRes, txTagRes, txMgmtRes] = await Promise.all([
-    fetchCsv("/data/TRANSACTION.csv", CSV_NO_CACHE),
-    fetchCsv("/data/TRANSACTION_TAG.csv", CSV_NO_CACHE),
-    fetchCsv("/data/TRANSACTION_MANAGEMENT.csv", CSV_NO_CACHE),
+    fetchCsv("/data/TRANSACTION.csv"),
+    fetchCsv("/data/TRANSACTION_TAG.csv"),
+    fetchCsv("/data/TRANSACTION_MANAGEMENT.csv"),
   ]);
 
   const txRows: Record<string, string>[] = [];

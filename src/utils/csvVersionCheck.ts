@@ -1,6 +1,7 @@
 /**
  * 更新・削除前に CSV から対象行を取得し、VERSION を照合する。
  * 競合時・該当なし時はメッセージを表示し、最新データを再取得するよう促す。
+ * 取得は Node キャッシュ経由（HTTP キャッシュは廃止）。
  */
 import { fetchCsv, rowToObject } from "./csv.ts";
 
@@ -12,14 +13,10 @@ const MSG_NOT_FOUND =
 /**
  * CSV を取得し、パースした行の配列を返す。VERSION 未設定は "0" に正規化する。
  * @param path - 例: "/data/ACCOUNT.csv"
- * @param init - 省略可。fetch の RequestInit
  * @returns 行オブジェクトの配列
  */
-export async function fetchCsvRows(
-  path: string,
-  init?: RequestInit
-): Promise<Record<string, string>[]> {
-  const { header, rows } = await fetchCsv(path, init ?? { cache: "reload" });
+export async function fetchCsvRows(path: string): Promise<Record<string, string>[]> {
+  const { header, rows } = await fetchCsv(path);
   if (header.length === 0) return [];
   const result: Record<string, string>[] = [];
   for (const cells of rows) {

@@ -63,8 +63,7 @@ function getAccountPermissionRows(): AccountPermissionRow[] {
  * @returns Promise。勘定行の配列
  */
 async function fetchAccountList(noCache = false): Promise<AccountRow[]> {
-  const init = noCache ? { cache: "reload" as RequestCache } : undefined;
-  const { header, rows } = await fetchCsv("/data/ACCOUNT.csv", init);
+  const { header, rows } = await fetchCsv("/data/ACCOUNT.csv");
   if (header.length === 0) return [];
   const list: AccountRow[] = [];
   for (const cells of rows) {
@@ -98,7 +97,7 @@ async function fetchUserList(): Promise<UserRow[]> {
  * @returns Promise。権限行の配列
  */
 async function fetchAccountPermissionList(): Promise<AccountPermissionRow[]> {
-  const { header, rows } = await fetchCsv("/data/ACCOUNT_PERMISSION.csv", { cache: "reload" });
+  const { header, rows } = await fetchCsv("/data/ACCOUNT_PERMISSION.csv");
   if (header.length === 0) return [];
   const list: AccountPermissionRow[] = [];
   for (const cells of rows) {

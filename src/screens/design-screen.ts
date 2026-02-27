@@ -82,8 +82,7 @@ const LABELS: Record<string, string> = {
 };
 
 async function fetchPaletteList(noCache = false): Promise<PaletteRow[]> {
-  const init = noCache ? { cache: "reload" as RequestCache } : undefined;
-  const { header, rows } = await fetchCsv("/data/COLOR_PALETTE.csv", init);
+  const { header, rows } = await fetchCsv("/data/COLOR_PALETTE.csv");
   if (header.length === 0) return [];
   const list: PaletteRow[] = [];
   for (const cells of rows) {
@@ -267,7 +266,11 @@ async function saveDesignForm(): Promise<void> {
   }
   setUpdateAudit(palette, currentUserId ?? "");
 
-  // localStorage に保存
+  // CSV を先に保存し、成功した場合のみ localStorage を更新（整合性リスク対策）
+  const { saveCsvViaApi } = await import("../utils/dataApi");
+  const csv = colorPaletteListToCsv(paletteList);
+  await saveCsvViaApi("COLOR_PALETTE.csv", csv);
+
   if (currentUserId) {
     const toStore: Record<string, string> = {};
     PALETTE_KEYS.forEach((key) => {
@@ -275,10 +278,6 @@ async function saveDesignForm(): Promise<void> {
     });
     setColorPalette(currentUserId, toStore);
   }
-
-  const { saveCsvViaApi } = await import("../utils/dataApi");
-  const csv = colorPaletteListToCsv(paletteList);
-  await saveCsvViaApi("COLOR_PALETTE.csv", csv);
   clearColorPaletteDirty();
 
   // 画面に色を反映（Tauri でなくても編集内容を即時適用）。不正値はデフォルトにフォールバック
@@ -321,6 +320,13 @@ export function saveColorPaletteCsvOnNavigate(): Promise<void> {
     const csv = colorPaletteListToCsv(paletteList);
     const { saveCsvViaApi } = await import("../utils/dataApi");
     await saveCsvViaApi("COLOR_PALETTE.csv", csv);
+    if (currentUserId) {
+      const toStore: Record<string, string> = {};
+      PALETTE_KEYS.forEach((key) => {
+        toStore[key] = toValidHex(palette[key], key);
+      });
+      setColorPalette(currentUserId, toStore);
+    }
     clearColorPaletteDirty();
   })();
 }

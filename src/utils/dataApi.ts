@@ -1,6 +1,9 @@
 /**
  * CSV の読み書きはすべて Fastify API 経由（Tauri / ブラウザ共通）。
  * ベース URL 未設定時は相対パス /api を使用（Vite プロキシで API サーバーへ転送）。
+ *
+ * キャッシュ設計: HTTP キャッシュは廃止。データ取得は常に通常の fetch。
+ * データ整合性・I/O 最適化は Fastify 側の Node キャッシュが担当する。
  */
 
 /**
@@ -23,14 +26,14 @@ export function isTauri(): boolean {
 
 /**
  * 指定 CSV を API から取得する（GET /api/data/:name）。
+ * HTTP キャッシュは使わない。サーバー側の Node キャッシュから返却される。
  * @param name - CSV ファイル名（例: "USER.csv"）
- * @param init - 省略可。fetch の RequestInit（cache 等）
  * @returns CSV 本文の文字列。取得失敗時は空文字
  */
-export async function fetchCsvFromApi(name: string, init?: RequestInit): Promise<string> {
+export async function fetchCsvFromApi(name: string): Promise<string> {
   const base = getDataApiBase();
   const url = `${base}/api/data/${name}`;
-  const res = await fetch(url, init);
+  const res = await fetch(url);
   if (!res.ok) return "";
   return res.text();
 }

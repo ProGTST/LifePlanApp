@@ -1656,7 +1656,7 @@ export function initScheduleView(): void {
     const currentPlanStatus = (row.PLAN_STATUS || "planning").toLowerCase();
 
     try {
-      const { header, rows } = await fetchCsv("/data/TRANSACTION.csv", { cache: "reload" });
+      const { header, rows } = await fetchCsv("/data/TRANSACTION.csv");
       if (header.length === 0 || !rows.length) {
         closeScheduleOccurrenceOverlay();
         return;

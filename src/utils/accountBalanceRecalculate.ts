@@ -7,7 +7,6 @@ import { fetchCsv, rowToObject } from "./csv";
 import { accountListToCsv } from "./csvExport";
 import { saveCsvViaApi } from "./dataApi";
 
-const CSV_NO_CACHE: RequestInit = { cache: "reload" };
 
 function nowDatetime(): string {
   const d = new Date();
@@ -43,8 +42,8 @@ export async function runAccountBalanceRecalculate(): Promise<AccountAggregateRe
   }
 
   const [txRes, accRes] = await Promise.all([
-    fetchCsv("/data/TRANSACTION.csv", CSV_NO_CACHE),
-    fetchCsv("/data/ACCOUNT.csv", CSV_NO_CACHE),
+    fetchCsv("/data/TRANSACTION.csv"),
+    fetchCsv("/data/ACCOUNT.csv"),
   ]);
 
   const accountRows: AccountRow[] = [];
