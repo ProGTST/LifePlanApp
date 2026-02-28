@@ -3782,8 +3782,9 @@
   max-height: 30vh;
   box-sizing: border-box;
 }
-/* ヘッダー・項目列固定＋月列横スクロール用（資金繰り表・収支種別・カテゴリー・勘定の4表） */
-#app .transaction-analysis-table-wrap:has(.transaction-analysis-table--fixed-cols) {
+/* ヘッダー・項目列固定＋月列横スクロール用（資金繰り表・収支種別・カテゴリー・勘定の4表）。
+ * #view-transaction-analysis より詳細度を上げ、overflow: auto と max-height を確実に適用 */
+#app #view-transaction-analysis .transaction-analysis-table-wrap:has(.transaction-analysis-table--fixed-cols) {
   overflow: auto;
   max-height: 40vh;
   width: fit-content;
@@ -3796,7 +3797,6 @@
   margin: 0;
   border-spacing: 0;
   vertical-align: top;
-  overflow: visible; /* 横スクロール時に position:sticky の第1列が固定されるよう .transaction-analysis-table の overflow:hidden を上書き */
 }
 #app .transaction-analysis-table--fixed-cols thead th {
   position: sticky;
@@ -3847,6 +3847,9 @@
   border-radius: var(--radius-md);
   overflow: hidden;
   font-size: 0.875rem;
+}
+#app .transaction-analysis-table--fixed-cols {
+  overflow: visible; /* 固定列の position:sticky が効くよう overflow:hidden を上書き */
 }
 #app .transaction-analysis-table th,
 #app .transaction-analysis-table td {

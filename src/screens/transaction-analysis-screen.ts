@@ -217,12 +217,12 @@ function aggregatePlanByDate(rows: TransactionRow[]): Map<string, { income: numb
 }
 
 /** 月ごとの予定収入・予定支出・予定残高・運転資金・充足率を計算。月は YYYY-MM の昇順。 */
-function buildCashFlowByMonth(byDate: Map<string, { income: number; expense: number }>): { month: string; income: number; expense: number; balance: number; funds: number; rate: number | null }[] {
+function buildCashFlowByMonth(byDate: Map<string, { income: number; expense: number }>, initialFunds = 0): { month: string; income: number; expense: number; balance: number; funds: number; rate: number | null }[] {
   const months = new Set<string>();
   byDate.forEach((_, d) => months.add(d.slice(0, 7)));
   const sortedMonths = Array.from(months).sort();
   const result: { month: string; income: number; expense: number; balance: number; funds: number; rate: number | null }[] = [];
-  let funds = 0;
+  let funds = initialFunds;
   for (const ym of sortedMonths) {
     let income = 0;
     let expense = 0;
@@ -855,12 +855,14 @@ function loadAndRender(): void {
   destroyCharts();
   const ownAccountIds = getOwnAccountIds();
 
-  // 資金繰り: 予定の未完了発生日で月別集計しグラフ・表を描画
+  // 資金繰り: 予定の未完了発生日で月別集計しグラフ・表を描画（運転資金は完了分からスタート）
+  const completedFundsPlanRows = getPlanRowsForCompletedFunds(transactionList, ownAccountIds);
+  const initialFunds = getCompletedFunds(completedFundsPlanRows);
   const planRowsForCashFlow = getPlanRowsForCashFlow(transactionList, ownAccountIds).filter(
     (row) => getOpenOccurrenceDates(row).length > 0
   );
   const byDate = aggregatePlanByDate(planRowsForCashFlow);
-  const cashFlow = buildCashFlowByMonth(byDate);
+  const cashFlow = buildCashFlowByMonth(byDate, initialFunds);
   renderCashFlowChart(cashFlow);
   renderCashFlowTable(cashFlow);
 
@@ -886,8 +888,6 @@ function loadAndRender(): void {
 
   // 運転資金超過: 完了分の運転資金を初期値に未完了予定を時系列でシミュレート
   const fundsOverflowPlanRows = getPlanRowsForFundsOverflow(transactionList, ownAccountIds);
-  const completedFundsPlanRows = getPlanRowsForCompletedFunds(transactionList, ownAccountIds);
-  const initialFunds = getCompletedFunds(completedFundsPlanRows);
   const fundsOverflow = getFundsOverflowExpenses(fundsOverflowPlanRows, initialFunds);
   renderFundsOverflowTable(fundsOverflow, initialFunds, getCategoryName, getCategoryIcon);
   renderCategoryCharts(byCategoryMonth, getCategoryName);
