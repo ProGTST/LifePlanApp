@@ -1,3 +1,5 @@
+import { setLastCsvVersion } from "../state";
+
 /**
  * CSV の読み書きはすべて Fastify API 経由（Tauri / ブラウザ共通）。
  * ベース URL 未設定時は相対パス /api を使用（Vite プロキシで API サーバーへ転送）。
@@ -97,5 +99,9 @@ export async function saveCsvViaApi(
   if (!res.ok) {
     const err = await res.text();
     throw new Error(err || `save ${name} failed: ${res.status}`);
+  }
+  const newVersion = Number(res.headers.get("X-Data-Version") ?? 0) || 0;
+  if (newVersion > 0) {
+    setLastCsvVersion(name, newVersion);
   }
 }
