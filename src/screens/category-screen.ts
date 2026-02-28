@@ -1,4 +1,5 @@
 import type { CategoryRow } from "../types.ts";
+import { EMPTY_USER_ID } from "../constants";
 import {
   currentUserId,
   currentView,
@@ -48,6 +49,9 @@ let selectedCategoryType: CategoryType = "expense";
 
 /** ツリービュー表示フラグ（初期は ON） */
 let categoryTreeViewMode = true;
+
+/** 全ユーザー分を含むカテゴリーの最大 ID（新規登録時の ID 採番用） */
+let categoryGlobalMaxId = 0;
 
 /**
  * 現在選択中の種別の行だけに絞り、SORT_ORDER 昇順で返す。
@@ -151,14 +155,21 @@ async function fetchCategoryList(_noCache = false): Promise<CategoryRow[]> {
   const { header, rows, version } = await fetchCsv("/data/CATEGORY.csv");
   setLastCsvVersion("CATEGORY.csv", version);
   if (header.length === 0) return [];
+  const me = (currentUserId ?? "").trim();
   const list: CategoryRow[] = [];
+  let globalMax = 0;
   for (const cells of rows) {
     const row = rowToObject(header, cells) as unknown as CategoryRow;
+    const n = parseInt(row.ID ?? "0", 10);
+    if (!Number.isNaN(n) && n > globalMax) globalMax = n;
+    const rowUserId = (row.USER_ID ?? "").trim() || EMPTY_USER_ID;
+    if (rowUserId !== me) continue;
     if (row.SORT_ORDER === undefined || row.SORT_ORDER === "") row.SORT_ORDER = String(list.length);
     if (row.COLOR === undefined) row.COLOR = "";
     if (row.ICON_PATH === undefined) row.ICON_PATH = "";
     list.push(row);
   }
+  categoryGlobalMaxId = globalMax;
   sortCategoryListByTypeAndOrder(list);
   return list;
 }
@@ -541,11 +552,12 @@ function saveCategoryFormFromModal(): void {
   const type: CategoryType =
     typeRaw === "income" ? "income" : typeRaw === "transfer" ? "transfer" : "expense";
   const parentId = formParent?.value ?? "";
-  const maxId = categoryListFull.reduce(
-    (m, r) => Math.max(m, parseInt(r.ID, 10) || 0),
-    0
+  const maxId = Math.max(
+    categoryGlobalMaxId,
+    categoryListFull.reduce((m, r) => Math.max(m, parseInt(r.ID, 10) || 0), 0)
   );
   const newId = String(maxId + 1);
+  categoryGlobalMaxId = maxId + 1;
   const sameType = categoryListFull.filter((r) => r.TYPE === type);
   const maxOrder = sameType.reduce(
     (m, r) => Math.max(m, Number(r.SORT_ORDER ?? 0) || 0),
@@ -560,6 +572,7 @@ function saveCategoryFormFromModal(): void {
     REGIST_USER: "",
     UPDATE_DATETIME: "",
     UPDATE_USER: "",
+    USER_ID: userId,
     PARENT_ID: parentId,
     TYPE: type,
     CATEGORY_NAME: name,

@@ -4,6 +4,8 @@ export const APP_SCREEN_ID = "app";
 
 /** 認証・画面遷移（案1: ログインとアプリで2ファイル） */
 export const USER_ID_STORAGE_KEY = "userId";
+/** USER_ID が空の行のフォールバック値（既存データの互換用） */
+export const EMPTY_USER_ID = "EmptyUser";
 export const LOGIN_PAGE_PATH = "login.html";
 export const APP_PAGE_PATH = "index.html";
 

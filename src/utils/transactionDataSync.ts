@@ -10,6 +10,7 @@ import type {
   TransactionTagRow,
   TransactionManagementRow,
 } from "../types";
+import { EMPTY_USER_ID } from "../constants";
 import {
   currentUserId,
   setTransactionList,
@@ -124,9 +125,13 @@ async function fetchCategoryList(
 ): Promise<{ list: CategoryRow[]; version: number }> {
   const { header, rows, version } = await fetchCsv("/data/CATEGORY.csv");
   if (header.length === 0) return { list: [], version: 0 };
+  const me = (currentUserId ?? "").trim();
   const list: CategoryRow[] = [];
   for (const cells of rows) {
-    list.push(rowToObject(header, cells) as unknown as CategoryRow);
+    const row = rowToObject(header, cells) as unknown as CategoryRow;
+    const rowUserId = (row.USER_ID ?? "").trim() || EMPTY_USER_ID;
+    if (rowUserId !== me) continue;
+    list.push(row);
   }
   return { list, version };
 }
@@ -156,9 +161,12 @@ async function fetchTagList(
 ): Promise<{ list: TagRow[]; version: number }> {
   const { header, rows, version } = await fetchCsv("/data/TAG.csv");
   if (header.length === 0) return { list: [], version: 0 };
+  const me = (currentUserId ?? "").trim();
   const list: TagRow[] = [];
   for (const cells of rows) {
     const row = rowToObject(header, cells) as unknown as TagRow;
+    const rowUserId = (row.USER_ID ?? "").trim() || EMPTY_USER_ID;
+    if (rowUserId !== me) continue;
     if (row.SORT_ORDER === undefined || row.SORT_ORDER === "") row.SORT_ORDER = String(list.length);
     list.push(row);
   }

@@ -1,4 +1,5 @@
 import type { TagRow } from "../types.ts";
+import { EMPTY_USER_ID } from "../constants";
 import {
   currentUserId,
   currentView,
@@ -38,6 +39,9 @@ import { createIconWrap, applyColorIconToElement } from "../utils/iconWrap.ts";
 import { openOverlay, closeOverlay } from "../utils/overlay.ts";
 import { ICON_DEFAULT_COLOR } from "../constants/colorPresets.ts";
 
+/** 全ユーザー分を含むタグの最大 ID（新規登録時の ID 採番用） */
+let tagGlobalMaxId = 0;
+
 /**
  * TAG.csv を取得し、タグ行の配列に変換して返す。
  * @param noCache - true のときキャッシュを使わず再取得する（最新化ボタン用）
@@ -47,14 +51,21 @@ async function fetchTagList(_noCache = false): Promise<TagRow[]> {
   const { header, rows, version } = await fetchCsv("/data/TAG.csv");
   setLastCsvVersion("TAG.csv", version);
   if (header.length === 0) return [];
+  const me = (currentUserId ?? "").trim();
   const list: TagRow[] = [];
+  let globalMax = 0;
   for (const cells of rows) {
     const row = rowToObject(header, cells) as unknown as TagRow;
+    const n = parseInt(row.ID ?? "0", 10);
+    if (!Number.isNaN(n) && n > globalMax) globalMax = n;
+    const rowUserId = (row.USER_ID ?? "").trim() || EMPTY_USER_ID;
+    if (rowUserId !== me) continue;
     if (row.SORT_ORDER === undefined || row.SORT_ORDER === "") row.SORT_ORDER = String(list.length);
     if (row.COLOR === undefined) row.COLOR = "";
     if (row.ICON_PATH === undefined) row.ICON_PATH = "";
     list.push(row);
   }
+  tagGlobalMaxId = globalMax;
   return list;
 }
 
@@ -308,11 +319,12 @@ function saveTagFormFromModal(): void {
     return;
   }
   const userId = currentUserId ?? "";
-  const maxId = tagListFull.reduce(
-    (m, r) => Math.max(m, parseInt(r.ID, 10) || 0),
-    0
+  const maxId = Math.max(
+    tagGlobalMaxId,
+    tagListFull.reduce((m, r) => Math.max(m, parseInt(r.ID, 10) || 0), 0)
   );
   const newId = String(maxId + 1);
+  tagGlobalMaxId = maxId + 1;
   const maxOrder = tagListFull.reduce(
     (m, r) => Math.max(m, Number(r.SORT_ORDER ?? 0) || 0),
     -1
@@ -326,6 +338,7 @@ function saveTagFormFromModal(): void {
     REGIST_USER: "",
     UPDATE_DATETIME: "",
     UPDATE_USER: "",
+    USER_ID: userId,
     TAG_NAME: name,
     COLOR: formColor || "",
     ICON_PATH: formIconPath || "",

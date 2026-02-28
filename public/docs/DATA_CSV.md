@@ -208,6 +208,7 @@ LifePlanGant で扱う収支・タグ・勘定項目のデータは、`data/` �
 | REGIST_USER | 登録ユーザーID | USER.ID への参照 |
 | UPDATE_DATETIME | 更新日時 | 共通 |
 | UPDATE_USER | 更新ユーザーID | USER.ID への参照 |
+| USER_ID | ユーザーID | USER.ID への参照。ユーザーごとにカテゴリーを管理。初期値は coara |
 | PARENT_ID | 親カテゴリID | 空欄または null で最上位。CATEGORY.ID への参照 |
 | TYPE | 収支種別 | `income`（収入） / `expense`（支出） / `transfer`（振替） |
 | CATEGORY_NAME | カテゴリの表示名 | 例: 食費, 交通費, 給与 |
@@ -235,6 +236,7 @@ LifePlanGant で扱う収支・タグ・勘定項目のデータは、`data/` �
 | REGIST_USER | 登録ユーザーID | USER.ID への参照 |
 | UPDATE_DATETIME | 更新日時 | 共通 |
 | UPDATE_USER | 更新ユーザーID | USER.ID への参照 |
+| USER_ID | ユーザーID | USER.ID への参照。ユーザーごとにタグを管理。初期値は coara |
 | TAG_NAME | タグの表示名 | 例: 食費, 交通費, 娯楽 |
 | COLOR | 色 | 例: #ff0000 やカラーコード。任意。一覧・ピッカーで変更可 |
 | ICON_PATH | アイコンパス | 例: /icon/custom/xxx.svg。任意。一覧・ピッカーで変更可 |

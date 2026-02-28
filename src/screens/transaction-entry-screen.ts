@@ -1,4 +1,5 @@
 import type { TransactionRow, CategoryRow, AccountRow, AccountPermissionRow, TagRow, TransactionTagRow, TransactionManagementRow, AccountHistoryRow } from "../types";
+import { EMPTY_USER_ID } from "../constants";
 import {
   currentUserId,
   transactionEntryEditId,
@@ -25,7 +26,7 @@ import {
 } from "../utils/csvVersionCheck.ts";
 import { updateTransactionMonthlyForTransaction } from "../utils/transactionMonthlyAggregate";
 import { getPlanOccurrenceDates } from "../utils/planOccurrence";
-import { getActualTransactionsForPlan, invalidateTransactionDataCache } from "../utils/transactionDataSync";
+import { getActualTransactionsForPlan, invalidateTransactionDataCache, loadTransactionData } from "../utils/transactionDataSync";
 
 
 let categoryRows: CategoryRow[] = [];
@@ -108,8 +109,8 @@ function filterTransactionsByVisibleAccounts(
  * @param days - 加算する日数
  * @returns 計算後の日付文字列（YYYY-MM-DD）
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- 将来の週表示用に保持
-function addDays(dateStr: string, days: number): string {
+/** 将来の週表示用に保持 */
+export function addDays(dateStr: string, days: number): string {
   const [y, m, d] = dateStr.split("-").map(Number);
   const date = new Date(y, (m ?? 1) - 1, (d ?? 1) + days);
   const yy = date.getFullYear();
@@ -123,8 +124,8 @@ function addDays(dateStr: string, days: number): string {
  * @param dateStr - 日付（YYYY-MM-DD）
  * @returns 週の開始日・終了日（YYYY-MM-DD）
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- 将来の週表示用に保持
-function getWeekRangeFromDate(dateStr: string): { start: string; end: string } {
+/** 将来の週表示用に保持 */
+export function getWeekRangeFromDate(dateStr: string): { start: string; end: string } {
   const [y, m, d] = dateStr.split("-").map(Number);
   const date = new Date(y, (m ?? 1) - 1, d ?? 1);
   const dayOfWeek = date.getDay();
@@ -140,8 +141,7 @@ function getWeekRangeFromDate(dateStr: string): { start: string; end: string } {
 }
 
 /** 週範囲のラベル文字列（例: 2025年2月10日～2月16日）を返す。将来の表示用に保持。 */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- 週ラベル表示で利用予定
-function formatWeekLabel(weekStart: string, weekEnd: string): string {
+export function formatWeekLabel(weekStart: string, weekEnd: string): string {
   const [ys, ms, ds] = weekStart.split("-").map(Number);
   const [ye, me, de] = weekEnd.split("-").map(Number);
   if (weekStart.slice(0, 4) === weekEnd.slice(0, 4) && weekStart.slice(0, 7) === weekEnd.slice(0, 7)) {
@@ -153,9 +153,8 @@ function formatWeekLabel(weekStart: string, weekEnd: string): string {
   return `${ys}年${ms}月${ds}日～${ye}年${me}月${de}日`;
 }
 
-/** 日付が週範囲内か（以上・以下）で判定する。 */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- 将来の週表示用に保持
-function isDateInWeek(dateStr: string, weekStart: string, weekEnd: string): boolean {
+/** 日付が週範囲内か（以上・以下）で判定する。将来の週表示用に保持。 */
+export function isDateInWeek(dateStr: string, weekStart: string, weekEnd: string): boolean {
   return dateStr >= weekStart && dateStr <= weekEnd;
 }
 
@@ -188,7 +187,10 @@ function getActualTargetDate(row: TransactionRow): string {
 async function fetchCategoryList(_noCache = false): Promise<CategoryRow[]> {
   const { header, rows } = await fetchCsv("/data/CATEGORY.csv");
   if (header.length === 0) return [];
-  return rows.map((cells) => rowToObject(header, cells) as unknown as CategoryRow);
+  const me = (currentUserId ?? "").trim();
+  return rows
+    .map((cells) => rowToObject(header, cells) as unknown as CategoryRow)
+    .filter((row) => ((row.USER_ID ?? "").trim() || EMPTY_USER_ID) === me);
 }
 
 /**
@@ -251,10 +253,13 @@ function getNonDeletedTransactionRows(rows: TransactionRow[]): TransactionRow[] 
 async function fetchTagList(_noCache = false): Promise<TagRow[]> {
   const { header, rows } = await fetchCsv("/data/TAG.csv");
   if (header.length === 0) return [];
+  const me = (currentUserId ?? "").trim();
   const list: TagRow[] = [];
   for (const cells of rows) {
     if (cells.length === 0 || cells.every((c) => !c.trim())) continue;
-    list.push(rowToObject(header, cells) as unknown as TagRow);
+    const row = rowToObject(header, cells) as unknown as TagRow;
+    if (((row.USER_ID ?? "").trim() || EMPTY_USER_ID) !== me) continue;
+    list.push(row);
   }
   return list;
 }

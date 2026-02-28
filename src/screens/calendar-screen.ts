@@ -923,7 +923,7 @@ async function renderCharts(ym: string): Promise<void> {
         },
       } as ChartOptions<"doughnut">,
     });
-    chartInstances.push(ch);
+    chartInstances.push(ch as Chart);
   };
   makePie("transaction-history-chart-plan-income-pie", data.planIncomeByCategory, "予定収入");
   makePie("transaction-history-chart-plan-expense-pie", data.planExpenseByCategory, "予定支出");

@@ -67,6 +67,7 @@ export interface CategoryRow {
   REGIST_USER: string;
   UPDATE_DATETIME: string;
   UPDATE_USER: string;
+  USER_ID: string;
   PARENT_ID: string;
   TYPE: string;
   CATEGORY_NAME: string;
@@ -85,6 +86,7 @@ export interface TagRow {
   REGIST_USER: string;
   UPDATE_DATETIME: string;
   UPDATE_USER: string;
+  USER_ID: string;
   TAG_NAME: string;
   /** 色（例: #ff0000） */
   COLOR?: string;

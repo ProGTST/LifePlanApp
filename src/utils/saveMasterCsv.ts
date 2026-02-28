@@ -5,6 +5,8 @@ import {
   tagListFull,
   getLastCsvVersion,
 } from "../state";
+import { currentUserId } from "../state";
+import { EMPTY_USER_ID } from "../constants";
 import {
   accountListToCsv,
   accountPermissionListToCsv,
@@ -13,6 +15,8 @@ import {
 } from "./csvExport.ts";
 import { clearAccountDirty, clearCategoryDirty, clearTagDirty } from "./csvDirty.ts";
 import { saveCsvViaApi } from "./dataApi.ts";
+import { fetchCsv } from "./csv.ts";
+import { rowToObject } from "./csv.ts";
 
 /**
  * 行配列を ID 列で昇順にソートする（数値として解釈、無効は末尾）。CSV 保存時の出力順に利用する。
@@ -54,31 +58,57 @@ export function saveAccountCsvOnly(): Promise<void> {
 }
 
 /**
- * カテゴリーのみ CATEGORY.csv に保存する（画面遷移時用）。保存完了後に clearCategoryDirty を呼ぶ。
+ * カテゴリーのみ CATEGORY.csv に保存する（画面遷移時用）。他ユーザーの行を維持しつつ、自ユーザーの行をマージして保存。保存完了後に clearCategoryDirty を呼ぶ。
  * @returns Promise（保存とクリア完了で resolve）
  */
 export function saveCategoryCsvOnly(): Promise<void> {
-  const category =
-    categoryListFull.length > 0
-      ? categoryListToCsv(sortRowsById(categoryListFull as unknown as Record<string, string>[]))
-      : "";
-  return (category
-    ? saveCsvViaApi("CATEGORY.csv", category, getLastCsvVersion("CATEGORY.csv"))
-    : Promise.resolve()
-  ).then(() => clearCategoryDirty());
+  const me = (currentUserId ?? "").trim();
+  return fetchCsv("/data/CATEGORY.csv")
+    .then(({ header, rows }) => {
+      const otherRows: Record<string, string>[] = [];
+      for (const cells of rows) {
+        const row = rowToObject(header, cells);
+        const rowUserId = (row.USER_ID ?? "").trim() || EMPTY_USER_ID;
+        if (rowUserId !== me) otherRows.push(row);
+      }
+      const merged = [...otherRows, ...(categoryListFull as unknown as Record<string, string>[])];
+      return categoryListToCsv(sortRowsById(merged));
+    })
+    .then((category) =>
+      category
+        ? saveCsvViaApi("CATEGORY.csv", category, getLastCsvVersion("CATEGORY.csv"))
+        : Promise.resolve()
+    )
+    .then(() => clearCategoryDirty())
+    .catch((e) => {
+      clearCategoryDirty();
+      throw e;
+    });
 }
 
 /**
- * タグのみ TAG.csv に保存する（画面遷移時用）。保存完了後に clearTagDirty を呼ぶ。
+ * タグのみ TAG.csv に保存する（画面遷移時用）。他ユーザーの行を維持しつつ、自ユーザーの行をマージして保存。保存完了後に clearTagDirty を呼ぶ。
  * @returns Promise（保存とクリア完了で resolve）
  */
 export function saveTagCsvOnly(): Promise<void> {
-  const tag =
-    tagListFull.length > 0
-      ? tagListToCsv(sortRowsById(tagListFull as unknown as Record<string, string>[]))
-      : "";
-  return (tag
-    ? saveCsvViaApi("TAG.csv", tag, getLastCsvVersion("TAG.csv"))
-    : Promise.resolve()
-  ).then(() => clearTagDirty());
+  const me = (currentUserId ?? "").trim();
+  return fetchCsv("/data/TAG.csv")
+    .then(({ header, rows }) => {
+      const otherRows: Record<string, string>[] = [];
+      for (const cells of rows) {
+        const row = rowToObject(header, cells);
+        const rowUserId = (row.USER_ID ?? "").trim() || EMPTY_USER_ID;
+        if (rowUserId !== me) otherRows.push(row);
+      }
+      const merged = [...otherRows, ...(tagListFull as unknown as Record<string, string>[])];
+      return tagListToCsv(sortRowsById(merged));
+    })
+    .then((tag) =>
+      tag ? saveCsvViaApi("TAG.csv", tag, getLastCsvVersion("TAG.csv")) : Promise.resolve()
+    )
+    .then(() => clearTagDirty())
+    .catch((e) => {
+      clearTagDirty();
+      throw e;
+    });
 }
