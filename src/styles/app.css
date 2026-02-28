@@ -2360,6 +2360,12 @@
   flex: 0 0 4.5rem;
 }
 
+/* ステータス欄（計画中/完了/中止）のラベル幅。スケジュール・カレンダーで表示 */
+.transaction-history-search-row:has(.transaction-history-filter-btn[data-plan-status]) .transaction-history-search-label,
+.transaction-history-plan-status-row .transaction-history-search-label {
+  flex: 0 0 4.5rem;
+}
+
 /* 日付欄のラベル幅を金額欄と同じに */
 .transaction-history-search-row:has(.transaction-history-date-input) .transaction-history-search-label {
   flex: 0 0 4.5rem;
@@ -2422,6 +2428,19 @@
   background: #455a64;
   color: var(--color-button-fg);
   border-color: #455a64;
+}
+
+/* ステータスボタン（計画中/完了/中止）はスケジュールと同様に BASE/ACCENT で表示 */
+#app .transaction-history-filter-btn[data-plan-status="planning"].is-active {
+  background: var(--color-base-bg, #ffffff);
+  color: var(--color-base-fg, #333333);
+  border-color: color-mix(in srgb, var(--color-base-fg, #333333) 50%, transparent);
+}
+#app .transaction-history-filter-btn[data-plan-status="complete"].is-active,
+#app .transaction-history-filter-btn[data-plan-status="canceled"].is-active {
+  background: var(--color-accent-bg, #646cff);
+  color: var(--color-accent-fg, #ffffff);
+  border-color: color-mix(in srgb, var(--color-accent-bg, #646cff) 75%, transparent);
 }
 
 .transaction-history-search-sep {
@@ -2985,11 +3004,11 @@
   box-sizing: border-box;
 }
 
-/* 収支一覧テーブル：計画列（予/実アイコンのみ・ヘッダー名なし） */
+/* 収支一覧テーブル：計画列（予/実アイコン＋ステータスアイコン） */
 #transaction-history-table th:nth-child(3),
 #transaction-history-table td:nth-child(3) {
-  width: 3rem;
-  min-width: 3rem;
+  width: 4.5rem;
+  min-width: 4.5rem;
   box-sizing: border-box;
   text-align: left;
   padding-left: 0;
@@ -3033,36 +3052,37 @@
   -webkit-mask-position: center;
   mask-position: center;
 }
-.transaction-history-plan-status-icon--planning {
-  background: var(--color-base-bg);
-  color: var(--color-base-fg);
-  border: 0.5px solid color-mix(in srgb, var(--color-base-fg) 50%, transparent);
+/* 収支履歴・スケジュールと同様に #app 配下で BASE/ACCENT を確実に適用 */
+#app #transaction-history-table .transaction-history-plan-status-icon--planning,
+#app .transaction-history-plan-status-icon--planning {
+  background: var(--color-base-bg, #ffffff);
+  color: var(--color-base-fg, #333333);
+  border: 0.5px solid color-mix(in srgb, var(--color-base-fg, #333333) 50%, transparent);
 }
 .transaction-history-plan-status-icon--planning .transaction-history-plan-status-icon-inner {
   -webkit-mask-image: url("/icon/angles-right-solid-full.svg");
   mask-image: url("/icon/angles-right-solid-full.svg");
 }
-.transaction-history-plan-status-icon--planning-with-actual {
-  background: var(--color-accent-bg);
-  color: var(--color-accent-fg);
-  border: 0.5px solid color-mix(in srgb, var(--color-accent-bg) 75%, transparent);
+#app #transaction-history-table .transaction-history-plan-status-icon--planning-with-actual,
+#app #transaction-history-table .transaction-history-plan-status-icon--complete,
+#app .transaction-history-plan-status-icon--planning-with-actual,
+#app .transaction-history-plan-status-icon--complete {
+  background: var(--color-accent-bg, #646cff);
+  color: var(--color-accent-fg, #ffffff);
+  border: 0.5px solid color-mix(in srgb, var(--color-accent-bg, #646cff) 75%, transparent);
 }
 .transaction-history-plan-status-icon--planning-with-actual .transaction-history-plan-status-icon-inner {
   -webkit-mask-image: url("/icon/angles-right-solid-full.svg");
   mask-image: url("/icon/angles-right-solid-full.svg");
 }
-.transaction-history-plan-status-icon--complete {
-  background: var(--color-accent-bg);
-  color: var(--color-accent-fg);
-  border: 0.5px solid color-mix(in srgb, var(--color-accent-bg) 75%, transparent);
-}
 .transaction-history-plan-status-icon--complete .transaction-history-plan-status-icon-inner {
   -webkit-mask-image: url("/icon/check-solid-full.svg");
   mask-image: url("/icon/check-solid-full.svg");
 }
-.transaction-history-plan-status-icon--canceled {
+#app #transaction-history-table .transaction-history-plan-status-icon--canceled,
+#app .transaction-history-plan-status-icon--canceled {
   background: var(--gray-500, #6b7280);
-  color: var(--color-button-fg);
+  color: var(--color-button-fg, #ffffff);
   border: 0.5px solid var(--gray-500, #6b7280);
 }
 .transaction-history-plan-status-icon--canceled .transaction-history-plan-status-icon-inner {
@@ -5357,6 +5377,30 @@
     background: var(--color-delayed-bg);
     color: var(--color-button-fg);
   }
+
+  /* 収支履歴・計画列：ステータスアイコンの背景色・文字色をデザイントークンに反映 */
+  #app .transaction-history-plan-status-icon--planning {
+    background: var(--color-base-bg, #ffffff);
+    color: var(--color-base-fg, #333333);
+    border: 0.5px solid color-mix(in srgb, var(--color-base-fg, #333333) 50%, transparent);
+  }
+  #app .transaction-history-plan-status-icon--planning-with-actual,
+  #app .transaction-history-plan-status-icon--complete {
+    background: var(--color-accent-bg, #646cff);
+    color: var(--color-accent-fg, #ffffff);
+    border: 0.5px solid color-mix(in srgb, var(--color-accent-bg, #646cff) 75%, transparent);
+  }
+  #app .transaction-history-plan-status-icon--canceled {
+    background: var(--gray-500, #6b7280);
+    color: var(--color-button-fg, #ffffff);
+    border: 0.5px solid var(--gray-500, #6b7280);
+  }
+  #app .transaction-history-plan-status-icon--delayed {
+    background: var(--color-delayed-bg);
+    color: var(--color-button-fg);
+    border: 0.5px solid var(--color-delayed-border);
+  }
+
   #app #header-transaction-entry-continuous.btn-header-transaction-entry-continuous {
     background-color: var(--color-base-bg);
     color: var(--color-base-fg);

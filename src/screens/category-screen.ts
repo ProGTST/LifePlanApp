@@ -26,6 +26,7 @@ import {
 } from "../utils/tableCells.ts";
 import { setCategoryDirty } from "../utils/csvDirty.ts";
 import { saveCategoryCsvOnly } from "../utils/saveMasterCsv.ts";
+import { invalidateTransactionDataCache } from "../utils/transactionDataSync.ts";
 import { VersionConflictError } from "../utils/dataApi.ts";
 import { setNewRowAudit, setUpdateAudit } from "../utils/auditFields.ts";
 import {
@@ -180,14 +181,16 @@ async function fetchCategoryList(_noCache = false): Promise<CategoryRow[]> {
  */
 function persistCategory(): void {
   setCategoryDirty();
-  saveCategoryCsvOnly().catch((e) => {
-    if (e instanceof VersionConflictError) {
-      alert(e.message);
-      loadAndRenderCategoryList(true);
-    } else {
-      console.error("saveCategoryCsvOnly", e);
-    }
-  });
+  saveCategoryCsvOnly()
+    .then(() => invalidateTransactionDataCache())
+    .catch((e) => {
+      if (e instanceof VersionConflictError) {
+        alert(e.message);
+        loadAndRenderCategoryList(true);
+      } else {
+        console.error("saveCategoryCsvOnly", e);
+      }
+    });
 }
 
 /**

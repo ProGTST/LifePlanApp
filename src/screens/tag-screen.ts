@@ -26,6 +26,7 @@ import {
 } from "../utils/tableCells.ts";
 import { setTagDirty } from "../utils/csvDirty.ts";
 import { saveTagCsvOnly } from "../utils/saveMasterCsv.ts";
+import { invalidateTransactionDataCache } from "../utils/transactionDataSync.ts";
 import { VersionConflictError } from "../utils/dataApi.ts";
 import { setNewRowAudit, setUpdateAudit } from "../utils/auditFields.ts";
 import {
@@ -76,8 +77,10 @@ async function fetchTagList(_noCache = false): Promise<TagRow[]> {
  */
 function persistTag(): void {
   setTagDirty();
-  saveTagCsvOnly().catch((e) => {
-    if (e instanceof VersionConflictError) {
+  saveTagCsvOnly()
+    .then(() => invalidateTransactionDataCache())
+    .catch((e) => {
+      if (e instanceof VersionConflictError) {
       alert(e.message);
       loadAndRenderTagList(true);
     } else {

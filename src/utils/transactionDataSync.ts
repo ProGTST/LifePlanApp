@@ -117,6 +117,7 @@ function filterTransactionsByVisibleAccounts(
 
 /**
  * CATEGORY.csv を取得してカテゴリー行の配列で返す。
+ * 全件ロードする（getCategoryById で取引の CATEGORY_ID を参照するため。取引は他ユーザー作成分を含み得る）。
  * @param noCache - true のときキャッシュを使わず再取得する
  * @returns カテゴリー行の配列
  */
@@ -125,12 +126,9 @@ async function fetchCategoryList(
 ): Promise<{ list: CategoryRow[]; version: number }> {
   const { header, rows, version } = await fetchCsv("/data/CATEGORY.csv");
   if (header.length === 0) return { list: [], version: 0 };
-  const me = (currentUserId ?? "").trim();
   const list: CategoryRow[] = [];
   for (const cells of rows) {
     const row = rowToObject(header, cells) as unknown as CategoryRow;
-    const rowUserId = (row.USER_ID ?? "").trim() || EMPTY_USER_ID;
-    if (rowUserId !== me) continue;
     list.push(row);
   }
   return { list, version };
@@ -153,6 +151,7 @@ async function fetchAccountList(_noCache = false): Promise<{ list: AccountRow[];
 
 /**
  * TAG.csv を取得してタグ行の配列で返す。SORT_ORDER 未設定時は行番で補う。
+ * 全件ロードする（getTagsForTransaction で取引に紐づくタグを参照するため。取引は他ユーザー作成分を含み得る）。
  * @param noCache - true のときキャッシュを使わず再取得する
  * @returns タグ行の配列
  */
@@ -161,12 +160,9 @@ async function fetchTagList(
 ): Promise<{ list: TagRow[]; version: number }> {
   const { header, rows, version } = await fetchCsv("/data/TAG.csv");
   if (header.length === 0) return { list: [], version: 0 };
-  const me = (currentUserId ?? "").trim();
   const list: TagRow[] = [];
   for (const cells of rows) {
     const row = rowToObject(header, cells) as unknown as TagRow;
-    const rowUserId = (row.USER_ID ?? "").trim() || EMPTY_USER_ID;
-    if (rowUserId !== me) continue;
     if (row.SORT_ORDER === undefined || row.SORT_ORDER === "") row.SORT_ORDER = String(list.length);
     list.push(row);
   }
@@ -349,18 +345,27 @@ export function getTagsForTransaction(
 
 /**
  * タグ一覧をソート順で返す。収支履歴のタグモーダル等で使用。
+ * ログインユーザーのタグのみ返す。
  * @returns タグ行の配列（SORT_ORDER を数値としてソート済み）
  */
 export function getTagRows(): TagRow[] {
-  return tagRows.slice().sort((a, b) => sortOrderNum(a.SORT_ORDER, b.SORT_ORDER));
+  const me = (currentUserId ?? "").trim();
+  return tagRows
+    .filter((r) => ((r.USER_ID ?? "").trim() || EMPTY_USER_ID) === me)
+    .slice()
+    .sort((a, b) => sortOrderNum(a.SORT_ORDER, b.SORT_ORDER));
 }
 
 /**
  * カテゴリー一覧を返す。収支履歴のカテゴリーフィルター等で使用。
+ * ログインユーザーのカテゴリーのみ返す。
  * @returns カテゴリー行の配列
  */
 export function getCategoryRows(): CategoryRow[] {
-  return categoryRows.slice();
+  const me = (currentUserId ?? "").trim();
+  return categoryRows.filter(
+    (r) => ((r.USER_ID ?? "").trim() || EMPTY_USER_ID) === me
+  );
 }
 
 /**

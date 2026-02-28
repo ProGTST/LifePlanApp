@@ -47,7 +47,7 @@ ID,VERSION,REGIST_DATETIME,REGIST_USER,UPDATE_DATETIME,UPDATE_USER,USER_ID,PAREN
 46,0,2026-02-27 00:00:00,panda,2026-02-27 00:00:00,panda,panda,,transfer,チャージ,#FDA38F,/icon/custom/99-others/circle-dot-solid-full.svg,0
 47,0,2026-02-27 00:00:00,panda,2026-02-27 00:00:00,panda,panda,,transfer,銀行引き出し,#C0DB80,/icon/custom/99-others/cloud-arrow-down-solid-full.svg,2
 48,0,2026-02-27 00:00:00,panda,2026-02-27 00:00:00,panda,panda,,transfer,銀行預け入れ,#79AFED,/icon/custom/99-others/cloud-arrow-up-solid-full.svg,3
-49,0,2026-02-27 00:00:00,testuser001,2026-02-27 00:00:00,testuser001,testuser001,,expense,食費,#EA6F76,/icon/custom/13-foods/utensils-solid-full.svg,0
+49,3,2026-02-27 00:00:00,testuser001,2026-02-28 02:56:45,testuser001,testuser001,,expense,食費,#408CE5,/icon/custom/01-money/money-bill-1-regular-full.svg,0
 50,0,2026-02-27 00:00:00,testuser001,2026-02-27 00:00:00,testuser001,testuser001,,expense,交通費,#408CE5,/icon/custom/07-vehicle/location-arrow-solid-full.svg,2
 51,0,2026-02-27 00:00:00,testuser001,2026-02-27 00:00:00,testuser001,testuser001,,expense,交流費・外食費,#F1B224,/icon/custom/02-person/comments-solid-full.svg,5
 52,0,2026-02-27 00:00:00,testuser001,2026-02-27 00:00:00,testuser001,testuser001,,income,給与,#F0D22E,/icon/custom/01-money/money-bill-1-regular-full.svg,0
