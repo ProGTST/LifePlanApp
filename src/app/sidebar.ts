@@ -130,8 +130,8 @@ export function initSidebarToggle(): void {
     showPanel(SIDEBAR_PANEL_SETTINGS);
   });
 
-  const logoutBtn = document.getElementById("menubar-logout");
-  logoutBtn?.addEventListener("click", async () => {
+  async function handleLogout(): Promise<void> {
+    if (!confirm("ログアウトしますが、よろしいですか？")) return;
     sidebar?.classList.remove("is-visible");
     sidebar?.setAttribute("aria-hidden", "true");
     setSidebarOpenPanel(null);
@@ -139,7 +139,13 @@ export function initSidebarToggle(): void {
     await saveDirtyCsvsOnly();
     sessionStorage.removeItem(USER_ID_STORAGE_KEY);
     window.location.href = LOGIN_PAGE_PATH;
-  });
+  }
+
+  const logoutBtn = document.getElementById("menubar-logout");
+  logoutBtn?.addEventListener("click", handleLogout);
+
+  const settingsLogoutBtn = document.getElementById("sidebar-settings-logout-btn");
+  settingsLogoutBtn?.addEventListener("click", handleLogout);
 }
 
 /**
