@@ -393,11 +393,66 @@ function updateAccountTriggerDisplay(which: "out" | "in", accountId: string): vo
  * @param which - "out" | "in"
  * @returns なし
  */
+/** プルダウンを元の親に戻すためのマップ（list 要素 → 親要素） */
+const transactionEntryDropdownOriginalParents = new WeakMap<HTMLElement, HTMLElement>();
+
+/**
+ * 収支記録画面のプルダウンを document.body にポータル移動し、トリガー直下に固定表示する。
+ * view-body の contain/scroll の影響を避け、viewport 基準で正しく配置する。
+ * @param trigger - トリガーボタン要素
+ * @param list - プルダウンリスト要素
+ */
+function openTransactionEntryDropdown(trigger: HTMLElement, list: HTMLElement): void {
+  const parent = list.parentElement;
+  if (!parent) return;
+  transactionEntryDropdownOriginalParents.set(list, parent);
+  const app = document.getElementById("app");
+  (app ?? document.body).appendChild(list);
+  const rect = trigger.getBoundingClientRect();
+  list.style.position = "fixed";
+  list.style.top = `${rect.bottom + 4}px`;
+  list.style.left = `${rect.left}px`;
+  list.style.width = `${rect.width}px`;
+  list.style.minWidth = "auto";
+  list.style.maxWidth = `${Math.min(rect.width, 320)}px`;
+  list.style.zIndex = "1000";
+  list.style.marginTop = "0";
+  const view = document.getElementById("view-transaction-entry");
+  view?.classList.add("transaction-entry-dropdown-open");
+}
+
+/**
+ * プルダウンを元の親に戻し、view の縦スクロール抑制を解除する。
+ * @param list - プルダウンリスト要素
+ */
+function closeTransactionEntryDropdown(list: HTMLElement): void {
+  const parent = transactionEntryDropdownOriginalParents.get(list);
+  if (parent) {
+    parent.appendChild(list);
+    transactionEntryDropdownOriginalParents.delete(list);
+  }
+  list.style.position = "";
+  list.style.top = "";
+  list.style.left = "";
+  list.style.width = "";
+  list.style.minWidth = "";
+  list.style.maxWidth = "";
+  list.style.zIndex = "";
+  list.style.marginTop = "";
+  if (
+    !document.querySelector(".transaction-entry-category-list.is-open") &&
+    !document.querySelector(".transaction-entry-account-list.is-open")
+  ) {
+    document.getElementById("view-transaction-entry")?.classList.remove("transaction-entry-dropdown-open");
+  }
+}
+
 function closeAccountList(which: "out" | "in"): void {
   const prefix = which === "out" ? "transaction-entry-account-out" : "transaction-entry-account-in";
   const list = document.getElementById(`${prefix}-list`);
   const trigger = document.getElementById(`${prefix}-trigger`);
   if (list) {
+    closeTransactionEntryDropdown(list);
     list.classList.remove("is-open");
     list.setAttribute("aria-hidden", "true");
   }
@@ -462,6 +517,7 @@ function closeCategoryList(): void {
   const list = document.getElementById("transaction-entry-category-list");
   const trigger = document.getElementById("transaction-entry-category-trigger");
   if (list) {
+    closeTransactionEntryDropdown(list);
     list.classList.remove("is-open");
     list.setAttribute("aria-hidden", "true");
   }
@@ -2788,6 +2844,11 @@ export function initTransactionEntryView(): void {
     e.preventDefault();
     const list = document.getElementById("transaction-entry-category-list");
     const isOpen = list?.classList.toggle("is-open");
+    if (isOpen && list && categoryTrigger instanceof HTMLElement) {
+      openTransactionEntryDropdown(categoryTrigger, list);
+    } else if (list) {
+      closeTransactionEntryDropdown(list);
+    }
     list?.setAttribute("aria-hidden", String(!isOpen));
     categoryTrigger?.setAttribute("aria-expanded", String(!!isOpen));
   });
@@ -2823,6 +2884,11 @@ export function initTransactionEntryView(): void {
       e.preventDefault();
       const listEl = document.getElementById(`${prefix}-list`);
       const isOpen = listEl?.classList.toggle("is-open");
+      if (isOpen && listEl && trigger instanceof HTMLElement) {
+        openTransactionEntryDropdown(trigger, listEl);
+      } else if (listEl) {
+        closeTransactionEntryDropdown(listEl);
+      }
       listEl?.setAttribute("aria-hidden", String(!isOpen));
       trigger?.setAttribute("aria-expanded", String(!!isOpen));
     });

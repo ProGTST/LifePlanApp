@@ -55,6 +55,10 @@
   box-sizing: border-box;
   position: relative;
 }
+/* プルダウン開時は縦スクロールを抑制 */
+#app #view-transaction-entry.transaction-entry-dropdown-open {
+  overflow-y: hidden;
+}
 /* グリッド子はすべて min-width: 0 にし、列幅で伸びないようにする（オーバーレイラッパーは除く） */
 #app #view-transaction-entry.main-view:not(.main-view--hidden) > .transaction-entry-view-body,
 #app #view-transaction-entry.main-view:not(.main-view--hidden) > .transaction-entry-plan-options-view-body {
@@ -931,6 +935,49 @@
 .data-form .transaction-entry-category-list.is-open {
   display: block;
 }
+/* 収支記録画面のプルダウン：JS で #app にポータル移動。#app 直下では .data-form の親がないためここで背景・枠・レイアウトを指定 */
+#app > .transaction-entry-category-list,
+#app > .transaction-entry-account-list {
+  max-height: 14rem;
+  overflow-y: auto;
+  border: 1px solid var(--gray-500);
+  border-radius: var(--radius-md);
+  background: var(--color-base-bg);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+#app > .transaction-entry-category-list .transaction-entry-category-option,
+#app > .transaction-entry-account-list .transaction-entry-account-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+  border-bottom: 1px solid var(--gray-200);
+  font-size: 0.9375rem;
+}
+#app > .transaction-entry-category-list .transaction-entry-category-option:last-child,
+#app > .transaction-entry-account-list .transaction-entry-account-option:last-child {
+  border-bottom: none;
+}
+#app > .transaction-entry-category-list .transaction-entry-category-option:hover,
+#app > .transaction-entry-account-list .transaction-entry-account-option:hover {
+  background: var(--gray-100);
+}
+#app > .transaction-entry-category-list .transaction-entry-category-option .category-icon-wrap,
+#app > .transaction-entry-account-list .transaction-entry-account-option .category-icon-wrap {
+  --icon-size: 20px;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+}
+#app > .transaction-entry-category-list .transaction-entry-category-option-name,
+#app > .transaction-entry-account-list .transaction-entry-account-option-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .data-form .transaction-entry-category-option {
   display: flex;
   align-items: center;
@@ -1043,6 +1090,7 @@
 .data-form .transaction-entry-account-list.is-open {
   display: block;
 }
+/* 収支記録画面の勘定プルダウン：同上（JS で body にポータル移動） */
 .data-form .transaction-entry-account-option {
   display: flex;
   align-items: center;
@@ -2430,18 +2478,8 @@
   border-color: #455a64;
 }
 
-/* ステータスボタン（計画中/完了/中止）はスケジュールと同様に BASE/ACCENT で表示 */
-#app .transaction-history-filter-btn[data-plan-status="planning"].is-active {
-  background: var(--color-base-bg, #ffffff);
-  color: var(--color-base-fg, #333333);
-  border-color: color-mix(in srgb, var(--color-base-fg, #333333) 50%, transparent);
-}
-#app .transaction-history-filter-btn[data-plan-status="complete"].is-active,
-#app .transaction-history-filter-btn[data-plan-status="canceled"].is-active {
-  background: var(--color-accent-bg, #646cff);
-  color: var(--color-accent-fg, #ffffff);
-  border-color: color-mix(in srgb, var(--color-accent-bg, #646cff) 75%, transparent);
-}
+/* ステータスボタン（計画中/完了/中止）は選択時強調・非選択時非強調で同一レイアウト */
+/* ※data-plan-status による個別スタイルは付けず、.is-active の強調スタイルを共通で使用 */
 
 .transaction-history-search-sep {
   color: var(--gray-600);
