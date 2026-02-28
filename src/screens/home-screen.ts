@@ -823,7 +823,10 @@ function renderMonthTrendChart(): void {
         maintainAspectRatio: true,
         aspectRatio: 1.5,
         layout: { padding: { top: 8, right: 8, left: 4, bottom: 4 } },
-        scales: { x: { title: { display: false } }, y: { beginAtZero: true, title: { display: false } } },
+        scales: {
+          x: { title: { display: false } },
+          y: { beginAtZero: true, title: { display: false }, ticks: { display: false } },
+        },
         plugins: {
           legend: { position: "top", labels: { boxWidth: 12, font: { size: 10 } } },
           datalabels: {
@@ -864,7 +867,10 @@ function renderMonthTrendChart(): void {
         maintainAspectRatio: true,
         aspectRatio: 1.5,
         layout: { padding: { top: 8, right: 8, left: 4, bottom: 4 } },
-        scales: { x: { title: { display: false } }, y: { beginAtZero: true, title: { display: false } } },
+        scales: {
+          x: { title: { display: false } },
+          y: { beginAtZero: true, title: { display: false }, ticks: { display: false } },
+        },
         plugins: {
           legend: { position: "top", labels: { boxWidth: 12, font: { size: 10 } } },
           datalabels: {
@@ -900,7 +906,10 @@ function renderMonthTrendChart(): void {
         maintainAspectRatio: true,
         aspectRatio: 1.5,
         layout: { padding: { top: 8, right: 8, left: 4, bottom: 4 } },
-        scales: { x: { title: { display: false } }, y: { beginAtZero: true, title: { display: false } } },
+        scales: {
+          x: { title: { display: false } },
+          y: { beginAtZero: true, title: { display: false }, ticks: { display: false } },
+        },
         plugins: {
           legend: { position: "top", labels: { boxWidth: 12, font: { size: 10 } } },
           datalabels: {
