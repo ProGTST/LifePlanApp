@@ -50,7 +50,7 @@
 |------|------|----------|------|
 | 追加ボタン | — | モーダルを開く。フォームを初期化（名前空、色デフォルト） | |
 | モーダル 登録 | タグ名が空でない | 新規 TAG 行（ID=最大+1, SORT_ORDER=最大+1）を追加。saveTagCsvOnly → モーダル閉じ、一覧再描画 | |
-| タグ名セル編集 | — | 空なら deleteTagRow。否则 saveTagNameFromCell（バージョンチェック → TAG_NAME 更新 → persistTag） | |
+| タグ名セル編集 | — | 空なら deleteTagRow。変更があれば saveTagNameFromCell（バージョンチェック → TAG_NAME 更新 → persistTag） | |
 | アイコンクリック | — | カラーピッカー。バージョンチェック → COLOR, ICON_PATH 更新 → persistTag | |
 | ドラッグ並び替え | — | moveTagOrder: SORT_ORDER 再採番 → persistTag | |
 | 行削除 | 削除モード ON | deleteTagRow: 該当行削除 → saveTagCsvOnly | |

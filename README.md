@@ -78,7 +78,7 @@ npm run tauri build
 2. 画面の表示どおりに除外が追加されたら、**そのウィンドウを閉じる**。
 3. **通常のターミナル**（Cursor や PowerShell）で、もう一度 `npm run tauri dev` を実行。
 
-手動で除外する場合: 「設定」→「プライバシーとセキュリティ」→「Windows セキュリティ」→「ウイルスと脅威の防止」→「設定の管理」→「除外の追加」で、次のフォルダを追加: `%USERPROFILE%\.cargo`、`%TEMP%`、プロジェクトフォルダ（`D:\dev\DevEnv\local\LifePlanGant`）。
+手動で除外する場合: 「設定」→「プライバシーとセキュリティ」→「Windows セキュリティ」→「ウイルスと脅威の防止」→「設定の管理」→「除外の追加」で、次のフォルダを追加: `%USERPROFILE%\.cargo`、`%TEMP%`、プロジェクトフォルダ（`D:\dev\DevEnv\local\LifePlanApp`）。
 
 **同じエラーが何度も出る場合**: クリーンせずに **何度か `npm run tauri dev` を繰り返す**と、1回ごとにビルドが先へ進み、やがて通ることがあります。それでも解消しない場合は **WSL2** 上で開発する方法もあります（WSL 内で Node / Rust を入れ、プロジェクトを WSL のパスで開いて `npm run tauri dev` を実行。Linux 用ウィンドウで動作します）。
 
@@ -100,6 +100,9 @@ Remove-Item -Recurse -Force "$env:TEMP\tauri-life-plan-gant" -ErrorAction Silent
 | **タグ** | CSV（API） | タグ一覧は画面表示時に必ず API から取得 |
 | **収支記録** | CSV（API） | カテゴリー・勘定・取引・タグ等をすべて API から取得 |
 | **収支履歴** | CSV（API） | 取引・カテゴリー・タグ・勘定・権限・タグ管理をすべて API から取得 |
+| **カレンダー** | CSV（API） | loadTransactionData で取引データを取得 |
+| **スケジュール** | CSV（API） | loadTransactionData で取引データを取得 |
+| **取引分析** | CSV（API） | loadTransactionData で取引データを取得（参照のみ） |
 | **プロフィール** | CSV（API） | USER.csv でユーザー一覧を取得 |
 | **デザイン** | **CSV（API）＋ localStorage** | パレット一覧は COLOR_PALETTE.csv。ログインユーザー用の適用値は localStorage のカラーパレットで上書き |
 

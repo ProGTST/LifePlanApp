@@ -47,13 +47,13 @@ Tauri（Rust + フロント）向けのフォーマット・静的解析・セ�
 1. **Defender の除外を追加する（必須）**  
    **PowerShell を管理者として実行**し、次を実行してください。
    ```powershell
-   cd d:\dev\DevEnv\local\LifePlanGant
+   cd d:\dev\DevEnv\local\LifePlanApp
    .\scripts\add-defender-exclusion.ps1
    ```
    リポジトリルートと `src-tauri\target` が除外に追加されます。
 
 2. **除外が有効か確認する**  
-   PowerShell で次を実行し、プロジェクトのパス（`LifePlanGant` や `target`）が一覧に含まれるか確認してください。
+   PowerShell で次を実行し、プロジェクトのパス（`LifePlanApp` や `target`）が一覧に含まれるか確認してください。
    ```powershell
    Get-MpPreference | Select-Object -ExpandProperty ExclusionPath
    ```
@@ -114,7 +114,7 @@ npm run lint
 PowerShell で次を実行すると、`cargo-audit` と `cargo-deny` の Windows 用バイナリをダウンロードして `%USERPROFILE%\.cargo\bin` に置きます。
 
 ```powershell
-cd d:\dev\DevEnv\local\LifePlanGant
+cd d:\dev\DevEnv\local\LifePlanApp
 powershell -ExecutionPolicy Bypass -File .\scripts\download-cargo-tools.ps1
 ```
 
@@ -132,7 +132,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\download-cargo-tools.ps1
 1. **C:\Windows\System32 で実行しない**  
    ```cmd
    d:
-   cd d:\dev\DevEnv\local\LifePlanGant
+   cd d:\dev\DevEnv\local\LifePlanApp
    ```
    のように、ドライブとプロジェクト（またはユーザー）フォルダに移動してから実行する。
 
@@ -140,7 +140,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\download-cargo-tools.ps1
    `cargo install` のビルド先が Defender にブロックされていることがあります。  
    **PowerShell を管理者として実行**し、次を実行する（既存の `add-defender-exclusion.ps1` に `.cargo-install-build` と `.cargo-tmp` の除外を追加済み）:
    ```powershell
-   cd d:\dev\DevEnv\local\LifePlanGant
+   cd d:\dev\DevEnv\local\LifePlanApp
    .\scripts\add-defender-exclusion.ps1
    ```
    終了後、**通常のコマンドプロンプト**を開き直して次へ。
@@ -148,7 +148,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\download-cargo-tools.ps1
 3. **インストールスクリプトを実行する**  
    ```cmd
    d:
-   cd d:\dev\DevEnv\local\LifePlanGant
+   cd d:\dev\DevEnv\local\LifePlanApp
    scripts\install-cargo-tools.cmd
    ```
 

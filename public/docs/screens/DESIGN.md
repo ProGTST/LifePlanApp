@@ -72,8 +72,8 @@
 ## 5. 業務ルール
 
 - **1ユーザー1パレット**: USER_ID が currentUserId の行を1件使用。存在しなければメモリ上で新規作成（SEQ_NO=1、デフォルト色）してフォームに表示する。
-- **localStorage 優先**: loadAndRenderDesign 時に getColorPalette(currentUserId) があれば、その値でパレット行を上書きしてフォームに反映する。
-- **保存時は CSV と localStorage の両方**: COLOR_PALETTE.csv を API で保存するとともに、setColorPalette(currentUserId, toStore) で localStorage に保存する。
+- **読み込み時**: COLOR_PALETTE.csv を API で取得し、その値を正とする。getColorPalette(currentUserId) があれば先出し表示・キャッシュとして上書きしてフォームに反映する。
+- **保存時**: 必ず **CSV を先に保存し、成功した場合のみ** setColorPalette(currentUserId, toStore) で localStorage を更新する（CSV 失敗時は localStorage を更新しない）。
 - **即時反映**: 保存後、#app の style に PALETTE_KEYS に対応する CSS 変数を設定し、画面全体の色を即時変更する。
 - **楽観ロック**: COLOR_PALETTE は USER_ID + SEQ_NO をキーにバージョンチェック。不一致時はアラート後に再取得・再描画。
 

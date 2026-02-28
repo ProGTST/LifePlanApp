@@ -51,7 +51,7 @@
 |------|------|----------|------|
 | 追加ボタン | — | モーダルを開く。フォームを初期化（名前空、色デフォルト、権限リスト空） | |
 | モーダル 登録 | 勘定項目名が空でない | 新規 ACCOUNT 行（ID=最大+1, USER_ID=currentUserId, SORT_ORDER=最大+1）を追加。権限指定があれば新規 ACCOUNT_PERMISSION 行を追加。saveAccountCsvOnly（ACCOUNT.csv + ACCOUNT_PERMISSION.csv）→ モーダル閉じ、一覧再描画 | |
-| 勘定名セル編集（blur 等） | 変更あり | 空なら deleteAccountRow。否则 saveAccountNameFromCell（バージョンチェック → ACCOUNT.ACCOUNT_NAME 更新 → persistAccount） | |
+| 勘定名セル編集（blur 等） | 変更あり | 空なら deleteAccountRow。変更があれば saveAccountNameFromCell（バージョンチェック → ACCOUNT.ACCOUNT_NAME 更新 → persistAccount） | |
 | アイコンクリック | — | カラーピッカーで色・アイコン変更。バージョンチェック → ACCOUNT.COLOR, ICON_PATH 更新 → persistAccount | |
 | ドラッグ並び替え | 自分の勘定一覧内 | moveAccountOrder: SORT_ORDER を再採番 → persistAccount | |
 | 権限追加（一覧） | — | 権限ユーザー管理モーダルを開く。モーダル内「権限追加」→ ユーザー選択 → 適用で ACCOUNT_PERMISSION に追加または既存とマージ。saveAccountCsvOnly | |

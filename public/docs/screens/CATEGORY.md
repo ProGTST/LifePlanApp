@@ -54,7 +54,7 @@
 | ツリービュー/フラットビュー | — | categoryTreeViewMode をトグル。ツリー時は階層表示・ドラッグなし。フラット時は SORT_ORDER 順・ドラッグ可 | |
 | 追加ボタン | — | モーダルを開く。種別＝現在タブ、親＝未選択で初期化 | |
 | モーダル 登録 | カテゴリー名が空でない | 新規 CATEGORY 行（ID=最大+1, TYPE, PARENT_ID, SORT_ORDER=同種別内最大+1）を追加。saveCategoryCsvOnly → モーダル閉じ、一覧再描画 | |
-| カテゴリー名セル編集 | — | 空なら deleteCategoryRow。否则 saveCategoryNameFromCell（バージョンチェック → 永続化） | |
+| カテゴリー名セル編集 | — | 空なら deleteCategoryRow。変更があれば saveCategoryNameFromCell（バージョンチェック → 永続化） | |
 | 親カテゴリー select change | — | saveParentFromSelect（バージョンチェック → PARENT_ID 更新 → 永続化） | |
 | アイコンクリック | — | カラーピッカー。バージョンチェック → COLOR, ICON_PATH 更新 → 永続化 | |
 | ドラッグ並び替え | フラット時、同種別内 | moveCategoryOrder: SORT_ORDER 再採番 → 永続化 | |

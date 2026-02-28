@@ -14,9 +14,9 @@
 
 ## 2. 画面概要
 
-- **目的**: アプリのトップ画面。ログインユーザーのプロフィール（アイコン・表示名）をヘッダーに表示し、必要に応じて Tauri の挨拶機能（greet）を利用する。
-- **業務上の位置付け**: ダッシュボード的な入口。収支・スケジュール・マスタ等への導線を提供する。
-- **想定利用シナリオ**: ログイン後に最初に表示される画面。ヘッダーで自分を確認し、フッターやサイドバーから目的の画面へ遷移する。
+- **目的**: アプリのトップ画面。ログインユーザーのプロフィールをヘッダーに表示し、勘定残高・今週/今月の予定・実績の集計とグラフで収支を把握する。
+- **業務上の位置付け**: ダッシュボード的な入口。残高サマリ、予定進捗（ゲージ）、実績のカテゴリ別割合（円グラフ）、日別推移などを表示し、収支・スケジュール・マスタ等への導線を提供する。
+- **想定利用シナリオ**: ログイン後に最初に表示される画面。個人・共有の残高、予定収入/支出の進捗、今週/今月の実績を確認し、フッターやサイドバーから目的の画面へ遷移する。
 
 ---
 
@@ -28,17 +28,13 @@
 |--------|------|
 | ヘッダー | メニューバー（タイトル「ホーム」、データ最新化）、プロフィール領域（アイコン、表示名）。他画面と共通。 |
 | 検索エリア | なし |
-| 一覧エリア | なし（ホーム固有の一覧はなし。挨拶フォームがある場合はメイン領域に表示） |
-| 詳細エリア | 挨拶フォーム（greet-form: greet-input, greet-msg）。Tauri 時は invoke("greet") 用。任意。 |
+| 一覧エリア | 勘定残高セクション（個人の総残高、共有の総残高、勘定ごとの残高）、予定収入/支出の進捗ゲージ、今週/今月の実績円グラフ（カテゴリ別）、日別推移グラフ。loadTransactionData で取引データを取得 |
+| 詳細エリア | 上記セクションの表示（home-balance-content、home-summary-gauges、home-summary-pie-charts 等） |
 | フッター | 共通ナビ（ホーム、カレンダー、スケジュール、収支履歴、収支記録、分析、メニュー、設定、戻る） |
 
 ### 3.2 入力項目定義
 
-| 項目名 | DB項目 | 型 | 必須 | 制約 | 備考 |
-|--------|--------|-----|------|------|------|
-| （挨拶入力） | なし | 文字列 | — | — | greet-input。Tauri の greet に渡す名前。DB には保存しない |
-
-※ ヘッダーのプロフィール表示は USER の NAME / COLOR / ICON_PATH を参照するが、本画面では編集しない（プロフィール画面で編集）。
+本画面は表示のみで入力フォームはない。ヘッダーのプロフィール表示は USER の NAME / COLOR / ICON_PATH を参照するが、本画面では編集しない（プロフィール画面で編集）。
 
 ---
 
@@ -46,15 +42,14 @@
 
 | 操作 | 条件 | 処理内容 | 備考 |
 |------|------|----------|------|
-| 画面表示 | ビューID が home | registerViewHandler("home") で renderHeaderProfile() を実行。USER.csv から currentUserId に一致する行を取得し、ヘッダーのアイコン・表示名を更新 | |
-| データ最新化 | ホーム表示中 | registerRefreshHandler("home") で renderHeaderProfile(true) を実行。cache: reload で USER.csv を再取得してヘッダーを更新 | |
-| 挨拶フォーム submit | Tauri 環境等 | invoke("greet", { name: greet-input の値 }) を呼び、結果を greet-msg に表示 | オプション機能 |
+| 画面表示 | ビューID が home | registerViewHandler("home") で loadTransactionData() 後に renderHeaderProfile、renderBalanceSection、今週/今月の集計・グラフを描画 | USER.csv と TRANSACTION 等を取得 |
+| データ最新化 | ホーム表示中 | registerRefreshHandler("home") で loadTransactionData(true) により再取得し、全セクションを再描画 | renderHeaderProfile(true) で USER.csv 再取得 |
 
 ---
 
 ## 5. 業務ルール
 
-- **表示対象**: ログインユーザー（currentUserId）に一致する USER の1行のみ。NAME, COLOR, ICON_PATH をヘッダーに表示。該当行がなければ表示名は「ユーザー」等のフォールバック。
+- **表示対象**: ヘッダーは USER の currentUserId に一致する1行。残高・集計は loadTransactionData で取得した TRANSACTION, ACCOUNT, ACCOUNT_PERMISSION 等を使用。**個人の勘定**は USER_ID が自分と一致する勘定に紐づく取引のみ。**共有の勘定**は ACCOUNT_PERMISSION で付与された勘定。
 - **更新は行わない**: 本画面では CSV の更新は行わない。プロフィール変更はプロフィール画面で行う。
 
 ---
@@ -66,6 +61,7 @@
 | メソッド | パス | 概要 |
 |----------|------|------|
 | GET | /api/data/USER.csv | ヘッダー用にユーザー一覧取得。currentUserId に一致する行を表示に使用 |
+| GET | /api/data/*.csv | loadTransactionData で TRANSACTION, ACCOUNT, ACCOUNT_PERMISSION, CATEGORY, TRANSACTION_MANAGEMENT 等を取得。残高・集計・グラフ描画に使用 |
 
 ### 6.2 DB定義（CSV 対応）
 
@@ -85,7 +81,7 @@
 
 ## 8. バリデーション仕様
 
-- 挨拶入力は任意。DB に保存しないため、特になし。
+- 本画面は表示のみのため、入力バリデーションはなし。
 
 ---
 
