@@ -5449,6 +5449,7 @@
     color: var(--color-accent-fg);
     border-color: var(--color-accent-bg);
   }
+
 }
 
 /* レイヤー外：デザイン画面のパレット入力の margin を #app input より確実に 0 にする */
@@ -5550,4 +5551,16 @@
   background-color: var(--color-accent-bg);
   color: var(--color-accent-fg);
   border-color: var(--color-accent-bg);
+}
+
+/* 収支記録：更新ボタン緑・削除ボタン赤（#app button より確実に適用） */
+#app #header-transaction-entry-submit.transaction-entry-submit--update {
+  background-color: var(--color-success, #16a34a);
+  color: var(--color-button-fg, #ffffff);
+  border: none;
+}
+#app #header-transaction-entry-delete.btn-header-transaction-entry-delete {
+  background-color: var(--danger-solid, #c62828);
+  color: var(--color-button-fg, #ffffff);
+  border: none;
 }

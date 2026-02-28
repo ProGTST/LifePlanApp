@@ -43,3 +43,4 @@ ID,VERSION,REGIST_DATETIME,REGIST_USER,UPDATE_DATETIME,UPDATE_USER,USER_ID,TAG_N
 42,0,2026-02-27 00:00:00,testuser002,2026-02-27 00:00:00,testuser002,testuser002,プロポーズする,#646CFF,/icon/custom/99-others/gem-solid-full.svg,4
 43,0,2026-02-27 00:00:00,testuser002,2026-02-27 00:00:00,testuser002,testuser002,入籍する,#646CFF,/icon/custom/99-others/gem-solid-full.svg,5
 44,0,2026-02-27 00:00:00,testuser002,2026-02-27 00:00:00,testuser002,testuser002,家具・家電の購入,#646CFF,/icon/custom/03-life/couch-solid-full.svg,7
+45,0,2026-02-28 04:42:17,coara,2026-02-28 04:42:17,coara,coara,想定外支出,#e30d0d,/icon/custom/16-evets/certificate-solid-full.svg,11
