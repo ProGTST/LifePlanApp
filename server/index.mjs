@@ -4,7 +4,7 @@
  *
  * キャッシュ設計:
  * - GET: Node キャッシュから返却。mtime 不一致時はファイル再読込（外部変更耐性）。
- * - POST: expectedVersion で楽観ロック。不一致時は 409 Conflict。
+ * - POST: expectedVersion で楽観ロック。不一致時は 409 Conflict。保存後は書き込んだファイルを再読込し、Node キャッシュに反映する（カテゴリー・タグ保存時に即時反映）。
  * - GET /api/data/:name/meta: ポーリング用に version と lastUpdatedUser のみ返却。
  */
 import Fastify from "fastify";
@@ -211,9 +211,12 @@ fastify.post("/api/data/:name", async (request, reply) => {
   const filePath = join(dataDir, `${baseName}.csv`);
   try {
     await writeFile(filePath, csv, "utf8");
-    const statResult = await stat(filePath);
+    const [readBack, statResult] = await Promise.all([
+      readFile(filePath, "utf8"),
+      stat(filePath),
+    ]);
     const nextVersion = entry ? entry.version + 1 : 1;
-    dataCache.set(baseName, { text: csv, version: nextVersion, mtimeMs: statResult.mtimeMs });
+    dataCache.set(baseName, { text: readBack, version: nextVersion, mtimeMs: statResult.mtimeMs });
     reply.header("X-Data-Version", String(nextVersion));
     return reply.code(204).send();
   } catch (err) {

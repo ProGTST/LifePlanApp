@@ -917,7 +917,7 @@ function loadAndShowAnalysis(forceReloadFromCsv = false): void {
 }
 
 export function initTransactionAnalysisView(): void {
-  registerViewHandler("transaction-analysis", () => loadAndShowAnalysis());
+  registerViewHandler("transaction-analysis", () => loadAndShowAnalysis(true));
   registerRefreshHandler("transaction-analysis", () => loadAndShowAnalysis(true));
 
   // 表示年の前年・翌年ボタン

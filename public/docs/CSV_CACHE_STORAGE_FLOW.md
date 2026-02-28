@@ -16,7 +16,7 @@
 
 - **経路**: フロント → `saveCsvViaApi(name, csv, expectedVersion?)` → **POST `/api/data/:name`**（body: `{ csv, expectedVersion? }`）
 - **楽観ロック（改善①）**: サーバー側で `expectedVersion` とキャッシュの `version` を比較。不一致なら **409 Conflict** を返し保存しない。フロントは取得時の `X-Data-Version` を `lastCsvVersions` に保持し、保存時に `expectedVersion` として送る。
-- **サーバー側**: 検証通過後、ファイル書き込み → **Node キャッシュを更新**（mtime 含む）し `version` をインクリメント。レスポンスに **`X-Data-Version`** を付与。
+- **サーバー側**: 検証通過後、ファイル書き込み → **ディスクに書き込んだ内容を再読込し Node キャッシュに反映**（mtime 含む）→ `version` インクリメント。レスポンスに **`X-Data-Version`** を付与。これにより、カテゴリー・タグ等の保存直後の GET で最新データが返る。
 
 ### 1.3 楽観ロック（競合時挙動）
 

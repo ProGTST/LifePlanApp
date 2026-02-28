@@ -977,7 +977,7 @@ function renderHomeSummary(): void {
 
 export function initHomeScreen(): void {
   registerViewHandler("home", () => {
-    loadTransactionData().then(() => {
+    loadTransactionData(true).then(() => {
       renderHeaderProfile();
       renderBalanceSection();
       renderMonthTrendChart();

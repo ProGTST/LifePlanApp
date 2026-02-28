@@ -34,7 +34,7 @@ import {
   getVersionConflictMessage,
 } from "../utils/csvVersionCheck.ts";
 import { setDisplayedKeys } from "../utils/csvWatch.ts";
-import { registerViewHandler, registerRefreshHandler } from "../app/screen";
+import { registerViewHandler, registerRefreshHandler, triggerRefreshForView } from "../app/screen";
 import { openColorIconPicker } from "../utils/colorIconPicker.ts";
 import { createIconWrap, applyColorIconToElement } from "../utils/iconWrap.ts";
 import { openOverlay, closeOverlay } from "../utils/overlay.ts";
@@ -78,7 +78,11 @@ async function fetchTagList(_noCache = false): Promise<TagRow[]> {
 function persistTag(): void {
   setTagDirty();
   saveTagCsvOnly()
-    .then(() => invalidateTransactionDataCache())
+    .then(() => {
+      invalidateTransactionDataCache();
+      const viewsUsingTag = ["home", "schedule", "transaction-history", "transaction-history-weekly", "transaction-history-calendar", "transaction-analysis"];
+      if (viewsUsingTag.includes(currentView)) triggerRefreshForView(currentView);
+    })
     .catch((e) => {
       if (e instanceof VersionConflictError) {
       alert(e.message);

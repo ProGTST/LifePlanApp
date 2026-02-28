@@ -1490,8 +1490,8 @@ function loadAndShowCalendar(forceReloadFromCsv = false): void {
  */
 export function initCalendarView(): void {
   registerFilterChangeCallback(refreshCalendarView);
-  registerViewHandler("transaction-history-weekly", loadAndShowCalendar);
-  registerViewHandler("transaction-history-calendar", loadAndShowCalendar);
+  registerViewHandler("transaction-history-weekly", () => loadAndShowCalendar(true));
+  registerViewHandler("transaction-history-calendar", () => loadAndShowCalendar(true));
   registerRefreshHandler("transaction-history-weekly", () => loadAndShowCalendar(true));
   registerRefreshHandler("transaction-history-calendar", () => loadAndShowCalendar(true));
 

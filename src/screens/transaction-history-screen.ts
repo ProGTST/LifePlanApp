@@ -376,7 +376,7 @@ function loadAndShow(forceReloadFromCsv = false): void {
  * @returns なし
  */
 export function initTransactionHistoryView(): void {
-  registerViewHandler("transaction-history", loadAndShow);
+  registerViewHandler("transaction-history", () => loadAndShow(true));
   registerRefreshHandler("transaction-history", () => loadAndShow(true));
   registerFilterChangeCallback(() => {
     transactionHistoryCurrentPage = 1;
