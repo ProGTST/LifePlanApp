@@ -505,106 +505,176 @@ function getActualIconColumnIndices(
   return [...new Set(indices)].sort((x, y) => x - y);
 }
 
-/** スケジュール表の固定列数（種類・カテゴリ・取引名・金額・取引日・状況）。日付列はこの次から。 */
-const SCHEDULE_FIXED_COL_COUNT = 6;
+/** 仮想スクロール: 1行の高さ（px）。CSS 2.25rem と一致させる。 */
+const SCHEDULE_ROW_HEIGHT_PX = 36;
 
-/** 1フレームあたりに描画する行数（Violation 対策でチャンク描画）。 */
-const SCHEDULE_ROW_CHUNK_SIZE = 5;
+/** 仮想スクロール: ヘッダー高さ（px）。thead 2行分 2.75rem×2 ≒ 88。 */
+const SCHEDULE_HEADER_HEIGHT_PX = 88;
+
+/** 仮想スクロール: 前後に余裕として描画する行数。 */
+const SCHEDULE_VIRTUAL_BUFFER_ROWS = 10;
+
+/** 仮想スクロール用の現在の表示状態（updateVisibleRows で参照） */
+interface ScheduleVirtualState {
+  rows: TransactionRow[];
+  columns: DateColumn[];
+  unit: ScheduleUnit;
+  todayYMD: string;
+  totalRows: number;
+  /** 実績コネクタ線用: rowIndex → [firstColIndex, lastColIndex] */
+  connectorSegments: Map<number, [number, number]>;
+}
+
+let scheduleVirtualState: ScheduleVirtualState | null = null;
+
+/** 仮想スクロール: 前回の表示範囲。範囲が変わらない場合は transform のみ更新してかくつきを防ぐ */
+let lastVisibleRange: { startRow: number; endRow: number } | null = null;
 
 /**
- * 実績アイコンが複数列ある行について、オーバーレイで1本の線を描画する。
- * テーブル描画後の requestAnimationFrame から呼ぶ想定。
+ * 仮想スクロール: 表示範囲の行だけ tbody に描画し、visible の transform を更新する。
+ * startRow/endRow が変わらない場合は DOM 再構築をスキップし transform のみ更新する。
  */
-function renderScheduleConnectorOverlays(): void {
-  const container = document.getElementById("schedule-connector-overlays");
+function updateVisibleRows(): void {
+  const state = scheduleVirtualState;
+  const viewport = document.getElementById("schedule-viewport");
+  const spacer = document.getElementById("schedule-spacer");
+  const visible = document.getElementById("schedule-visible");
   const tbody = document.getElementById("schedule-tbody");
-  const wrapper = document.getElementById("schedule-connector-overlays-wrapper");
-  const tableInner = container?.closest(".schedule-view-table-inner") ?? undefined;
-  if (!container || !tbody || !tableInner || !wrapper) return;
+  if (!state || !viewport || !spacer || !visible || !tbody) return;
 
-  container.innerHTML = "";
+  const scrollTop = viewport.scrollTop;
+  const viewportHeight = viewport.clientHeight;
+  const rowHeight = SCHEDULE_ROW_HEIGHT_PX;
+  const headerHeight = SCHEDULE_HEADER_HEIGHT_PX;
+  const bodyHeight = Math.max(0, viewportHeight - headerHeight);
+  const spacerScrollTop = Math.max(0, scrollTop - headerHeight);
 
-  // ラッパーの left/width を設定し、実績線を日付列部分だけにクリップする
-  const firstDataRowForOffset = tbody.querySelector("tr:not(.schedule-connector-overlays-row)");
-  const firstDateCellForOffset = firstDataRowForOffset?.children[SCHEDULE_FIXED_COL_COUNT] as
-    | HTMLElement
-    | undefined;
-  if (firstDateCellForOffset) {
-    const innerRect = tableInner.getBoundingClientRect();
-    const dateCellRect = firstDateCellForOffset.getBoundingClientRect();
-    const offsetLeft = dateCellRect.left - innerRect.left;
-    wrapper.style.left = `${offsetLeft}px`;
-    wrapper.style.width = `${innerRect.width - offsetLeft}px`;
-    wrapper.dataset.scheduleFixedWidth = String(Math.round(offsetLeft));
-  } else {
-    wrapper.style.left = "0";
-    wrapper.style.width = "0";
+  const startRow = Math.max(0, Math.floor(spacerScrollTop / rowHeight) - SCHEDULE_VIRTUAL_BUFFER_ROWS);
+  const visibleCount = Math.ceil(bodyHeight / rowHeight);
+  const endRow = Math.min(
+    state.totalRows,
+    startRow + visibleCount + SCHEDULE_VIRTUAL_BUFFER_ROWS * 2
+  );
+
+  const rangeChanged =
+    !lastVisibleRange || lastVisibleRange.startRow !== startRow || lastVisibleRange.endRow !== endRow;
+  if (rangeChanged) {
+    lastVisibleRange = { startRow, endRow };
+    const fragment = document.createDocumentFragment();
+    for (let i = startRow; i < endRow; i++) {
+      const row = state.rows[i];
+      if (!row) continue;
+      const tr = buildOneScheduleDataRow(row, state.columns, state.unit, state.todayYMD);
+      fragment.appendChild(tr);
+    }
+    tbody.innerHTML = "";
+    tbody.appendChild(fragment);
   }
-  container.style.left = "0";
-  container.style.width = "100%";
 
-  // 高さ確定後に線位置を計算するため、rAF で高さを適用してから次のフレームで線を描画
-  requestAnimationFrame(() => {
-    const tbodyHeight = tbody.getBoundingClientRect().height;
-    const heightPx = `${Math.max(0, tbodyHeight)}px`;
-    const connectorRowEl = tbody.querySelector(".schedule-connector-overlays-row");
-    if (connectorRowEl instanceof HTMLElement) {
-      connectorRowEl.style.height = heightPx;
+  const offsetY = startRow * rowHeight - spacerScrollTop;
+  visible.style.transform = `translateY(${offsetY}px)`;
+
+  // transform 更新で表が動くため、常に実績線を再描画する
+  scheduleConnectorDraw();
+}
+
+/** コネクタ描画の遅延実行。DOM 更新後にタスクを挟んでから描画し Forced reflow を軽減 */
+let connectorDrawTimeoutId: ReturnType<typeof setTimeout> | null = null;
+function scheduleConnectorDraw(): void {
+  if (connectorDrawTimeoutId != null) clearTimeout(connectorDrawTimeoutId);
+  connectorDrawTimeoutId = setTimeout(() => {
+    connectorDrawTimeoutId = null;
+    requestAnimationFrame(drawScheduleConnectorCanvas); // レイアウト完了後に実行
+  }, 0);
+}
+
+/** 固定列数（日付列はこの次から）。 */
+const SCHEDULE_FIXED_COL_COUNT = 6;
+
+/**
+ * コネクタ線を Canvas に描画する。Canvas は spacer 内にあり表と同じ座標系でスクロールする。
+ * 固定列は sticky で表の上に重なるため、固定列の背後に回り込み上には表示されない。
+ */
+function drawScheduleConnectorCanvas(): void {
+  const spacer = document.getElementById("schedule-spacer");
+  const canvas = document.getElementById("schedule-connector-canvas") as HTMLCanvasElement | null;
+  const bodyTable = document.getElementById("schedule-body-table");
+  const tbody = document.getElementById("schedule-tbody");
+  if (!spacer || !canvas || !bodyTable || !tbody) return;
+
+  // 表の幅・spacer の高さを使用（spacer は子が absolute のため幅が表より小さくなる場合がある）
+  const w = Math.max(spacer.offsetWidth, bodyTable.offsetWidth);
+  const h = spacer.offsetHeight;
+  if (w <= 0 || h <= 0) return;
+
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = Math.round(w * dpr);
+  canvas.height = Math.round(h * dpr);
+  canvas.style.width = `${w}px`;
+  canvas.style.height = `${h}px`;
+
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, w, h);
+
+  const spacerRect = spacer.getBoundingClientRect();
+  const viewport = document.getElementById("schedule-viewport");
+
+  // 固定列の右端（spacer 左端からの距離）。日付列領域の開始位置。
+  let fixedRightPx = 0;
+  const firstRow = tbody.querySelector("tr");
+  if (firstRow && firstRow.children.length > SCHEDULE_FIXED_COL_COUNT) {
+    const lastFixedCell = firstRow.children[SCHEDULE_FIXED_COL_COUNT - 1] as HTMLElement;
+    if (lastFixedCell) {
+      const lastFixedRect = lastFixedCell.getBoundingClientRect();
+      fixedRightPx = Math.max(0, lastFixedRect.right - spacerRect.left);
     }
-    const connectorTd = connectorRowEl?.querySelector(".schedule-connector-overlays-td");
-    if (connectorTd instanceof HTMLElement) {
-      connectorTd.style.height = heightPx;
+  }
+
+  const lineColor =
+    viewport && getComputedStyle(viewport).getPropertyValue("--color-button-bg").trim()
+      ? getComputedStyle(viewport).getPropertyValue("--color-button-bg").trim()
+      : "#646cff";
+  ctx.strokeStyle = lineColor || "#646cff";
+  ctx.lineWidth = 2;
+
+  const rows = tbody.querySelectorAll<HTMLTableRowElement>("tr[data-actual-icon-cols]");
+  rows.forEach((tr) => {
+    const attr = tr.getAttribute("data-actual-icon-cols");
+    if (!attr) return;
+    const indices = attr.split(",").map((s) => parseInt(s.trim(), 10)).filter((n) => !Number.isNaN(n));
+    if (indices.length < 2) return;
+
+    // 隣接する実績アイコン間のみ線を描画（途中のアイコン上に重ならないようにする）
+    for (let i = 0; i < indices.length - 1; i++) {
+      const colA = indices[i];
+      const colB = indices[i + 1];
+      const cellA = tr.children[SCHEDULE_FIXED_COL_COUNT + colA] as HTMLElement | undefined;
+      const cellB = tr.children[SCHEDULE_FIXED_COL_COUNT + colB] as HTMLElement | undefined;
+      if (!cellA || !cellB) continue;
+
+      const iconA = cellA.querySelector(".schedule-view-date-cell-actual-icon") as HTMLElement | null;
+      const iconB = cellB.querySelector(".schedule-view-date-cell-actual-icon") as HTMLElement | null;
+      const rectA = (iconA ?? cellA).getBoundingClientRect();
+      const rectB = (iconB ?? cellB).getBoundingClientRect();
+
+      const x1 = rectA.right - spacerRect.left;
+      const x2 = rectB.left - spacerRect.left;
+      const y = rectA.top - spacerRect.top + rectA.height / 2 - 1;
+
+      // 固定列の右側（日付列領域）のみ描画
+      if (x2 <= fixedRightPx || x1 >= w) continue;
+      const drawX1 = Math.max(fixedRightPx, x1);
+      const drawX2 = Math.min(w, x2);
+      if (drawX2 <= drawX1) continue;
+      if (y < -50 || y > h + 50) continue;
+
+      ctx.beginPath();
+      ctx.moveTo(drawX1, y);
+      ctx.lineTo(drawX2, y);
+      ctx.stroke();
     }
-    if (wrapper) {
-      wrapper.style.height = heightPx;
-    }
-    if (container) {
-      container.style.height = heightPx;
-    }
-    // レイアウト確定を1フレーム待ってから getBoundingClientRect を読む（Forced reflow 軽減）
-    requestAnimationFrame(() => {
-      const containerRect = container.getBoundingClientRect();
-      if (containerRect.width === 0 || containerRect.height === 0) return;
-
-      // 全行の getBoundingClientRect を先に読み取り、その後まとめて DOM に書き込む
-      const dataRows = tbody.querySelectorAll("tr[data-actual-icon-cols]");
-      const lineStyles: { left: number; top: number; width: number; height: number }[] = [];
-      for (let i = 0; i < dataRows.length; i++) {
-        const tr = dataRows[i];
-        const attr = tr.getAttribute("data-actual-icon-cols");
-        if (!attr) continue;
-        const indices = attr.split(",").map((s) => parseInt(s.trim(), 10)).filter((n) => !Number.isNaN(n));
-        if (indices.length < 2) continue;
-
-        const firstCol = indices[0];
-        const lastCol = indices[indices.length - 1];
-        const firstCell = tr.children[SCHEDULE_FIXED_COL_COUNT + firstCol] as HTMLElement | undefined;
-        const lastCell = tr.children[SCHEDULE_FIXED_COL_COUNT + lastCol] as HTMLElement | undefined;
-        if (!firstCell || !lastCell) continue;
-
-        const firstIcon = firstCell.querySelector(".schedule-view-date-cell-actual-icon") as HTMLElement | null;
-        const lastIcon = lastCell.querySelector(".schedule-view-date-cell-actual-icon") as HTMLElement | null;
-        const firstRect = (firstIcon ?? firstCell).getBoundingClientRect();
-        const lastRect = (lastIcon ?? lastCell).getBoundingClientRect();
-
-        let lineLeft = firstRect.right - containerRect.left;
-        let lineWidth = Math.max(0, lastRect.left - firstRect.right);
-        if (lineLeft < 0) {
-          lineWidth = lineWidth + lineLeft;
-          lineLeft = 0;
-        }
-        lineWidth = Math.max(0, Math.min(lineWidth, containerRect.width - lineLeft));
-        const top = firstRect.top - containerRect.top + firstRect.height / 2 - 1;
-        lineStyles.push({ left: lineLeft, top, width: lineWidth, height: 2 });
-      }
-      for (const s of lineStyles) {
-        const line = document.createElement("div");
-        line.className = "schedule-connector-line";
-        line.setAttribute("aria-hidden", "true");
-        line.style.cssText = `left:${s.left}px;top:${s.top}px;width:${s.width}px;height:${s.height}px;`;
-        container.appendChild(line);
-      }
-    });
   });
 }
 
@@ -934,6 +1004,18 @@ function openScheduleOccurrencePopup(row: TransactionRow): void {
  * 開始日・表示単位・過去/未来の範囲を DOM から読み取り、getDateColumns / getPlanRows でデータを取得して描画する。
  * @returns なし
  */
+let renderGridTimeoutId: ReturnType<typeof setTimeout> | null = null;
+function scheduleRenderGrid(): void {
+  if (renderGridTimeoutId != null) clearTimeout(renderGridTimeoutId);
+  renderGridTimeoutId = setTimeout(() => {
+    renderGridTimeoutId = null;
+    renderScheduleGrid();
+  }, 0);
+}
+
+/**
+ * 重い描画を複数タスクに分割し、各ハンドラが 50ms 超えないようにして Violation を軽減する。
+ */
 function renderScheduleGrid(): void {
   // --- 必須 DOM 要素の取得と開始日・表示単位の確定 ---
   const startInput = document.getElementById("schedule-start-date") as HTMLInputElement | null;
@@ -1002,6 +1084,12 @@ function renderScheduleGrid(): void {
   const columns = getDateColumns(startYMD, unit, dayRange);
   const rows = getPlanRows();
   const todayYMD = getTodayYMD();
+
+  // 単位に応じた日付列幅を CSS で適用するため data 属性をセット
+  const viewportEl = document.getElementById("schedule-viewport");
+  if (viewportEl) {
+    viewportEl.setAttribute("data-schedule-unit", unit);
+  }
 
   // --- 年月結合行: 固定列 th ＋ 単位に応じた結合ヘッダー（yyyy年m月 など） ---
   const yearMonthRow = document.getElementById("schedule-yearmonth-row");
@@ -1074,51 +1162,45 @@ function renderScheduleGrid(): void {
     headRow.appendChild(th);
   });
 
-  tbody.innerHTML = "";
-  // 予定行の描画: チャンク単位で rAF に分け、1ハンドラの負荷を下げて Violation を防ぐ
-  let rowChunkIndex = 0;
-  function appendRowChunk(): void {
-    const chunkEnd = Math.min(rowChunkIndex + SCHEDULE_ROW_CHUNK_SIZE, rows.length);
-    for (let i = rowChunkIndex; i < chunkEnd; i++) {
-      const tr = buildOneScheduleDataRow(rows[i], columns, unit, todayYMD);
-      tbody.appendChild(tr);
-    }
-    rowChunkIndex = chunkEnd;
-    if (rowChunkIndex < rows.length) {
-      requestAnimationFrame(appendRowChunk);
-      return;
-    }
-    // 全行追加済み: 次フレームで挿入・オーバーレイ・集計・スクロールを行い、この rAF の負荷を下げる
-    requestAnimationFrame(() => {
-      const connectorRow = document.createElement("tr");
-      connectorRow.className = "schedule-connector-overlays-row";
-      connectorRow.setAttribute("aria-hidden", "true");
-      const connectorTd = document.createElement("td");
-      connectorTd.colSpan = SCHEDULE_FIXED_COL_COUNT + columns.length;
-      connectorTd.className = "schedule-connector-overlays-td";
-      const wrapper = document.createElement("div");
-      wrapper.className = "schedule-connector-overlays-wrapper";
-      wrapper.id = "schedule-connector-overlays-wrapper";
-      const container = document.createElement("div");
-      container.className = "schedule-connector-overlays";
-      container.id = "schedule-connector-overlays";
-      container.style.left = "0";
-      container.style.width = "100%";
-      wrapper.appendChild(container);
-      connectorTd.appendChild(wrapper);
-      connectorRow.appendChild(connectorTd);
-      tbody.insertBefore(connectorRow, tbody.firstChild);
-
-      requestAnimationFrame(() => renderScheduleConnectorOverlays());
-      renderScheduleSummary(rows, getPlanRowsForMonthSummary());
-      if (unit === "day" || unit === "week" || unit === "month") {
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => scrollScheduleGridToStartDate());
-        });
+  // Phase 2a: 仮想スクロール状態のみ（軽量）
+  setTimeout(() => {
+    const connectorSegments = new Map<number, [number, number]>();
+    for (let i = 0; i < rows.length; i++) {
+      const indices = getActualIconColumnIndices(rows[i].ID, columns, unit);
+      if (indices.length >= 2) {
+        connectorSegments.set(i, [indices[0], indices[indices.length - 1]]);
       }
-    });
-  }
-  requestAnimationFrame(appendRowChunk);
+    }
+    scheduleVirtualState = {
+      rows,
+      columns,
+      unit,
+      todayYMD,
+      totalRows: rows.length,
+      connectorSegments,
+    };
+    lastVisibleRange = null; // グリッド再描画時は次回 updateVisibleRows で再構築する
+
+    const spacerEl = document.getElementById("schedule-spacer");
+    if (spacerEl) {
+      spacerEl.style.height = `${rows.length * SCHEDULE_ROW_HEIGHT_PX}px`;
+    }
+
+    // Phase 2b: 行描画（重い処理を別タスクに分離）
+    setTimeout(() => {
+      updateVisibleRows();
+
+      // Phase 3: 集計・スクロール
+      setTimeout(() => {
+        renderScheduleSummary(rows, getPlanRowsForMonthSummary());
+        if (unit === "day" || unit === "week" || unit === "month") {
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => scrollScheduleGridToStartDate());
+          });
+        }
+      }, 0);
+    }, 0);
+  }, 0);
 }
 
 /**
@@ -1307,8 +1389,13 @@ function buildOneScheduleDataRow(
       if (isCurrentDay || isCurrentWeek || isCurrentMonth) {
         td.classList.add("schedule-view-date-cell--current");
       }
-      // 実績の対象日列には「実」アイコンを表示
-      if (actualIconColIndices.includes(colIndex)) {
+      // 遅れ対象日がこの列に含まれるか（fire アイコン用）
+      const hasDelayedInCell =
+        unit === "day"
+          ? delayedDatesSet.has(col.dateFrom)
+          : [...delayedDatesSet].some((d) => d >= col.dateFrom && d <= col.dateTo);
+      // 実績の対象日列には「実」アイコンを表示（遅れセルでは fire を優先し実績を非表示）
+      if (actualIconColIndices.includes(colIndex) && !hasDelayedInCell) {
         const actualIcon = document.createElement("span");
         actualIcon.className = "transaction-history-plan-icon schedule-view-date-cell-actual-icon";
         actualIcon.setAttribute("aria-label", "実績");
@@ -1316,10 +1403,6 @@ function buildOneScheduleDataRow(
         td.appendChild(actualIcon);
       }
       // 遅れ対象日がこの列に含まれる場合は fire アイコンを表示
-      const hasDelayedInCell =
-        unit === "day"
-          ? delayedDatesSet.has(col.dateFrom)
-          : [...delayedDatesSet].some((d) => d >= col.dateFrom && d <= col.dateTo);
       if (hasDelayedInCell) {
         const delayedIcon = document.createElement("span");
         delayedIcon.className = "schedule-view-date-cell-delayed-icon";
@@ -1560,17 +1643,18 @@ function renderScheduleSummary(rows: TransactionRow[], rowsForMonthSummary?: Tra
  * @returns なし
  */
 function scrollScheduleGridToStartDate(): void {
-  const gridWrap = document.querySelector(".schedule-view-grid-wrap");
+  const viewport = document.getElementById("schedule-viewport");
   const startDateTh = document.querySelector(".schedule-view-date-col[data-schedule-start-date=\"true\"]");
-  if (!gridWrap || !startDateTh) return;
-  const wrap = gridWrap as HTMLElement;
+  if (!viewport || !startDateTh) return;
   const startTh = startDateTh as HTMLElement;
-  const firstDateTh = wrap.querySelector(".schedule-view-date-col");
+  const firstDateTh = viewport.querySelector(".schedule-view-date-col");
   if (firstDateTh) {
     const firstLeft = (firstDateTh as HTMLElement).offsetLeft;
     const startLeft = startTh.offsetLeft;
-    wrap.scrollLeft = startLeft - firstLeft;
+    viewport.scrollLeft = Math.max(0, startLeft - firstLeft);
   }
+  // 横スクロール後、レイアウト安定後に実績線を再描画
+  requestAnimationFrame(scheduleConnectorDraw);
 }
 
 /**
@@ -1586,8 +1670,8 @@ export function initScheduleView(): void {
         if (startInput && !startInput.value) {
           startInput.value = getTodayYMD();
         }
-        // 重い描画は次のタスクにずらし、rAF ハンドラを軽くして Violation を防ぐ
-        setTimeout(() => renderScheduleGrid(), 0);
+        // 重い描画は idle 時にずらし Violation を軽減
+        scheduleRenderGrid();
       });
     });
     setDisplayedKeys("schedule", ["TRANSACTION.csv", "CATEGORY.csv", "TRANSACTION_MANAGEMENT.csv"]);
@@ -1619,10 +1703,8 @@ export function initScheduleView(): void {
       });
       btn.classList.add("is-active");
       btn.setAttribute("aria-pressed", "true");
-      // ボタンの色を先に描画させるため、重いグリッド再描画は次のタスクに遅延（rAF ハンドラを軽くして Violation を防ぐ）
-      requestAnimationFrame(() => {
-        setTimeout(() => renderScheduleGrid(), 0);
-      });
+      // ボタンの色を先に描画させるため、重いグリッド再描画は idle 時に遅延
+      requestAnimationFrame(scheduleRenderGrid);
     });
   });
 
@@ -1636,17 +1718,30 @@ export function initScheduleView(): void {
     scrollScheduleGridToStartDate();
   });
 
-  // リサイズ時に実績つなぎ線オーバーレイの位置を再計算
+  // リサイズ時に仮想スクロールの表示範囲とコネクタ Canvas を再描画
   let overlayResizeTimer: ReturnType<typeof setTimeout> | null = null;
   window.addEventListener("resize", () => {
     if (overlayResizeTimer) clearTimeout(overlayResizeTimer);
     overlayResizeTimer = setTimeout(() => {
       overlayResizeTimer = null;
       if (document.getElementById("view-schedule")?.classList.contains("main-view--hidden") === false) {
-        renderScheduleConnectorOverlays();
+        updateVisibleRows();
       }
     }, 150);
   });
+
+  // 仮想スクロール: viewport の scroll で表示行を更新（1フレーム1回にスロットルしてかくつきを軽減）
+  const viewport = document.getElementById("schedule-viewport");
+  let scrollRafScheduled = false;
+  const onScroll = (): void => {
+    if (scrollRafScheduled) return;
+    scrollRafScheduled = true;
+    requestAnimationFrame(() => {
+      scrollRafScheduled = false;
+      updateVisibleRows();
+    });
+  };
+  viewport?.addEventListener("scroll", onScroll, { passive: true });
 
   // 取引実績オーバーレイの閉じるボタンとオーバーレイ外クリック
   document.getElementById("schedule-actual-list-close")?.addEventListener("click", () => {

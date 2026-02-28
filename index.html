@@ -208,14 +208,23 @@
                   </div>
                 </div>
                 <div class="schedule-view-grid-wrap">
-                  <div class="schedule-view-table-inner">
-                    <table class="schedule-view-table" id="schedule-table" aria-label="スケジュール">
-                      <thead>
-                        <tr id="schedule-yearmonth-row"></tr>
-                        <tr id="schedule-head-row"></tr>
-                      </thead>
-                      <tbody id="schedule-tbody"></tbody>
-                    </table>
+                  <div class="schedule-viewport" id="schedule-viewport" aria-label="スケジュール">
+                    <div class="schedule-view-header-wrap">
+                      <table class="schedule-view-table schedule-view-header-table" id="schedule-header-table">
+                        <thead>
+                          <tr id="schedule-yearmonth-row"></tr>
+                          <tr id="schedule-head-row"></tr>
+                        </thead>
+                      </table>
+                    </div>
+                    <div class="schedule-spacer" id="schedule-spacer">
+                      <div class="schedule-visible" id="schedule-visible">
+                      <table class="schedule-view-table schedule-view-body-table" id="schedule-body-table">
+                        <tbody id="schedule-tbody"></tbody>
+                      </table>
+                      </div>
+                      <canvas class="schedule-connector-canvas" id="schedule-connector-canvas" aria-hidden="true"></canvas>
+                    </div>
                   </div>
                 </div>
                 <div id="schedule-summary-wrap" aria-label="表示データの集計">

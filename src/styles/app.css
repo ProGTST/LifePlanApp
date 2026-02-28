@@ -4155,10 +4155,65 @@
 .schedule-view-grid-wrap {
   flex: 1 1 0;
   min-height: 0;
-  overflow: auto;
+  overflow: hidden;
   border: 1px solid var(--gray-300);
   border-radius: var(--radius-md);
   background: var(--color-view-bg);
+}
+
+/* 仮想スクロール用ビューポート */
+.schedule-viewport {
+  overflow: auto;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.schedule-view-header-wrap {
+  position: sticky;
+  top: 0;
+  left: 0;
+  z-index: 2;
+  width: max-content;
+  min-width: 100%;
+  background: var(--color-view-bg);
+}
+
+.schedule-view-header-table {
+  width: max-content;
+  min-width: 100%;
+}
+
+.schedule-spacer {
+  position: relative;
+  width: max-content;
+  min-width: 100%;
+  pointer-events: none;
+}
+
+.schedule-visible {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}
+
+.schedule-visible .schedule-view-body-table {
+  pointer-events: auto;
+}
+
+.schedule-view-body-table {
+  width: max-content;
+  min-width: 100%;
+}
+
+.schedule-connector-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 1;
 }
 
 /* スケジュール集計：左・右を横並びにするだけのラッパー（枠・背景は付けない） */
@@ -4460,21 +4515,30 @@
   font-weight: 600;
   white-space: nowrap;
 }
+/* 仮想スクロール用：行高さ固定（2.25rem = 36px） */
 .schedule-view-table tbody tr {
+  height: 2.25rem;
   min-height: 2.25rem;
 }
 .schedule-view-table tbody td {
   height: 2.25rem;
   min-height: 2.25rem;
+  max-height: 2.25rem;
   box-sizing: border-box;
   vertical-align: middle;
   overflow: hidden;
   padding: 0.35rem 0.5rem;
 }
 .schedule-view-table tbody td.schedule-col-name {
-  height: auto;
+  width: 11rem;
+  min-width: 9rem;
+  max-width: 11rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  height: 2.25rem;
   min-height: 2.25rem;
-  overflow: visible;
+  max-height: 2.25rem;
   vertical-align: middle;
 }
 .schedule-view-yearmonth-col--fixed {
@@ -4499,8 +4563,9 @@
   min-width: 10rem;
 }
 .schedule-view-yearmonth-col--fixed:nth-child(5) {
-  width: 3.5rem;
-  min-width: 3.5rem;
+  width: 60px;
+  min-width: 60px;
+  max-width: 60px;
 }
 .schedule-view-head-col {
   background: var(--gray-100);
@@ -4526,8 +4591,9 @@
   text-align: left;
 }
 .schedule-view-head-col:nth-child(5) {
-  width: 3.5rem;
-  min-width: 3.5rem;
+  width: 60px;
+  min-width: 60px;
+  max-width: 60px;
   text-align: center;
 }
 .schedule-col-type {
@@ -4563,6 +4629,9 @@
   min-height: 22px;
 }
 .schedule-col-name {
+  width: 11rem;
+  min-width: 9rem;
+  max-width: 11rem;
   white-space: normal;
   overflow-wrap: break-word;
   word-break: break-word;
@@ -4590,8 +4659,9 @@
   vertical-align: top;
 }
 .schedule-col-status {
-  width: 3.5rem;
-  min-width: 3.5rem;
+  width: 60px;
+  min-width: 60px;
+  max-width: 60px;
   text-align: center;
 }
 
@@ -4674,6 +4744,25 @@
   width: 2.25rem;
   text-align: center;
   font-weight: 500;
+}
+/* 単位ごとの日付列幅（ヘッダー・データで統一） */
+[data-schedule-unit="day"] .schedule-view-date-col,
+[data-schedule-unit="day"] .schedule-view-date-cell {
+  width: 45px;
+  min-width: 45px;
+  max-width: 45px;
+}
+[data-schedule-unit="week"] .schedule-view-date-col,
+[data-schedule-unit="week"] .schedule-view-date-cell {
+  width: 75px;
+  min-width: 75px;
+  max-width: 75px;
+}
+[data-schedule-unit="month"] .schedule-view-date-col,
+[data-schedule-unit="month"] .schedule-view-date-cell {
+  width: 43px;
+  min-width: 43px;
+  max-width: 43px;
 }
 .schedule-view-date-col--current {
   background: color-mix(in srgb, var(--color-button-bg, #2563eb) 22%, transparent);
