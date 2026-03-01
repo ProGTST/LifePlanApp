@@ -3205,17 +3205,11 @@
   background: var(--gray-200);
 }
 
-/* 権限付与勘定に紐づく取引：固定列のみ参照は薄黄、編集は薄緑 */
-#transaction-history-table tr.transaction-history-row--permission-view td:nth-child(1),
-#transaction-history-table tr.transaction-history-row--permission-view td:nth-child(2),
-#transaction-history-table tr.transaction-history-row--permission-view td:nth-child(3),
-#transaction-history-table tr.transaction-history-row--permission-view td:nth-child(4) {
+/* 権限付与勘定に紐づく取引：行全体を参照は薄黄、編集は薄緑 */
+#transaction-history-table tr.transaction-history-row--permission-view td {
   background: var(--color-permission-view-bg);
 }
-#transaction-history-table tr.transaction-history-row--permission-edit td:nth-child(1),
-#transaction-history-table tr.transaction-history-row--permission-edit td:nth-child(2),
-#transaction-history-table tr.transaction-history-row--permission-edit td:nth-child(3),
-#transaction-history-table tr.transaction-history-row--permission-edit td:nth-child(4) {
+#transaction-history-table tr.transaction-history-row--permission-edit td {
   background: var(--color-permission-edit-bg);
 }
 #transaction-history-table tr.transaction-history-row--clickable {
