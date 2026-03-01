@@ -273,8 +273,8 @@ function getDateColumns(
   const [startY] = startYMD.split("-").map(Number);
   const columns: DateColumn[] = [];
 
+  // 日単位: 開始日前後の月数で範囲を切り、1日1列
   if (unit === "day") {
-    // 過去・未来の月数で範囲を決め、範囲内の日付を1日ずつリスト化
     const pastMonths = dayRange?.pastMonths ?? 3;
     const futureMonths = dayRange?.futureMonths ?? 6;
     const rangeStart = addMonths(startYMD, -pastMonths);
@@ -286,7 +286,6 @@ function getDateColumns(
       d = addDays(d, 1);
     }
     const startIdx = list.indexOf(startYMD);
-    // 開始日が範囲外の場合はリスト全体をそのまま列に変換
     if (startIdx < 0) {
       list.forEach((ymd) => {
         const [y, m, day] = ymd.split("-").map(Number);
@@ -318,8 +317,8 @@ function getDateColumns(
     return columns;
   }
 
+  // 週単位: 範囲指定ありなら週列、なしなら年の月ごと週列
   if (unit === "week") {
-    // 日/週表示で範囲指定がある場合: 範囲内の週を日曜始まりで列挙
     if (dayRange) {
       const pastMonths = dayRange.pastMonths ?? 3;
       const futureMonths = dayRange.futureMonths ?? 6;
@@ -370,8 +369,8 @@ function getDateColumns(
     return columns;
   }
 
+  // 月単位: 範囲指定ありなら開始～終了月を列に、なしなら年1～12月を列に
   if (unit === "month") {
-    // 月単位で範囲指定がある場合: 開始月～終了月を1列ずつ追加
     if (dayRange) {
       const pastMonths = dayRange.pastMonths ?? 3;
       const futureMonths = dayRange.futureMonths ?? 6;
@@ -523,6 +522,8 @@ interface ScheduleVirtualState {
   totalRows: number;
   /** 実績コネクタ線用: rowIndex → [firstColIndex, lastColIndex] */
   connectorSegments: Map<number, [number, number]>;
+  /** 描画後の実測行高（px）。未計測時は SCHEDULE_ROW_HEIGHT_PX を使用 */
+  rowHeightPx?: number;
 }
 
 let scheduleVirtualState: ScheduleVirtualState | null = null;
@@ -542,13 +543,15 @@ function updateVisibleRows(): void {
   const tbody = document.getElementById("schedule-tbody");
   if (!state || !viewport || !spacer || !visible || !tbody) return;
 
+  // スクロール位置とビューポート高さから表示範囲を算出
   const scrollTop = viewport.scrollTop;
   const viewportHeight = viewport.clientHeight;
-  const rowHeight = SCHEDULE_ROW_HEIGHT_PX;
+  const rowHeight = state.rowHeightPx ?? SCHEDULE_ROW_HEIGHT_PX;
   const headerHeight = SCHEDULE_HEADER_HEIGHT_PX;
   const bodyHeight = Math.max(0, viewportHeight - headerHeight);
   const spacerScrollTop = Math.max(0, scrollTop - headerHeight);
 
+  // バッファ行を含めた描画対象の先頭・末尾行インデックス
   const startRow = Math.max(0, Math.floor(spacerScrollTop / rowHeight) - SCHEDULE_VIRTUAL_BUFFER_ROWS);
   const visibleCount = Math.ceil(bodyHeight / rowHeight);
   const endRow = Math.min(
@@ -556,6 +559,7 @@ function updateVisibleRows(): void {
     startRow + visibleCount + SCHEDULE_VIRTUAL_BUFFER_ROWS * 2
   );
 
+  // 表示範囲が前回から変わった場合のみ tbody を再構築（かくつき防止）
   const rangeChanged =
     !lastVisibleRange || lastVisibleRange.startRow !== startRow || lastVisibleRange.endRow !== endRow;
   if (rangeChanged) {
@@ -571,10 +575,10 @@ function updateVisibleRows(): void {
     tbody.appendChild(fragment);
   }
 
-  const offsetY = startRow * rowHeight - spacerScrollTop;
+  // テーブルを spacer 内の絶対位置に固定（offsetY = 先頭表示行の論理位置）
+  const offsetY = startRow * rowHeight;
   visible.style.transform = `translateY(${offsetY}px)`;
 
-  // transform 更新で表が動くため、常に実績線を再描画する
   scheduleConnectorDraw();
 }
 
@@ -602,11 +606,11 @@ function drawScheduleConnectorCanvas(): void {
   const tbody = document.getElementById("schedule-tbody");
   if (!spacer || !canvas || !bodyTable || !tbody) return;
 
-  // 表の幅・spacer の高さを使用（spacer は子が absolute のため幅が表より小さくなる場合がある）
   const w = Math.max(spacer.offsetWidth, bodyTable.offsetWidth);
   const h = spacer.offsetHeight;
   if (w <= 0 || h <= 0) return;
 
+  // Retina 対応で Canvas 解像度と表示サイズを設定
   const dpr = window.devicePixelRatio || 1;
   canvas.width = Math.round(w * dpr);
   canvas.height = Math.round(h * dpr);
@@ -621,7 +625,7 @@ function drawScheduleConnectorCanvas(): void {
   const spacerRect = spacer.getBoundingClientRect();
   const viewport = document.getElementById("schedule-viewport");
 
-  // 固定列の右端（spacer 左端からの距離）。日付列領域の開始位置。
+  // 固定列の右端（日付列領域の開始位置）を取得
   let fixedRightPx = 0;
   const firstRow = tbody.querySelector("tr");
   if (firstRow && firstRow.children.length > SCHEDULE_FIXED_COL_COUNT) {
@@ -639,6 +643,7 @@ function drawScheduleConnectorCanvas(): void {
   ctx.strokeStyle = lineColor || "#646cff";
   ctx.lineWidth = 2;
 
+  // 実績が複数列にまたがる行のみコネクタ線を描画
   const rows = tbody.querySelectorAll<HTMLTableRowElement>("tr[data-actual-icon-cols]");
   rows.forEach((tr) => {
     const attr = tr.getAttribute("data-actual-icon-cols");
@@ -646,7 +651,6 @@ function drawScheduleConnectorCanvas(): void {
     const indices = attr.split(",").map((s) => parseInt(s.trim(), 10)).filter((n) => !Number.isNaN(n));
     if (indices.length < 2) return;
 
-    // 隣接する実績アイコン間のみ線を描画（途中のアイコン上に重ならないようにする）
     for (let i = 0; i < indices.length - 1; i++) {
       const colA = indices[i];
       const colB = indices[i + 1];
@@ -890,7 +894,6 @@ function openScheduleOccurrencePopup(row: TransactionRow): void {
 
   occurrencePopupPlanRow = row;
 
-  // ヘッダー（タイトル・頻度・間隔・繰り返し）を設定
   const planName = (row.NAME || "").trim();
   if (titleEl) titleEl.textContent = planName ? `取引予定日：${planName}` : "取引予定日";
 
@@ -901,7 +904,6 @@ function openScheduleOccurrencePopup(row: TransactionRow): void {
   if (intervalEl) intervalEl.textContent = String(interval);
   if (cycleEl) cycleEl.textContent = formatCycleUnitForDisplay(row);
 
-  // 対象日一覧と完了日セットを取得
   const dates = getPlanOccurrenceDates(row);
   const completedRaw = (row.COMPLETED_PLANDATE ?? "").trim();
   const completedSet = new Set<string>();
@@ -921,7 +923,6 @@ function openScheduleOccurrencePopup(row: TransactionRow): void {
     p.textContent = "対象日がありません。";
     datesWrap.appendChild(p);
   } else {
-    // 対象日ごとに完了チェック・日付・金額の行を追加
     const table = document.createElement("table");
     table.className = "schedule-occurrence-dates-table";
     table.setAttribute("aria-label", "対象日一覧");
@@ -1162,7 +1163,7 @@ function renderScheduleGrid(): void {
     headRow.appendChild(th);
   });
 
-  // Phase 2a: 仮想スクロール状態のみ（軽量）
+  // Phase 2a: 仮想スクロール用状態をセットし、spacer の初期高さを設定
   setTimeout(() => {
     const connectorSegments = new Map<number, [number, number]>();
     for (let i = 0; i < rows.length; i++) {
@@ -1179,32 +1180,60 @@ function renderScheduleGrid(): void {
       totalRows: rows.length,
       connectorSegments,
     };
-    lastVisibleRange = null; // グリッド再描画時は次回 updateVisibleRows で再構築する
+    lastVisibleRange = null;
 
     const spacerEl = document.getElementById("schedule-spacer");
     if (spacerEl) {
       spacerEl.style.height = `${rows.length * SCHEDULE_ROW_HEIGHT_PX}px`;
     }
 
-    // Phase 2b: 行描画（重い処理を別タスクに分離）
+    // Phase 2b: 全行を一時描画してテーブル高さを実測し、spacer 高さと行高を確定してから仮想スクロールに切り替え
     setTimeout(() => {
-      updateVisibleRows();
+      const tbody = document.getElementById("schedule-tbody");
+      const bodyTable = document.getElementById("schedule-body-table");
+      if (!scheduleVirtualState || !spacerEl || !tbody || !bodyTable) return;
 
-      // Phase 3: 集計・スクロール
-      setTimeout(() => {
+      if (rows.length === 0) {
+        spacerEl.style.height = "0px";
+        runPhase3();
+      } else {
+        const fullFragment = document.createDocumentFragment();
+        for (let i = 0; i < rows.length; i++) {
+          const tr = buildOneScheduleDataRow(rows[i], columns, unit, todayYMD);
+          fullFragment.appendChild(tr);
+        }
+        tbody.innerHTML = "";
+        tbody.appendChild(fullFragment);
+
+        // レイアウト完了後に実高さを取得し、spacer と rowHeightPx を更新してから仮想スクロールで再描画
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            const totalHeight = bodyTable.offsetHeight;
+            if (totalHeight > 0 && scheduleVirtualState) {
+              spacerEl.style.height = `${totalHeight}px`;
+              scheduleVirtualState.rowHeightPx = totalHeight / rows.length;
+            }
+            lastVisibleRange = null;
+            updateVisibleRows();
+            runPhase3();
+          });
+        });
+      }
+
+      function runPhase3(): void {
         renderScheduleSummary(rows, getPlanRowsForMonthSummary());
         if (unit === "day" || unit === "week" || unit === "month") {
           requestAnimationFrame(() => {
             requestAnimationFrame(() => scrollScheduleGridToStartDate());
           });
         }
-      }, 0);
+      }
     }, 0);
   }, 0);
 }
 
 /**
- * 予定1行分の tr を組み立てて返す（チャンク描画用）。
+ * 予定1行分の tr を組み立てて返す（仮想スクロールのチャンク描画用）。
  */
 function buildOneScheduleDataRow(
   row: TransactionRow,
@@ -1213,210 +1242,222 @@ function buildOneScheduleDataRow(
   todayYMD: string
 ): HTMLTableRowElement {
   const cat = getCategoryById(row.CATEGORY_ID);
-    const from = (row.TRANDATE_FROM || "").slice(0, 10);
-    const to = (row.TRANDATE_TO || "").slice(0, 10) || from;
+  const from = (row.TRANDATE_FROM || "").slice(0, 10);
+  const to = (row.TRANDATE_TO || "").slice(0, 10) || from;
 
-    const excludeCompleted = !schedulePlanStatuses.includes("complete");
-    const occurrenceDates = getPlanOccurrenceDatesForDisplay(row, excludeCompleted);
+  const excludeCompleted = !schedulePlanStatuses.includes("complete");
+  const occurrenceDates = getPlanOccurrenceDatesForDisplay(row, excludeCompleted);
 
-    const tr = document.createElement("tr");
-    const permType = getRowPermissionType(row);
-    if (permType === "view") tr.classList.add("transaction-history-row--permission-view");
-    else if (permType === "edit") tr.classList.add("transaction-history-row--permission-edit");
-    // 固定列セル（種類・カテゴリ・取引名・金額・取引日・状況）を生成し、クリックで収支記録またはモーダルを開く
-    const typeTd = document.createElement("td");
-    typeTd.className = "schedule-col-type schedule-cell--clickable";
-    typeTd.setAttribute("role", "button");
-    typeTd.tabIndex = 0;
-    typeTd.setAttribute("aria-label", `種類：${getTypeLabel(row.TRANSACTION_TYPE || "expense")}。収支記録を開く`);
-    const txType = (row.TRANSACTION_TYPE || "expense") as "income" | "expense" | "transfer";
-    const typeIcon = document.createElement("span");
-    typeIcon.className = "transaction-history-type-icon transaction-history-type-icon--" + txType;
-    typeIcon.setAttribute("aria-label", txType === "income" ? "収入" : txType === "expense" ? "支出" : "振替");
-    typeIcon.textContent = txType === "income" ? "収" : txType === "expense" ? "支" : "振";
-    typeTd.appendChild(typeIcon);
-    typeTd.title = getTypeLabel(row.TRANSACTION_TYPE || "expense");
-    typeTd.addEventListener("click", () => openTransactionEntryForPlan(row));
-    typeTd.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" || e.key === " ") {
-        e.preventDefault();
-        openTransactionEntryForPlan(row);
-      }
-    });
-    const catTd = document.createElement("td");
-    catTd.className = "schedule-col-category";
-    const catIcon = createIconWrap(cat?.COLOR || ICON_DEFAULT_COLOR, cat?.ICON_PATH, { tag: "span" });
-    catTd.appendChild(catIcon);
-    const nameTd = document.createElement("td");
-    nameTd.className = "schedule-col-name schedule-cell--clickable";
-    nameTd.setAttribute("role", "button");
-    nameTd.tabIndex = 0;
-    nameTd.setAttribute("aria-label", `取引名：${(row.NAME || "").trim() || "—"}。収支記録を開く`);
-    nameTd.textContent = (row.NAME || "").trim() || "—";
-    nameTd.addEventListener("click", () => openTransactionEntryForPlan(row));
-    nameTd.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" || e.key === " ") {
-        e.preventDefault();
-        openTransactionEntryForPlan(row);
-      }
-    });
-    const amountTd = document.createElement("td");
-    amountTd.className = "schedule-col-amount schedule-cell--clickable";
-    amountTd.setAttribute("role", "button");
-    amountTd.tabIndex = 0;
-    const amount = parseFloat(String(row.AMOUNT ?? "0")) || 0;
-    const amountTotal = amount * occurrenceDates.length;
-    amountTd.textContent =
-      amountTotal === 0 ? "0" : amountTotal.toLocaleString(undefined, { maximumFractionDigits: 0 });
-    amountTd.setAttribute(
-      "aria-label",
-      `金額：${amountTotal.toLocaleString()}（予定金額×発生日数）。収支記録を開く`
-    );
-    amountTd.addEventListener("click", () => openTransactionEntryForPlan(row));
-    amountTd.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" || e.key === " ") {
-        e.preventDefault();
-        openTransactionEntryForPlan(row);
-      }
-    });
-    const dateRangeTd = document.createElement("td");
-    dateRangeTd.className = "schedule-col-date-range schedule-cell--clickable";
-    dateRangeTd.setAttribute("role", "button");
-    dateRangeTd.tabIndex = 0;
-    dateRangeTd.setAttribute("aria-label", "取引日。対象日一覧を表示");
-    const fromFmt = from ? from.replace(/-/g, "/") : "";
-    const toFmt = to ? to.replace(/-/g, "/") : "";
-    dateRangeTd.textContent = from && to ? (from === to ? fromFmt : `${fromFmt}～${toFmt}`) : "—";
-    dateRangeTd.addEventListener("click", (e) => {
+  const tr = document.createElement("tr");
+  const permType = getRowPermissionType(row);
+  if (permType === "view") tr.classList.add("transaction-history-row--permission-view");
+  else if (permType === "edit") tr.classList.add("transaction-history-row--permission-edit");
+
+  // 固定列: 種類（収入/支出/振替）
+  const typeTd = document.createElement("td");
+  typeTd.className = "schedule-col-type schedule-cell--clickable";
+  typeTd.setAttribute("role", "button");
+  typeTd.tabIndex = 0;
+  typeTd.setAttribute("aria-label", `種類：${getTypeLabel(row.TRANSACTION_TYPE || "expense")}。収支記録を開く`);
+  const txType = (row.TRANSACTION_TYPE || "expense") as "income" | "expense" | "transfer";
+  const typeIcon = document.createElement("span");
+  typeIcon.className = "transaction-history-type-icon transaction-history-type-icon--" + txType;
+  typeIcon.setAttribute("aria-label", txType === "income" ? "収入" : txType === "expense" ? "支出" : "振替");
+  typeIcon.textContent = txType === "income" ? "収" : txType === "expense" ? "支" : "振";
+  typeTd.appendChild(typeIcon);
+  typeTd.title = getTypeLabel(row.TRANSACTION_TYPE || "expense");
+  typeTd.addEventListener("click", () => openTransactionEntryForPlan(row));
+  typeTd.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      openTransactionEntryForPlan(row);
+    }
+  });
+
+  // 固定列: カテゴリアイコン・取引名
+  const catTd = document.createElement("td");
+  catTd.className = "schedule-col-category";
+  const catIcon = createIconWrap(cat?.COLOR || ICON_DEFAULT_COLOR, cat?.ICON_PATH, { tag: "span" });
+  catTd.appendChild(catIcon);
+  const nameTd = document.createElement("td");
+  nameTd.className = "schedule-col-name schedule-cell--clickable";
+  nameTd.setAttribute("role", "button");
+  nameTd.tabIndex = 0;
+  nameTd.setAttribute("aria-label", `取引名：${(row.NAME || "").trim() || "—"}。収支記録を開く`);
+  nameTd.textContent = (row.NAME || "").trim() || "—";
+  nameTd.addEventListener("click", () => openTransactionEntryForPlan(row));
+  nameTd.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      openTransactionEntryForPlan(row);
+    }
+  });
+
+  // 固定列: 金額（予定金額×発生日数）・取引日範囲
+  const amountTd = document.createElement("td");
+  amountTd.className = "schedule-col-amount schedule-cell--clickable";
+  amountTd.setAttribute("role", "button");
+  amountTd.tabIndex = 0;
+  const amount = parseFloat(String(row.AMOUNT ?? "0")) || 0;
+  const amountTotal = amount * occurrenceDates.length;
+  amountTd.textContent =
+    amountTotal === 0 ? "0" : amountTotal.toLocaleString(undefined, { maximumFractionDigits: 0 });
+  amountTd.setAttribute(
+    "aria-label",
+    `金額：${amountTotal.toLocaleString()}（予定金額×発生日数）。収支記録を開く`
+  );
+  amountTd.addEventListener("click", () => openTransactionEntryForPlan(row));
+  amountTd.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      openTransactionEntryForPlan(row);
+    }
+  });
+  const dateRangeTd = document.createElement("td");
+  dateRangeTd.className = "schedule-col-date-range schedule-cell--clickable";
+  dateRangeTd.setAttribute("role", "button");
+  dateRangeTd.tabIndex = 0;
+  dateRangeTd.setAttribute("aria-label", "取引日。対象日一覧を表示");
+  const fromFmt = from ? from.replace(/-/g, "/") : "";
+  const toFmt = to ? to.replace(/-/g, "/") : "";
+  dateRangeTd.textContent = from && to ? (from === to ? fromFmt : `${fromFmt}～${toFmt}`) : "—";
+  dateRangeTd.addEventListener("click", (e) => {
+    const tr = (e.currentTarget as HTMLElement).closest?.("tr") ?? null;
+    openOccurrencePopupWithRowHighlight(row, tr);
+  });
+  dateRangeTd.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
       const tr = (e.currentTarget as HTMLElement).closest?.("tr") ?? null;
       openOccurrencePopupWithRowHighlight(row, tr);
-    });
-    dateRangeTd.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" || e.key === " ") {
-        e.preventDefault();
-        const tr = (e.currentTarget as HTMLElement).closest?.("tr") ?? null;
-        openOccurrencePopupWithRowHighlight(row, tr);
-      }
-    });
-    const statusTd = document.createElement("td");
-    statusTd.className = "schedule-col-status";
-    const planStatus = (row.PLAN_STATUS || "planning").toLowerCase();
-    const hasActual = getActualIdsForPlanId(row.ID).length > 0;
-    const hasCompletedPlanDate = (row.COMPLETED_PLANDATE ?? "").trim() !== "";
-    const hasActualOrCompletedPlanDate = hasActual || hasCompletedPlanDate;
-    const actualTargetDates = new Set(
-      getActualTransactionsForPlan(row.ID).map((a) => getActualTargetDate(a)).filter(Boolean)
-    );
-    const isDelayed =
-      planStatus !== "complete" && planStatus !== "canceled" && hasDelayedPlanDates(row, todayYMD, actualTargetDates);
-    const statusLabel =
-      planStatus === "complete"
-        ? "完了"
-        : planStatus === "canceled"
-          ? "中止"
-          : isDelayed
-            ? "遅れ"
+    }
+  });
 
-            : hasActualOrCompletedPlanDate
-              ? "進行中"
-              : "未着";
-    const statusModifier =
-      planStatus === "complete"
-        ? "complete"
-        : planStatus === "canceled"
-          ? "canceled"
-          : isDelayed
-            ? "delayed"
-            : hasActualOrCompletedPlanDate
-              ? "in-progress"
-              : "not-started";
-    const statusBtn = document.createElement("button");
-    statusBtn.type = "button";
-    statusBtn.className = `schedule-status-btn schedule-status-btn--${statusModifier}`;
-    statusBtn.textContent = statusLabel;
-    statusBtn.setAttribute(
-      "aria-label",
-      hasActualOrCompletedPlanDate ? "取引実績を確認" : isDelayed ? "遅れ" : statusLabel
-    );
-    // 実績または完了日がある場合のみクリックで実績一覧モーダルを開く
-    if (hasActualOrCompletedPlanDate) {
-      statusBtn.addEventListener("click", () => {
-        openScheduleActualListPopup(row.ID, row.NAME || "");
-      });
-    }
-    statusTd.appendChild(statusBtn);
-    tr.appendChild(typeTd);
-    tr.appendChild(catTd);
-    tr.appendChild(nameTd);
-    tr.appendChild(amountTd);
-    tr.appendChild(dateRangeTd);
-    tr.appendChild(statusTd);
-    // 実績アイコンが複数列にまたがる場合、オーバーレイで線を引くため列インデックスを tr に持たせる
-    const actualIconColIndices = getActualIconColumnIndices(row.ID, columns, unit);
-    if (actualIconColIndices.length >= 2) {
-      tr.setAttribute("data-actual-icon-cols", actualIconColIndices.join(","));
-    }
-    const delayedDatesSet = new Set(
+  // 固定列: 状況ボタン（完了/中止/進行中/未着/遅れ）
+  const statusTd = document.createElement("td");
+  statusTd.className = "schedule-col-status";
+  const planStatus = (row.PLAN_STATUS || "planning").toLowerCase();
+  const hasActual = getActualIdsForPlanId(row.ID).length > 0;
+  const hasCompletedPlanDate = (row.COMPLETED_PLANDATE ?? "").trim() !== "";
+  const hasActualOrCompletedPlanDate = hasActual || hasCompletedPlanDate;
+  const actualTargetDates = new Set(
+    getActualTransactionsForPlan(row.ID).map((a) => getActualTargetDate(a)).filter(Boolean)
+  );
+  const isDelayed =
+    planStatus !== "complete" && planStatus !== "canceled" && hasDelayedPlanDates(row, todayYMD, actualTargetDates);
+  const statusLabel =
+    planStatus === "complete"
+      ? "完了"
+      : planStatus === "canceled"
+        ? "中止"
+        : isDelayed
+          ? "遅れ"
+          : hasActualOrCompletedPlanDate
+            ? "進行中"
+            : "未着";
+  const statusModifier =
+    planStatus === "complete"
+      ? "complete"
+      : planStatus === "canceled"
+        ? "canceled"
+        : isDelayed
+          ? "delayed"
+          : hasActualOrCompletedPlanDate
+            ? "in-progress"
+            : "not-started";
+  const statusBtn = document.createElement("button");
+  statusBtn.type = "button";
+  statusBtn.className = `schedule-status-btn schedule-status-btn--${statusModifier}`;
+  statusBtn.textContent = statusLabel;
+  statusBtn.setAttribute(
+    "aria-label",
+    hasActualOrCompletedPlanDate ? "取引実績を確認" : isDelayed ? "遅れ" : statusLabel
+  );
+  if (hasActualOrCompletedPlanDate) {
+    statusBtn.addEventListener("click", () => {
+      openScheduleActualListPopup(row.ID, row.NAME || "");
+    });
+  }
+  statusTd.appendChild(statusBtn);
+  tr.appendChild(typeTd);
+  tr.appendChild(catTd);
+  tr.appendChild(nameTd);
+  tr.appendChild(amountTd);
+  tr.appendChild(dateRangeTd);
+  tr.appendChild(statusTd);
+
+  // 実績コネクタ線用: 実績アイコンが複数列にまたがる行に列インデックスを保持
+  const actualIconColIndices = getActualIconColumnIndices(row.ID, columns, unit);
+  if (actualIconColIndices.length >= 2) {
+    tr.setAttribute("data-actual-icon-cols", actualIconColIndices.join(","));
+  }
+  const delayedDatesSet = new Set(
       planStatus !== "complete" && planStatus !== "canceled"
         ? getDelayedPlanDates(row, todayYMD, actualTargetDates)
         : []
-    );
-    // 各日付列にセルを追加: 対象セルはアクティブ・クリック可、今日列は current、実績／遅れはアイコン表示
-    columns.forEach((col, colIndex) => {
-      const td = document.createElement("td");
-      const isTargetCell = isCellActiveForPlan(row, col, unit);
-      td.className = "schedule-view-date-cell";
-      // 対象期間のセルのみクリックで収支記録を開く
-      if (isTargetCell) {
-        td.classList.add("schedule-view-date-cell--active", "schedule-cell--clickable");
-        td.setAttribute("role", "button");
-        td.tabIndex = 0;
-        td.setAttribute("aria-label", "対象期間。収支記録を開く");
-        td.addEventListener("click", () => openTransactionEntryForPlan(row));
-        td.addEventListener("keydown", (e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            openTransactionEntryForPlan(row);
-          }
-        });
-      } else {
-        td.setAttribute("aria-label", "対象外");
-      }
-      // 今日を含む列には current クラスを付与（スタイル用）
-      const isCurrentDay = unit === "day" && col.dateFrom === todayYMD;
-      const isCurrentWeek = unit === "week" && todayYMD >= col.dateFrom && todayYMD <= col.dateTo;
-      const isCurrentMonth = unit === "month" && todayYMD >= col.dateFrom && todayYMD <= col.dateTo;
-      if (isCurrentDay || isCurrentWeek || isCurrentMonth) {
-        td.classList.add("schedule-view-date-cell--current");
-      }
-      // 遅れ対象日がこの列に含まれるか（fire アイコン用）
-      const hasDelayedInCell =
-        unit === "day"
-          ? delayedDatesSet.has(col.dateFrom)
-          : [...delayedDatesSet].some((d) => d >= col.dateFrom && d <= col.dateTo);
-      // 実績の対象日列には「実」アイコンを表示（遅れセルでは fire を優先し実績を非表示）
-      if (actualIconColIndices.includes(colIndex) && !hasDelayedInCell) {
-        const actualIcon = document.createElement("span");
-        actualIcon.className = "transaction-history-plan-icon schedule-view-date-cell-actual-icon";
-        actualIcon.setAttribute("aria-label", "実績");
-        actualIcon.textContent = "実";
-        td.appendChild(actualIcon);
-      }
-      // 遅れ対象日がこの列に含まれる場合は fire アイコンを表示
-      if (hasDelayedInCell) {
-        const delayedIcon = document.createElement("span");
-        delayedIcon.className = "schedule-view-date-cell-delayed-icon";
-        delayedIcon.setAttribute("aria-label", "遅れ");
-        const delayedImg = document.createElement("img");
-        delayedImg.src = "/icon/fire-solid-full.svg";
-        delayedImg.alt = "";
-        delayedImg.className = "schedule-view-date-cell-delayed-img";
-        delayedIcon.appendChild(delayedImg);
-        td.appendChild(delayedIcon);
-      }
-      tr.appendChild(td);
-    });
+  );
+
+  // 日付列: 対象セルはアクティブ・今日列は current、実績/遅れはアイコン表示
+  columns.forEach((col, colIndex) => {
+    const td = document.createElement("td");
+    const isTargetCell = isCellActiveForPlan(row, col, unit);
+    td.className = "schedule-view-date-cell";
+    if (isTargetCell) {
+      td.classList.add("schedule-view-date-cell--active", "schedule-cell--clickable");
+      td.setAttribute("role", "button");
+      td.tabIndex = 0;
+      td.setAttribute("aria-label", "対象期間。収支記録を開く");
+      td.addEventListener("click", () => openTransactionEntryForPlan(row));
+      td.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          openTransactionEntryForPlan(row);
+        }
+      });
+    } else {
+      td.setAttribute("aria-label", "対象外");
+    }
+    const isCurrentDay = unit === "day" && col.dateFrom === todayYMD;
+    const isCurrentWeek = unit === "week" && todayYMD >= col.dateFrom && todayYMD <= col.dateTo;
+    const isCurrentMonth = unit === "month" && todayYMD >= col.dateFrom && todayYMD <= col.dateTo;
+    if (isCurrentDay || isCurrentWeek || isCurrentMonth) {
+      td.classList.add("schedule-view-date-cell--current");
+    }
+    const hasDelayedInCell =
+      unit === "day"
+        ? delayedDatesSet.has(col.dateFrom)
+        : [...delayedDatesSet].some((d) => d >= col.dateFrom && d <= col.dateTo);
+    if (actualIconColIndices.includes(colIndex) && !hasDelayedInCell) {
+      const actualIcon = document.createElement("span");
+      actualIcon.className = "transaction-history-plan-icon schedule-view-date-cell-actual-icon";
+      actualIcon.setAttribute("aria-label", "実績");
+      actualIcon.textContent = "実";
+      td.appendChild(actualIcon);
+    }
+    if (hasDelayedInCell) {
+      const delayedIcon = document.createElement("span");
+      delayedIcon.className = "schedule-view-date-cell-delayed-icon";
+      delayedIcon.setAttribute("aria-label", "遅れ");
+      const delayedImg = document.createElement("img");
+      delayedImg.src = "/icon/fire-solid-full.svg";
+      delayedImg.alt = "";
+      delayedImg.className = "schedule-view-date-cell-delayed-img";
+      delayedIcon.appendChild(delayedImg);
+      td.appendChild(delayedIcon);
+    }
+    tr.appendChild(td);
+  });
   return tr;
+}
+
+/**
+ * 進捗率（％）に応じた表示色を返す。50以下は赤、101以上は青、それ以外は null。
+ */
+function getProgressRateColor(rate: number | null): "red" | "blue" | null {
+  if (rate === null) return null;
+  if (rate <= 50) return "red";
+  if (rate >= 101) return "blue";
+  return null;
 }
 
 /**
@@ -1443,6 +1484,7 @@ function renderScheduleSummary(rows: TransactionRow[], rowsForMonthSummary?: Tra
   }
   const planBalance = planIncome - planExpense;
 
+  // 表示中の予定に紐づく実績を重複除去して集計
   const actualRowsById = new Map<string, TransactionRow>();
   for (const row of rows) {
     const actuals = getActualTransactionsForPlan(row.ID);
@@ -1461,7 +1503,7 @@ function renderScheduleSummary(rows: TransactionRow[], rowsForMonthSummary?: Tra
   }
   const actualBalance = actualIncome - actualExpense;
 
-  // 今月の評価：全ステータスの取引予定で集計（検索条件のステータス選択に依存しない）
+  // 今月の評価: 全ステータスの取引予定で集計（検索条件のステータス選択に依存しない）
   const monthRows = rowsForMonthSummary ?? rows;
   const { first: monthFirst, last: monthLast } = getCurrentMonthFirstAndLast();
   let monthPlanIncome = 0;
@@ -1536,32 +1578,9 @@ function renderScheduleSummary(rows: TransactionRow[], rowsForMonthSummary?: Tra
   setSummary("schedule-summary-actual-expense", actualExpense.toLocaleString());
   setSummary("schedule-summary-actual-balance", actualBalance.toLocaleString());
 
-  // 進捗率に応じて表示色（赤/青/null）を決定
-  const incomeColor =
-    progressRateIncome !== null
-      ? progressRateIncome <= 50
-        ? "red"
-        : progressRateIncome >= 101
-          ? "blue"
-          : null
-      : null;
-  const expenseColor =
-    progressRateExpense !== null
-      ? progressRateExpense <= 50
-        ? "red"
-        : progressRateExpense >= 101
-          ? "blue"
-          : null
-      : null;
-  const balanceColor =
-    progressRateBalance !== null
-      ? progressRateBalance <= 50
-        ? "red"
-        : progressRateBalance >= 101
-          ? "blue"
-          : null
-      : null;
-
+  const incomeColor = getProgressRateColor(progressRateIncome);
+  const expenseColor = getProgressRateColor(progressRateExpense);
+  const balanceColor = getProgressRateColor(progressRateBalance);
   setSummaryClass("schedule-summary-actual-income", incomeColor);
   setSummaryClass("schedule-summary-actual-expense", expenseColor);
   setSummaryClass("schedule-summary-actual-balance", balanceColor);
@@ -1582,7 +1601,7 @@ function renderScheduleSummary(rows: TransactionRow[], rowsForMonthSummary?: Tra
   setSummaryClass("schedule-summary-progress-rate-expense", expenseColor);
   setSummaryClass("schedule-summary-progress-rate-balance", balanceColor);
 
-  // 左ブロック「今月の評価」
+  // 左ブロック「今月の評価」の予定・実績・進捗率を DOM に反映
   setSummary("schedule-summary-month-plan-income", monthPlanIncome.toLocaleString());
   setSummary("schedule-summary-month-plan-expense", monthPlanExpense.toLocaleString());
   setSummary("schedule-summary-month-plan-balance", monthPlanBalance.toLocaleString());
@@ -1592,31 +1611,9 @@ function renderScheduleSummary(rows: TransactionRow[], rowsForMonthSummary?: Tra
   setSummary("schedule-summary-month-actual-expense", monthActualExpense.toLocaleString());
   setSummary("schedule-summary-month-actual-balance", monthActualBalance.toLocaleString());
 
-  const monthIncomeColor =
-    monthProgressRateIncome !== null
-      ? monthProgressRateIncome <= 50
-        ? "red"
-        : monthProgressRateIncome >= 101
-          ? "blue"
-          : null
-      : null;
-  const monthExpenseColor =
-    monthProgressRateExpense !== null
-      ? monthProgressRateExpense <= 50
-        ? "red"
-        : monthProgressRateExpense >= 101
-          ? "blue"
-          : null
-      : null;
-  const monthBalanceColor =
-    monthProgressRateBalance !== null
-      ? monthProgressRateBalance <= 50
-        ? "red"
-        : monthProgressRateBalance >= 101
-          ? "blue"
-          : null
-      : null;
-
+  const monthIncomeColor = getProgressRateColor(monthProgressRateIncome);
+  const monthExpenseColor = getProgressRateColor(monthProgressRateExpense);
+  const monthBalanceColor = getProgressRateColor(monthProgressRateBalance);
   setSummaryClass("schedule-summary-month-actual-income", monthIncomeColor);
   setSummaryClass("schedule-summary-month-actual-expense", monthExpenseColor);
   setSummaryClass("schedule-summary-month-actual-balance", monthBalanceColor);
@@ -1662,7 +1659,7 @@ function scrollScheduleGridToStartDate(): void {
  * @returns なし
  */
 export function initScheduleView(): void {
-  // ビュー表示時: 取引データ読み込み後、開始日未設定なら今日をセットしてグリッド描画
+  // ビュー表示時: 取引データ読み込み後、開始日未設定なら今日をセットしグリッド描画
   registerViewHandler("schedule", () => {
     loadTransactionData(true).then(() => {
       requestAnimationFrame(() => {
@@ -1670,7 +1667,6 @@ export function initScheduleView(): void {
         if (startInput && !startInput.value) {
           startInput.value = getTodayYMD();
         }
-        // 重い描画は idle 時にずらし Violation を軽減
         scheduleRenderGrid();
       });
     });
@@ -1688,11 +1684,10 @@ export function initScheduleView(): void {
     }
   });
 
-  // 開始日変更でグリッド再描画
   const startInput = document.getElementById("schedule-start-date") as HTMLInputElement | null;
   startInput?.addEventListener("change", () => renderScheduleGrid());
 
-  // 表示単位ボタン（日/週/月）: 選択中を切り替え、次フレームでグリッド再描画
+  // 表示単位ボタン（日/週/月）: 選択中を切り替え、グリッド再描画
   document.querySelectorAll(".schedule-view-unit-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
       const value = (btn as HTMLElement).getAttribute("data-schedule-unit");
@@ -1703,22 +1698,21 @@ export function initScheduleView(): void {
       });
       btn.classList.add("is-active");
       btn.setAttribute("aria-pressed", "true");
-      // ボタンの色を先に描画させるため、重いグリッド再描画は idle 時に遅延
       requestAnimationFrame(scheduleRenderGrid);
     });
   });
 
-  // 過去・未来の範囲変更でグリッド再描画
   const pastSelect = document.getElementById("schedule-past-months") as HTMLSelectElement | null;
   const futureSelect = document.getElementById("schedule-future-months") as HTMLSelectElement | null;
   pastSelect?.addEventListener("change", () => renderScheduleGrid());
   futureSelect?.addEventListener("change", () => renderScheduleGrid());
 
+  // 位置を戻す: 横スクロールを開始日列に合わせる
   document.getElementById("schedule-scroll-reset-btn")?.addEventListener("click", () => {
     scrollScheduleGridToStartDate();
   });
 
-  // リサイズ時に仮想スクロールの表示範囲とコネクタ Canvas を再描画
+  // リサイズ時: 仮想スクロールの表示範囲を更新
   let overlayResizeTimer: ReturnType<typeof setTimeout> | null = null;
   window.addEventListener("resize", () => {
     if (overlayResizeTimer) clearTimeout(overlayResizeTimer);
@@ -1730,7 +1724,6 @@ export function initScheduleView(): void {
     }, 150);
   });
 
-  // 仮想スクロール: viewport の scroll で表示行を更新（1フレーム1回にスロットルしてかくつきを軽減）
   const viewport = document.getElementById("schedule-viewport");
   let scrollRafScheduled = false;
   const onScroll = (): void => {
@@ -1743,7 +1736,7 @@ export function initScheduleView(): void {
   };
   viewport?.addEventListener("scroll", onScroll, { passive: true });
 
-  // 取引実績オーバーレイの閉じるボタンとオーバーレイ外クリック
+  // 取引実績オーバーレイ: 閉じる・オーバーレイ外クリック
   document.getElementById("schedule-actual-list-close")?.addEventListener("click", () => {
     closeOverlay("schedule-actual-list-overlay");
   });
@@ -1753,7 +1746,7 @@ export function initScheduleView(): void {
     }
   });
 
-  // 対象日一覧の「設定」: チェックされた日付を COMPLETED_PLANDATE に保存し、CSV 更新後にモーダルを閉じる
+  // 対象日一覧の「設定」: 完了日を COMPLETED_PLANDATE に保存し CSV 更新後にモーダルを閉じる
   document.getElementById("schedule-occurrence-apply")?.addEventListener("click", async () => {
     const row = occurrencePopupPlanRow;
     if (!row?.ID) {
